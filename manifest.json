@@ -1,0 +1,55 @@
+{
+  "manifest_version": 3,
+  "name": "Tab Nest",
+  "version": "1.0.0",
+  "key": "__GOOGLE_EXTENSION_KEY__",
+  "description": "Free tab manager with Google Drive sync. Save, organize, and search your tabs — privacy-first.",
+  "minimum_chrome_version": "120",
+  "permissions": [
+    "tabs",
+    "storage",
+    "alarms",
+    "contextMenus",
+    "identity",
+    "unlimitedStorage"
+  ],
+  "host_permissions": [
+    "https://www.googleapis.com/drive/*",
+    "https://www.googleapis.com/upload/drive/*"
+  ],
+  "optional_permissions": [
+    "bookmarks"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Tab Nest",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "background": {
+    "service_worker": "src/background/index.ts",
+    "type": "module"
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+  "oauth2": {
+    "client_id": "__OAUTH_CLIENT_ID__",
+    "scopes": [
+      "https://www.googleapis.com/auth/drive.file"
+    ]
+  }
+}

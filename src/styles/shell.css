@@ -1,0 +1,37 @@
+.tabnest-shell {
+  display: grid;
+  grid-template-rows: var(--topbar-height) 1fr;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-areas:
+    "topbar topbar"
+    "sidebar main";
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--bg-base);
+}
+
+.tabnest-shell__topbar  { grid-area: topbar; }
+.tabnest-shell__sidebar { grid-area: sidebar; }
+.tabnest-shell__main    { grid-area: main; overflow: hidden; display: flex; }
+.tabnest-shell__right   { display: none; }
+
+/* Applied dynamically when Active Tabs panel is open */
+.tabnest-main-with-panel {
+  grid-template-columns: var(--sidebar-width) 1fr var(--right-panel-width);
+  grid-template-areas: "topbar topbar topbar" "sidebar main right";
+}
+
+@media (min-width: 1280px) {
+  .tabnest-shell {
+    grid-template-columns: var(--sidebar-width) 1fr var(--right-panel-width);
+    grid-template-areas:
+      "topbar  topbar  topbar"
+      "sidebar main    right";
+  }
+
+  .tabnest-shell__right {
+    display: block;
+    grid-area: right;
+    overflow: hidden;
+  }
+}

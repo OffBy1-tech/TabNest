@@ -1,0 +1,1076 @@
+import React, {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
+import { GripVertical, Plus, ChevronDown, Eye, EyeOff, Check, Pencil } from 'lucide-react'
+import type { Category, Workspace } from '../../lib/schema'
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+const CATEGORY_DRAG_TYPE = 'application/x-tabnest-category'
+
+interface CategoryListProps {
+  categories: Category[]
+  selectedCategoryId: string | null
+  onSelectCategory: (id: string | null) => void
+  onCreateCategory: (name: string) => void
+  onRenameCategory: (id: string, name: string) => void
+  onDeleteCategory: (id: string) => void
+  onReorderCategories: (ids: string[]) => void
+  onToggleCollapse: (id: string) => void
+  workspaces: Workspace[]
+  activeWorkspaceId: string | undefined
+  onSelectWorkspace: (id: string) => void
+  onCreateWorkspace: (name: string) => void
+  onRenameWorkspace: (id: string, name: string) => void
+}
+
+// ---------------------------------------------------------------------------
+// WorkspaceDropdown
+// ---------------------------------------------------------------------------
+
+interface WorkspaceDropdownProps {
+  workspaces: Workspace[]
+  activeWorkspaceId: string | undefined
+  onSelectWorkspace: (id: string) => void
+  onCreateWorkspace: (name: string) => void
+  onRenameWorkspace: (id: string, name: string) => void
+}
+
+function WorkspaceDropdown({
+  workspaces,
+  activeWorkspaceId,
+  onSelectWorkspace,
+  onCreateWorkspace,
+  onRenameWorkspace,
+}: WorkspaceDropdownProps): React.JSX.Element {
+  const [creatingNew, setCreatingNew] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+  const renameInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (creatingNew) inputRef.current?.focus()
+  }, [creatingNew])
+
+  useEffect(() => {
+    if (renamingId) {
+      renameInputRef.current?.focus()
+      renameInputRef.current?.select()
+    }
+  }, [renamingId])
+
+  function handleCreate(): void {
+    const trimmed = newName.trim()
+    if (trimmed) onCreateWorkspace(trimmed)
+    setNewName('')
+    setCreatingNew(false)
+  }
+
+  function handleInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>): void {
+    if (e.key === 'Enter') { e.preventDefault(); handleCreate() }
+    else if (e.key === 'Escape') { e.preventDefault(); setCreatingNew(false); setNewName('') }
+  }
+
+  function startRename(ws: Workspace): void {
+    setRenamingId(ws.id)
+    setRenameValue(ws.name)
+  }
+
+  function confirmRename(): void {
+    if (renamingId && renameValue.trim()) onRenameWorkspace(renamingId, renameValue.trim())
+    setRenamingId(null)
+    setRenameValue('')
+  }
+
+  function cancelRename(): void {
+    setRenamingId(null)
+    setRenameValue('')
+  }
+
+  function handleRenameKeyDown(e: React.KeyboardEvent<HTMLInputElement>): void {
+    if (e.key === 'Enter') { e.preventDefault(); confirmRename() }
+    else if (e.key === 'Escape') { e.preventDefault(); cancelRename() }
+  }
+
+  return (
+    <div
+      role="menu"
+      aria-label="Workspaces"
+      style={{
+        position: 'absolute',
+        top: 'calc(100% + var(--space-1))',
+        left: 0,
+        right: 0,
+        zIndex: 200,
+        backgroundColor: 'var(--bg-surface)',
+        border: '1px solid var(--border-default)',
+        borderRadius: 'var(--radius-md)',
+        boxShadow: 'var(--shadow-lg)',
+        padding: 'var(--space-1)',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      {workspaces.map((ws) => {
+        const isActive = ws.id === activeWorkspaceId
+        const isRenaming = renamingId === ws.id
+
+        if (isRenaming) {
+          return (
+            <div
+              key={ws.id}
+              style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', padding: 'var(--space-1) var(--space-2)' }}
+            >
+              <span style={{ width: 14, flexShrink: 0 }} />
+              <input
+                ref={renameInputRef}
+                type="text"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onKeyDown={handleRenameKeyDown}
+                onBlur={confirmRename}
+                aria-label={`Rename workspace ${ws.name}`}
+                style={{
+                  flex: 1,
+                  padding: 'var(--space-1) var(--space-2)',
+                  fontSize: 'var(--text-sm)',
+                  border: '1px solid var(--border-focus)',
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: 'var(--bg-base)',
+                  color: 'var(--text-primary)',
+                  outline: 'none',
+                  fontFamily: 'var(--font-sans)',
+                }}
+              />
+            </div>
+          )
+        }
+
+        return (
+          <div
+            key={ws.id}
+            style={{ display: 'flex', alignItems: 'center', borderRadius: 'var(--radius-sm)', position: 'relative' }}
+            onMouseEnter={(e) => {
+              const pencil = e.currentTarget.querySelector<HTMLElement>('[data-pencil]')
+              if (pencil) pencil.style.opacity = '1'
+              if (!isActive) {
+                const btn = e.currentTarget.querySelector<HTMLElement>('[data-ws-btn]')
+                if (btn) btn.style.backgroundColor = 'var(--bg-elevated)'
+              }
+            }}
+            onMouseLeave={(e) => {
+              const pencil = e.currentTarget.querySelector<HTMLElement>('[data-pencil]')
+              if (pencil) pencil.style.opacity = '0'
+              const btn = e.currentTarget.querySelector<HTMLElement>('[data-ws-btn]')
+              if (btn) btn.style.backgroundColor = isActive ? 'var(--color-brand-50)' : 'transparent'
+            }}
+          >
+            <button
+              data-ws-btn
+              type="button"
+              role="menuitem"
+              aria-current={isActive ? 'true' : undefined}
+              onClick={() => onSelectWorkspace(ws.id)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--space-2)',
+                flex: 1,
+                padding: 'var(--space-2) var(--space-3)',
+                border: 'none',
+                borderRadius: 'var(--radius-sm)',
+                backgroundColor: isActive ? 'var(--color-brand-50)' : 'transparent',
+                color: isActive ? 'var(--color-brand-600)' : 'var(--text-primary)',
+                fontSize: 'var(--text-sm)',
+                fontWeight: isActive ? 600 : 400,
+                cursor: 'pointer',
+                textAlign: 'left',
+                fontFamily: 'var(--font-sans)',
+                outline: 'none',
+              }}
+              onFocus={(e) => {
+                ;(e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
+                ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px'
+              }}
+              onBlur={(e) => { ;(e.currentTarget as HTMLButtonElement).style.outline = 'none' }}
+            >
+              {isActive ? <Check size={14} aria-hidden="true" /> : <span style={{ width: 14, flexShrink: 0 }} />}
+              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {ws.name}
+              </span>
+            </button>
+
+            <button
+              data-pencil
+              type="button"
+              aria-label={`Rename ${ws.name}`}
+              onClick={(e) => { e.stopPropagation(); startRename(ws) }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                width: 24,
+                height: 24,
+                marginRight: 'var(--space-1)',
+                border: 'none',
+                borderRadius: 'var(--radius-sm)',
+                backgroundColor: 'transparent',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                opacity: 0,
+                transition: 'opacity var(--duration-fast) var(--ease-default)',
+                outline: 'none',
+              }}
+              onFocus={(e) => {
+                ;(e.currentTarget as HTMLButtonElement).style.opacity = '1'
+                ;(e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
+                ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px'
+              }}
+              onBlur={(e) => {
+                ;(e.currentTarget as HTMLButtonElement).style.opacity = '0'
+                ;(e.currentTarget as HTMLButtonElement).style.outline = 'none'
+              }}
+            >
+              <Pencil size={12} aria-hidden="true" />
+            </button>
+          </div>
+        )
+      })}
+
+      <div role="separator" style={{ height: 1, backgroundColor: 'var(--border-default)', margin: 'var(--space-1) 0' }} />
+
+      {creatingNew ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', padding: 'var(--space-1) var(--space-2)' }}>
+          <input
+            ref={inputRef}
+            type="text"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={handleInputKeyDown}
+            placeholder="Workspace name"
+            aria-label="New workspace name"
+            style={{
+              flex: 1,
+              padding: 'var(--space-1) var(--space-2)',
+              fontSize: 'var(--text-sm)',
+              border: '1px solid var(--border-focus)',
+              borderRadius: 'var(--radius-sm)',
+              backgroundColor: 'var(--bg-base)',
+              color: 'var(--text-primary)',
+              outline: 'none',
+              fontFamily: 'var(--font-sans)',
+            }}
+          />
+          <button
+            type="button"
+            onClick={handleCreate}
+            aria-label="Confirm new workspace"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 'var(--space-1)',
+              border: 'none',
+              borderRadius: 'var(--radius-sm)',
+              backgroundColor: 'var(--color-brand-500)',
+              color: 'var(--text-inverse)',
+              cursor: 'pointer',
+              outline: 'none',
+              flexShrink: 0,
+            }}
+          >
+            <Check size={14} aria-hidden="true" />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => setCreatingNew(true)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-2)',
+            width: '100%',
+            padding: 'var(--space-2) var(--space-3)',
+            border: 'none',
+            borderRadius: 'var(--radius-sm)',
+            backgroundColor: 'transparent',
+            color: 'var(--text-secondary)',
+            fontSize: 'var(--text-sm)',
+            cursor: 'pointer',
+            textAlign: 'left',
+            fontFamily: 'var(--font-sans)',
+            outline: 'none',
+          }}
+          onMouseEnter={(e) => {
+            ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--bg-elevated)'
+            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'
+          }}
+          onMouseLeave={(e) => {
+            ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'
+            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)'
+          }}
+          onFocus={(e) => {
+            ;(e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
+            ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px'
+          }}
+          onBlur={(e) => { ;(e.currentTarget as HTMLButtonElement).style.outline = 'none' }}
+        >
+          <Plus size={14} aria-hidden="true" />
+          New workspace
+        </button>
+      )}
+    </div>
+  )
+}
+
+interface ContextMenuState {
+  categoryId: string
+  x: number
+  y: number
+}
+
+// ---------------------------------------------------------------------------
+// Inline rename input
+// ---------------------------------------------------------------------------
+
+interface RenameInputProps {
+  initialValue: string
+  onConfirm: (value: string) => void
+  onCancel: () => void
+}
+
+function RenameInput({
+  initialValue,
+  onConfirm,
+  onCancel,
+}: RenameInputProps): React.JSX.Element {
+  const [value, setValue] = useState(initialValue)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    inputRef.current?.focus()
+    inputRef.current?.select()
+  }, [])
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>): void {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      const trimmed = value.trim()
+      if (trimmed) onConfirm(trimmed)
+      else onCancel()
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      onCancel()
+    }
+  }
+
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onKeyDown={handleKeyDown}
+      onBlur={() => {
+        const trimmed = value.trim()
+        if (trimmed) onConfirm(trimmed)
+        else onCancel()
+      }}
+      aria-label="Rename category"
+      style={{
+        flex: 1,
+        fontSize: 'var(--text-sm)',
+        color: 'var(--text-primary)',
+        backgroundColor: 'var(--bg-base)',
+        border: '1px solid var(--border-focus)',
+        borderRadius: 'var(--radius-sm)',
+        padding: '1px var(--space-1)',
+        outline: 'none',
+        minWidth: 0,
+      }}
+    />
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Context menu
+// ---------------------------------------------------------------------------
+
+interface ContextMenuProps {
+  x: number
+  y: number
+  onRename: () => void
+  onDelete: () => void
+  onClose: () => void
+}
+
+function ContextMenu({
+  x,
+  y,
+  onRename,
+  onDelete,
+  onClose,
+}: ContextMenuProps): React.JSX.Element {
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent): void {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        onClose()
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent): void {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('mousedown', handleClick)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleClick)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [onClose])
+
+  const menuItemStyle: React.CSSProperties = {
+    display: 'block',
+    width: '100%',
+    padding: 'var(--space-2) var(--space-3)',
+    border: 'none',
+    backgroundColor: 'transparent',
+    color: 'var(--text-primary)',
+    fontSize: 'var(--text-sm)',
+    cursor: 'pointer',
+    textAlign: 'left',
+    borderRadius: 'var(--radius-sm)',
+  }
+
+  return (
+    <div
+      ref={menuRef}
+      role="menu"
+      aria-label="Category options"
+      style={{
+        position: 'fixed',
+        top: y,
+        left: x,
+        zIndex: 100,
+        backgroundColor: 'var(--bg-surface)',
+        border: '1px solid var(--border-default)',
+        borderRadius: 'var(--radius-md)',
+        boxShadow: 'var(--shadow-lg)',
+        padding: 'var(--space-1)',
+        minWidth: 140,
+      }}
+    >
+      <button
+        type="button"
+        role="menuitem"
+        style={menuItemStyle}
+        onClick={onRename}
+        onMouseEnter={(e) => {
+          ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--bg-elevated)'
+        }}
+        onMouseLeave={(e) => {
+          ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'
+        }}
+      >
+        Rename
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        style={{ ...menuItemStyle, color: 'var(--color-danger)' }}
+        onClick={onDelete}
+        onMouseEnter={(e) => {
+          ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--bg-elevated)'
+        }}
+        onMouseLeave={(e) => {
+          ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'
+        }}
+      >
+        Delete
+      </button>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// CategoryList
+// ---------------------------------------------------------------------------
+
+export function CategoryList({
+  categories,
+  selectedCategoryId,
+  onSelectCategory,
+  onCreateCategory,
+  onRenameCategory,
+  onDeleteCategory,
+  onReorderCategories,
+  onToggleCollapse,
+  workspaces,
+  activeWorkspaceId,
+  onSelectWorkspace,
+  onCreateWorkspace,
+  onRenameWorkspace,
+}: CategoryListProps): React.JSX.Element {
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
+  const [focusedIndex, setFocusedIndex] = useState<number>(-1)
+  const [creatingNew, setCreatingNew] = useState(false)
+  const [draggedId, setDraggedId] = useState<string | null>(null)
+  const [dropIndex, setDropIndex] = useState<number | null>(null)
+  const [wsDropdownOpen, setWsDropdownOpen] = useState(false)
+  const listRef = useRef<HTMLUListElement>(null)
+  const wsDropdownRef = useRef<HTMLDivElement>(null)
+  const wsTriggerRef = useRef<HTMLButtonElement>(null)
+
+  const activeWorkspaceName = workspaces.find(w => w.id === activeWorkspaceId)?.name ?? 'My Workspace'
+
+  // Close workspace dropdown on outside click or Escape
+  useEffect(() => {
+    if (!wsDropdownOpen) return
+    function handleOutsideClick(e: MouseEvent): void {
+      if (
+        wsDropdownRef.current && !wsDropdownRef.current.contains(e.target as Node) &&
+        wsTriggerRef.current && !wsTriggerRef.current.contains(e.target as Node)
+      ) {
+        setWsDropdownOpen(false)
+      }
+    }
+    function handleEsc(e: KeyboardEvent): void {
+      if (e.key === 'Escape') setWsDropdownOpen(false)
+    }
+    document.addEventListener('mousedown', handleOutsideClick)
+    document.addEventListener('keydown', handleEsc)
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick)
+      document.removeEventListener('keydown', handleEsc)
+    }
+  }, [wsDropdownOpen])
+
+  function handleDragStart(e: React.DragEvent, categoryId: string): void {
+    e.dataTransfer.setData(CATEGORY_DRAG_TYPE, categoryId)
+    e.dataTransfer.effectAllowed = 'move'
+    setDraggedId(categoryId)
+  }
+
+  function handleDragOver(e: React.DragEvent, idx: number): void {
+    if (!e.dataTransfer.types.includes(CATEGORY_DRAG_TYPE)) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    setDropIndex(e.clientY < rect.top + rect.height / 2 ? idx : idx + 1)
+  }
+
+  function handleDrop(e: React.DragEvent): void {
+    e.preventDefault()
+    const id = e.dataTransfer.getData(CATEGORY_DRAG_TYPE)
+    if (!id || dropIndex === null) { clearDrag(); return }
+    const fromIdx = categories.findIndex((c) => c.id === id)
+    const dragged = categories[fromIdx]
+    if (fromIdx === -1 || dragged == null) { clearDrag(); return }
+    // Build new order: remove from original position, insert at dropIndex
+    const next = categories.filter((c) => c.id !== id)
+    const insertAt = dropIndex > fromIdx ? dropIndex - 1 : dropIndex
+    next.splice(insertAt, 0, dragged)
+    onReorderCategories(next.map((c) => c.id))
+    clearDrag()
+  }
+
+  function clearDrag(): void {
+    setDraggedId(null)
+    setDropIndex(null)
+  }
+
+  // Show indicator only when it would produce a real position change
+  function showIndicatorAt(idx: number): boolean {
+    if (draggedId === null || dropIndex !== idx) return false
+    const fromIdx = categories.findIndex((c) => c.id === draggedId)
+    return idx !== fromIdx && idx !== fromIdx + 1
+  }
+
+  // "All" pseudo-item + categories
+  const totalItems = 1 + categories.length
+
+  function handleContextMenu(
+    e: React.MouseEvent,
+    categoryId: string,
+  ): void {
+    e.preventDefault()
+    setContextMenu({ categoryId, x: e.clientX, y: e.clientY })
+  }
+
+  function closeContextMenu(): void {
+    setContextMenu(null)
+  }
+
+  function startRename(categoryId: string): void {
+    setContextMenu(null)
+    setRenamingId(categoryId)
+  }
+
+  function confirmRename(categoryId: string, newName: string): void {
+    onRenameCategory(categoryId, newName)
+    setRenamingId(null)
+  }
+
+  function cancelRename(): void {
+    setRenamingId(null)
+  }
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent, index: number, categoryId: string | null) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setFocusedIndex(Math.min(index + 1, totalItems - 1))
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setFocusedIndex(Math.max(index - 1, 0))
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        onSelectCategory(categoryId)
+      } else if (e.key === 'F2' && categoryId !== null) {
+        e.preventDefault()
+        setRenamingId(categoryId)
+      }
+    },
+    [totalItems, onSelectCategory],
+  )
+
+  // Sync focus when focusedIndex changes
+  // Guard: do not steal focus from the inline rename input
+  useEffect(() => {
+    if (focusedIndex < 0 || renamingId !== null) return
+    const items = listRef.current?.querySelectorAll<HTMLElement>('[data-category-item]')
+    const target = items?.[focusedIndex]
+    if (target) {
+      target.focus()
+    }
+  }, [focusedIndex, renamingId])
+
+  function isSelected(id: string | null): boolean {
+    return selectedCategoryId === id
+  }
+
+  return (
+    <>
+    {/* Workspace switcher */}
+    <div style={{ position: 'relative', marginBottom: 'var(--space-3)' }}>
+      <button
+        ref={wsTriggerRef}
+        type="button"
+        onClick={() => setWsDropdownOpen(prev => !prev)}
+        aria-label={`Current workspace: ${activeWorkspaceName}. Click to switch workspace.`}
+        aria-haspopup="menu"
+        aria-expanded={wsDropdownOpen}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'var(--space-2)',
+          width: '100%',
+          padding: 'var(--space-2) var(--space-3)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 'var(--radius-md)',
+          backgroundColor: wsDropdownOpen ? 'var(--bg-elevated)' : 'var(--bg-base)',
+          color: 'var(--text-primary)',
+          fontSize: 'var(--text-sm)',
+          fontWeight: 600,
+          cursor: 'pointer',
+          textAlign: 'left',
+          fontFamily: 'var(--font-sans)',
+          outline: 'none',
+          transition: 'background-color var(--duration-fast) var(--ease-default)',
+        }}
+        onMouseEnter={(e) => {
+          ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--bg-elevated)'
+        }}
+        onMouseLeave={(e) => {
+          ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = wsDropdownOpen ? 'var(--bg-elevated)' : 'var(--bg-base)'
+        }}
+        onFocus={(e) => {
+          //;(e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
+          //;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px'
+        }}
+        onBlur={(e) => { ;(e.currentTarget as HTMLButtonElement).style.outline = 'none' }}
+      >
+        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {activeWorkspaceName}
+        </span>
+        <ChevronDown
+          size={14}
+          aria-hidden="true"
+          style={{
+            flexShrink: 0,
+            transition: 'transform var(--duration-fast) var(--ease-default)',
+            transform: wsDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+          }}
+        />
+      </button>
+
+      {wsDropdownOpen && (
+        <div ref={wsDropdownRef}>
+          <WorkspaceDropdown
+            workspaces={workspaces}
+            activeWorkspaceId={activeWorkspaceId}
+            onSelectWorkspace={(id) => { onSelectWorkspace(id); setWsDropdownOpen(false) }}
+            onCreateWorkspace={(name) => { onCreateWorkspace(name); setWsDropdownOpen(false) }}
+            onRenameWorkspace={onRenameWorkspace}
+          />
+        </div>
+      )}
+    </div>
+
+    <nav aria-label="Category list">
+      <ul
+        ref={listRef}
+        aria-label="Category list"
+        style={{
+          listStyle: 'none',
+          margin: 0,
+          padding: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 'var(--space-1)',
+        }}
+      >
+        {/* All pseudo-item */}
+        <li>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              borderRadius: 'var(--radius-md)',
+              borderLeft: isSelected(null)
+                ? '2px solid var(--color-brand-500)'
+                : '2px solid transparent',
+              backgroundColor: isSelected(null) ? 'var(--bg-surface)' : 'transparent',
+              transition: 'background-color var(--duration-fast) var(--ease-default)',
+            }}
+            onMouseEnter={(e) => {
+              if (!isSelected(null)) {
+                ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--bg-elevated)'
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isSelected(null)) {
+                ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent'
+              }
+            }}
+          >
+            <button
+              type="button"
+              data-category-item
+              aria-selected={isSelected(null)}
+              aria-label="All categories"
+              tabIndex={focusedIndex === 0 || focusedIndex === -1 ? 0 : -1}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--space-2)',
+                padding: 'var(--space-2) var(--space-3)',
+                flex: 1,
+                border: 'none',
+                backgroundColor: 'transparent',
+                color: isSelected(null) ? 'var(--color-brand-500)' : 'var(--text-primary)',
+                fontSize: 'var(--text-sm)',
+                fontWeight: 500,
+                cursor: 'pointer',
+                userSelect: 'none',
+                textAlign: 'left',
+                outline: 'none',
+              }}
+              onClick={() => onSelectCategory(null)}
+              onKeyDown={(e) => handleKeyDown(e, 0, null)}
+              onFocus={(e) => {
+                ;(e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
+                ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '-2px'
+              }}
+              onBlur={(e) => {
+                ;(e.currentTarget as HTMLButtonElement).style.outline = 'none'
+              }}
+            >
+              <span role="img" aria-label="All categories" style={{ fontSize: 'var(--text-base)' }}>
+                🗂️
+              </span>
+              <span style={{ flex: 1 }}>All</span>
+              <span
+                aria-label={`${categories.reduce((sum, c) => sum + c.groups.reduce((s, g) => s + g.tabs.length, 0), 0)} tabs`}
+                style={{
+                  fontSize: 'var(--text-xs)',
+                  color: 'var(--text-muted)',
+                  backgroundColor: 'var(--bg-elevated)',
+                  borderRadius: 'var(--radius-full)',
+                  padding: '1px 6px',
+                  fontWeight: 600,
+                }}
+              >
+                {categories.reduce((sum, c) => sum + c.groups.reduce((s, g) => s + g.tabs.length, 0), 0)}
+              </span>
+            </button>
+          </div>
+        </li>
+
+        {/* Category items */}
+        {categories.map((category, idx) => {
+          const itemIndex = idx + 1
+          const selected = isSelected(category.id)
+          const renaming = renamingId === category.id
+          const isDragged = draggedId === category.id
+
+          return (
+            <React.Fragment key={category.id}>
+              {showIndicatorAt(idx) && (
+                <li
+                  aria-hidden="true"
+                  style={{
+                    height: 2,
+                    backgroundColor: 'var(--color-brand-500)',
+                    borderRadius: 1,
+                    margin: '1px var(--space-1)',
+                    pointerEvents: 'none',
+                  }}
+                />
+              )}
+            <li
+              draggable
+              onDragStart={(e) => handleDragStart(e, category.id)}
+              onDragOver={(e) => handleDragOver(e, idx)}
+              onDrop={handleDrop}
+              onDragEnd={clearDrag}
+              style={{ opacity: isDragged ? 0.4 : 1 }}
+            >
+              {/* Row wrapper — owns hover, selection background, and left accent border */}
+              <div
+                onContextMenu={(e) => handleContextMenu(e, category.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  borderRadius: 'var(--radius-md)',
+                  borderLeft: selected
+                    ? '2px solid var(--color-brand-500)'
+                    : '2px solid transparent',
+                  backgroundColor: selected ? 'var(--bg-surface)' : 'transparent',
+                  transition: 'background-color var(--duration-fast) var(--ease-default)',
+                }}
+                onMouseEnter={(e) => {
+                  if (!selected) {
+                    ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--bg-elevated)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!selected) {
+                    ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent'
+                  }
+                }}
+              >
+                {/* Category select button — transparent, flex: 1 */}
+                <button
+                  type="button"
+                  data-category-item
+                  aria-selected={selected}
+                  aria-label={`${category.name}, ${category.groups.length} groups`}
+                  tabIndex={focusedIndex === itemIndex ? 0 : -1}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--space-2)',
+                    padding: 'var(--space-2) var(--space-3)',
+                    flex: 1,
+                    minWidth: 0,
+                    border: 'none',
+                    backgroundColor: 'transparent',
+                    color: selected ? 'var(--color-brand-500)' : 'var(--text-primary)',
+                    fontSize: 'var(--text-sm)',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    textAlign: 'left',
+                    outline: 'none',
+                  }}
+                  onClick={() => { if (!renaming) onSelectCategory(category.id) }}
+                  onDoubleClick={() => { if (!renaming) setRenamingId(category.id) }}
+                  title="Double-click to rename"
+                  onKeyDown={(e) => {
+                    if (e.key === 'F2') {
+                      e.preventDefault()
+                      setRenamingId(category.id)
+                    } else {
+                      handleKeyDown(e, itemIndex, category.id)
+                    }
+                  }}
+                  onFocus={(e) => {
+                    ;(e.currentTarget as HTMLButtonElement).style.outline = `none`
+                    ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '-2px'
+                  }}
+                  onBlur={(e) => {
+                    ;(e.currentTarget as HTMLButtonElement).style.outline = 'none'
+                  }}
+                >
+                  <span
+                    role="img"
+                    aria-label={category.name}
+                    style={{ fontSize: 'var(--text-base)', flexShrink: 0 }}
+                  >
+                    {category.emoji}
+                  </span>
+
+                  {renaming ? (
+                    <RenameInput
+                      initialValue={category.name}
+                      onConfirm={(name) => confirmRename(category.id, name)}
+                      onCancel={cancelRename}
+                    />
+                  ) : (
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {category.name}
+                    </span>
+                  )}
+
+                  <span
+                    aria-label={`${category.groups.reduce((sum, g) => sum + g.tabs.length, 0)} tabs`}
+                    style={{
+                      fontSize: 'var(--text-xs)',
+                      color: 'var(--text-muted)',
+                      backgroundColor: 'var(--bg-elevated)',
+                      borderRadius: 'var(--radius-full)',
+                      padding: '1px 6px',
+                      fontWeight: 600,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {category.groups.reduce((sum, g) => sum + g.tabs.length, 0)}
+                  </span>
+
+                  <span aria-hidden="true" style={{ color: 'var(--text-muted)', flexShrink: 0, display: 'flex' }}>
+                    <GripVertical size={14} />
+                  </span>
+                </button>
+
+                {/* Visibility toggle — aligned by wrapper flexbox */}
+                <button
+                  type="button"
+                  aria-label={category.collapsed ? `Show ${category.name} in All view` : `Hide ${category.name} from All view`}
+                  title={category.collapsed ? 'Show in All view' : 'Hide from All view'}
+                  onClick={(e) => { e.stopPropagation(); onToggleCollapse(category.id) }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    width: 24,
+                    height: 24,
+                    marginRight: 'var(--space-1)',
+                    border: 'none',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: 'transparent',
+                    color: category.collapsed ? 'var(--color-brand-500)' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    padding: 0,
+                  }}
+                >
+                  {category.collapsed
+                    ? <EyeOff size={12} aria-hidden="true" />
+                    : <Eye size={12} aria-hidden="true" />}
+                </button>
+              </div>
+            </li>
+            </React.Fragment>
+          )
+        })}
+
+        {/* Indicator after last item */}
+        {showIndicatorAt(categories.length) && (
+          <li
+            aria-hidden="true"
+            style={{
+              height: 2,
+              backgroundColor: 'var(--color-brand-500)',
+              borderRadius: 1,
+              margin: '1px var(--space-1)',
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+      </ul>
+
+      {/* New Category inline creation */}
+      {creatingNew ? (
+        <div style={{ marginTop: 'var(--space-2)', padding: '0 var(--space-1)' }}>
+          <RenameInput
+            initialValue=""
+            onConfirm={(name) => {
+              onCreateCategory(name)
+              setCreatingNew(false)
+            }}
+            onCancel={() => setCreatingNew(false)}
+          />
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setCreatingNew(true)}
+          aria-label="Create new category"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-2)',
+            width: '100%',
+            marginTop: 'var(--space-2)',
+            padding: 'var(--space-2) var(--space-3)',
+            border: '1px dashed var(--border-default)',
+            borderRadius: 'var(--radius-md)',
+            backgroundColor: 'transparent',
+            color: 'var(--text-muted)',
+            fontSize: 'var(--text-sm)',
+            cursor: 'pointer',
+            transition: 'color var(--duration-fast) var(--ease-default), border-color var(--duration-fast) var(--ease-default)',
+            outline: 'none',
+          }}
+          onMouseEnter={(e) => {
+            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--color-brand-500)'
+            ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-brand-500)'
+          }}
+          onMouseLeave={(e) => {
+            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'
+            ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-default)'
+          }}
+          onFocus={(e) => {
+            ;(e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
+            ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px'
+          }}
+          onBlur={(e) => {
+            ;(e.currentTarget as HTMLButtonElement).style.outline = 'none'
+          }}
+        >
+          <Plus size={14} aria-hidden="true" />
+          <span>New Category</span>
+        </button>
+      )}
+
+      {/* Context menu */}
+      {contextMenu !== null && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onRename={() => startRename(contextMenu.categoryId)}
+          onDelete={() => {
+            onDeleteCategory(contextMenu.categoryId)
+            closeContextMenu()
+          }}
+          onClose={closeContextMenu}
+        />
+      )}
+    </nav>
+    </>
+  )
+}
