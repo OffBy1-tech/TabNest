@@ -26,6 +26,10 @@ import {
   type ExtensionMessage,
   type MessageResponse,
   type SavedTab,
+  type Workspace,
+  type Category,
+  type TabGroup,
+  type TrashItem,
   ExtensionMessageSchema,
 } from '../lib/schema'
 
@@ -344,10 +348,27 @@ async function runSync(): Promise<void> {
     // Compare timestamps to determine winner
     const remote = await readDriveFile(token, fileId)
 
-    if (remote !== null && remote.sync_meta.last_modified_at > local.sync_meta.last_modified_at) {
-      // Remote wins — back up local first, then overwrite
+    if (remote !== null && meta.last_sync_at === 0) {
+      // First connect on this device — Drive already has data from another device.
+      // Union both sides so neither device loses tabs. Settings go to whichever
+      // side was more recently modified; trash is unioned by id.
+      const mergedWorkspaces = mergeWorkspaces(local.workspaces, remote.workspaces)
+      const mergedTrash = mergeTrash(local.trash, remote.trash)
+      const mergedSettings =
+        remote.sync_meta.last_modified_at > local.sync_meta.last_modified_at
+          ? remote.settings
+          : local.settings
+      await writeStorage({ workspaces: mergedWorkspaces, settings: mergedSettings, trash: mergedTrash })
+      await writeDriveFile(token, fileId, await readStorage())
+    } else if (remote !== null && remote.sync_meta.last_modified_at > local.sync_meta.last_modified_at) {
+      // Remote wins — back up local workspaces, then apply full remote state.
+      // Apply settings and trash too (not just workspaces) so all synced fields
+      // actually propagate. Then restore remote's last_modified_at — writeStorage
+      // bumps it to Date.now() on any workspaces/settings/trash write, which would
+      // make local appear newer than remote on the next sync cycle.
       await writeStorage({ backup_local: local.workspaces })
-      await writeStorage({ workspaces: remote.workspaces })
+      await writeStorage({ workspaces: remote.workspaces, settings: remote.settings, trash: remote.trash })
+      await patchSyncMeta({ last_modified_at: remote.sync_meta.last_modified_at })
     } else {
       // Local wins — push to Drive
       await writeDriveFile(token, fileId, local)
@@ -417,7 +438,11 @@ async function connectDrive(): Promise<{ connected: boolean }> {
 
   // Kick off the first sync via alarm rather than awaiting it here — Drive API
   // round-trips can outlive the message channel and cause the UI to spin forever.
-  chrome.alarms.create(ALARM_SYNC, { delayInMinutes: 0 })
+  // Recreate with periodInMinutes so the periodic schedule is preserved — creating
+  // an alarm with the same name replaces the old one, and omitting periodInMinutes
+  // would turn the periodic alarm into a one-shot, killing all future auto-syncs.
+  const syncIntervalMinutes = data.local_settings.sync_interval_minutes ?? 5
+  chrome.alarms.create(ALARM_SYNC, { delayInMinutes: 0, periodInMinutes: syncIntervalMinutes })
 
   return { connected: true }
 }
@@ -449,7 +474,6 @@ async function findOrCreateDriveFile(
     if (check.ok) return existingFileId
   }
 
-  // Search for existing tabnest_data.json in appDataFolder (not root Drive)
   const search = await driveFetch(
     `${DRIVE_API}/files?spaces=appDataFolder&q=name='tabnest_data.json' and trashed=false&fields=files(id)`,
     { headers },
@@ -462,7 +486,6 @@ async function findOrCreateDriveFile(
     return searchData.files[0].id
   }
 
-  // Create new file in appDataFolder — hidden from user's Drive, sandboxed to this app
   const create = await driveFetch(`${DRIVE_API}/files`, {
     method: 'POST',
     headers: {
@@ -528,4 +551,58 @@ async function writeDriveFile(
     const body = await res.text().catch(() => '')
     throw new Error(`Drive write failed: ${res.status} ${res.statusText}${body ? ` — ${body.slice(0, 200)}` : ''}`)
   }
+}
+
+// ---------------------------------------------------------------------------
+// First-connect merge helpers
+//
+// Union local and remote by entity ID at each level of the hierarchy.
+// Entities that exist on only one side are kept as-is. Entities that exist
+// on both sides are merged: workspaces and categories recurse downward;
+// groups take the copy with the higher updated_at. Order fields are
+// renumbered after merging so there are no gaps or duplicates.
+// ---------------------------------------------------------------------------
+
+function mergeWorkspaces(local: Workspace[], remote: Workspace[]): Workspace[] {
+  const localById = new Map(local.map((ws) => [ws.id, ws]))
+  const remoteById = new Map(remote.map((ws) => [ws.id, ws]))
+  const allIds = new Set([...localById.keys(), ...remoteById.keys()])
+  return [...allIds].map((id) => {
+    const l = localById.get(id)
+    const r = remoteById.get(id)
+    if (l && r) return { ...r, categories: mergeCategories(l.categories, r.categories) }
+    return (l ?? r)!
+  })
+}
+
+function mergeCategories(local: Category[], remote: Category[]): Category[] {
+  const localById = new Map(local.map((c) => [c.id, c]))
+  const remoteById = new Map(remote.map((c) => [c.id, c]))
+  const allIds = new Set([...localById.keys(), ...remoteById.keys()])
+  const merged = [...allIds].map((id) => {
+    const l = localById.get(id)
+    const r = remoteById.get(id)
+    if (l && r) return { ...r, groups: mergeGroups(l.groups, r.groups) }
+    return (l ?? r)!
+  })
+  return merged.sort((a, b) => a.order - b.order).map((c, i) => ({ ...c, order: i }))
+}
+
+function mergeGroups(local: TabGroup[], remote: TabGroup[]): TabGroup[] {
+  const localById = new Map(local.map((g) => [g.id, g]))
+  const remoteById = new Map(remote.map((g) => [g.id, g]))
+  const allIds = new Set([...localById.keys(), ...remoteById.keys()])
+  const merged = [...allIds].map((id) => {
+    const l = localById.get(id)
+    const r = remoteById.get(id)
+    // Group exists on both sides — keep the more recently updated copy
+    if (l && r) return l.updated_at >= r.updated_at ? l : r
+    return (l ?? r)!
+  })
+  return merged.sort((a, b) => a.order - b.order).map((g, i) => ({ ...g, order: i }))
+}
+
+function mergeTrash(local: TrashItem[], remote: TrashItem[]): TrashItem[] {
+  const localIds = new Set(local.map((t) => t.id))
+  return [...local, ...remote.filter((t) => !localIds.has(t.id))]
 }

@@ -256,7 +256,22 @@ export function PopupApp(): React.JSX.Element {
       setSyncState(loadedSyncState)
       setRecentGroups(recentGroups)
 
-      // Select defaults
+      // Restore last-used group if it still exists
+      const lastGroup = recentGroups[0]
+      if (lastGroup) {
+        const ws = loadedWorkspaces.find((w) => w.id === lastGroup.workspaceId)
+        const cat = ws?.categories.find((c) => c.id === lastGroup.categoryId)
+        const grp = cat?.groups.find((g) => g.id === lastGroup.groupId)
+        if (ws && cat && grp) {
+          setSelectedWorkspaceId(ws.id)
+          setSelectedCategoryId(cat.id)
+          setSelectedGroupId(grp.id)
+          setLoading(false)
+          return
+        }
+      }
+
+      // Fall back: last-used workspace, first category, new group
       const defaultWs =
         (lastWsId && loadedWorkspaces.find((w) => w.id === lastWsId)) ||
         loadedWorkspaces[0]
