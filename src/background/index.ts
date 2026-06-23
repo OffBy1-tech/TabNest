@@ -21,7 +21,6 @@ import {
   restoreFromTrash,
 } from '../lib/storage'
 import {
-  DEFAULT_WORKSPACE,
   StorageSchemaZod,
   type ExtensionMessage,
   type MessageResponse,

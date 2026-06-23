@@ -17,15 +17,21 @@ export default defineConfig({
   test: {
     coverage: {
       provider: 'v8',
+      reporter: ['text', 'html', 'json-summary'],
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/**/*.d.ts']
     },
     projects: [{
       extends: true,
       test: {
+        name: 'unit',
         globals: true,
         environment: 'jsdom',
-        setupFiles: ['src/test/setup.ts']
+        setupFiles: ['src/test/setup.ts'],
+        include: ['src/**/*.test.{ts,tsx}'],
+        // v8 coverage instrumentation makes the first test in each file slow;
+        // a higher ceiling avoids spurious timeouts (normal runs finish well under this).
+        testTimeout: 20000
       }
     }, {
       extends: true,

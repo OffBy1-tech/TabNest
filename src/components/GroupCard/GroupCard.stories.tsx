@@ -124,6 +124,10 @@ const sharedArgs = {
   onRemoveTab: (groupId: string, tabId: string) => console.log('remove tab', groupId, tabId),
   onMoveTab: (fromGroupId: string, toGroupId: string, tabId: string) =>
     console.log('move tab', tabId, 'from', fromGroupId, 'to', toGroupId),
+  onSaveGroupNote: (groupId: string, content: string) =>
+    console.log('save group note', groupId, content),
+  onSaveTabNote: (groupId: string, tabId: string, note: string) =>
+    console.log('save tab note', groupId, tabId, note),
 };
 
 // ---------------------------------------------------------------------------

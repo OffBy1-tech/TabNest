@@ -121,7 +121,7 @@ export function SearchOverlay({
   // Capture-phase document listener: fires before any child element handler,
   // and only re-registers when isOpen changes (not on every render).
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return undefined
     function handleEscape(e: KeyboardEvent): void {
       if (e.key === 'Escape') {
         e.preventDefault()

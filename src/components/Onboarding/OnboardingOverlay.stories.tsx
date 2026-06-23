@@ -20,38 +20,12 @@ const baseArgs = {
   onConnectDrive: () => console.log('connect drive'),
 };
 
-// ---------------------------------------------------------------------------
-// Step 1: Save your first tab
-// ---------------------------------------------------------------------------
-
-export const Step1SaveFirstTab: Story = {
-  args: {
-    ...baseArgs,
-    tabSaved: false,
-  },
+// Opens on step 1; advancing through steps is driven by the in-component
+// buttons ("Open Active Tabs", "Got it"), not props.
+export const Open: Story = {
+  args: { ...baseArgs },
 };
-
-// ---------------------------------------------------------------------------
-// Step 2: Meet your workspace (triggered when tabSaved transitions to true)
-// We cannot easily advance the step without interaction, so we show step 1
-// with tabSaved=true — which immediately triggers step 2 in the component.
-// ---------------------------------------------------------------------------
-
-export const Step2MeetWorkspace: Story = {
-  args: {
-    ...baseArgs,
-    tabSaved: true,
-  },
-};
-
-// ---------------------------------------------------------------------------
-// Closed state
-// ---------------------------------------------------------------------------
 
 export const Closed: Story = {
-  args: {
-    ...baseArgs,
-    isOpen: false,
-    tabSaved: false,
-  },
+  args: { ...baseArgs, isOpen: false },
 };

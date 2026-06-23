@@ -49,13 +49,17 @@ let writeQueue: Promise<void> = Promise.resolve()
 // Empty for v1 — add entries here as the schema evolves.
 // ---------------------------------------------------------------------------
 
+// Migrations operate on arbitrary, not-yet-validated legacy data shapes, so
+// both the input and the output are intentionally `any`. The per-migration
+// `data` params below infer this `any` from the signature (no explicit
+// annotation needed), keeping the no-explicit-any disable to this one line.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const MIGRATIONS: Record<number, (data: any) => any> = {
   /**
    * v1 → v2: Move sync_enabled and sync_interval_minutes out of `settings`
    * (which syncs to Drive) into `local_settings` (device-only, never synced).
    */
-  1: (data: any) => {
+  1: (data) => {
     const { sync_enabled, sync_interval_minutes, ...sharedSettings } = data.settings ?? {}
     return {
       ...data,
@@ -72,7 +76,7 @@ const MIGRATIONS: Record<number, (data: any) => any> = {
    * v2 → v3: Clear accent_color if it still holds the old hardcoded default
    * (#1A56DB). Empty string means "use the CSS token" — no inline override.
    */
-  2: (data: any) => ({
+  2: (data) => ({
     ...data,
     schema_version: 3,
     settings: {
@@ -84,7 +88,7 @@ const MIGRATIONS: Record<number, (data: any) => any> = {
   /**
    * v3 → v4: Remove accent_color entirely — colors come from CSS themes only.
    */
-  3: (data: any) => {
+  3: (data) => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { accent_color: _removed, ...rest } = data.settings ?? {}
     return { ...data, schema_version: 4, settings: rest }
@@ -830,7 +834,6 @@ export async function migrateIfNeeded(): Promise<void> {
   while (version < SCHEMA_VERSION) {
     const migrate = MIGRATIONS[version]
     if (migrate != null) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       current = migrate(current)
     }
     version += 1

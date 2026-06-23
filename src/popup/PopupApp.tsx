@@ -17,151 +17,26 @@ import type {
   TabGroup,
   Workspace,
 } from '../lib/schema'
+import { SyncDot, type SyncState } from './SyncDot'
+import { SelectField } from './SelectField'
+import {
+  type RecentGroup,
+  loadRecentGroups,
+  saveRecentGroups,
+  loadLastWorkspaceId,
+  saveLastWorkspaceId,
+  pushRecentGroup,
+} from './popupStorage'
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 interface CurrentTab {
-  id?: number
+  id?: number | undefined
   title: string
   url: string
-  favIconUrl?: string
-}
-
-interface RecentGroup {
-  groupId: string
-  groupName: string
-  categoryId: string
-  workspaceId: string
-}
-
-type SyncState = 'idle' | 'syncing' | 'error'
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-const RECENT_GROUPS_KEY = 'tabnest_popup_recent_groups'
-const LAST_WORKSPACE_KEY = 'tabnest_popup_last_workspace'
-const MAX_RECENT = 3
-
-async function loadRecentGroups(): Promise<RecentGroup[]> {
-  try {
-    const result = await chrome.storage.local.get(RECENT_GROUPS_KEY)
-    const raw = result[RECENT_GROUPS_KEY]
-    if (Array.isArray(raw)) return raw as RecentGroup[]
-  } catch {
-    // Non-extension context
-  }
-  return []
-}
-
-async function saveRecentGroups(groups: RecentGroup[]): Promise<void> {
-  try {
-    await chrome.storage.local.set({ [RECENT_GROUPS_KEY]: groups })
-  } catch {
-    // Non-extension context
-  }
-}
-
-async function loadLastWorkspaceId(): Promise<string | null> {
-  try {
-    const result = await chrome.storage.local.get(LAST_WORKSPACE_KEY)
-    const raw = result[LAST_WORKSPACE_KEY]
-    return typeof raw === 'string' ? raw : null
-  } catch {
-    return null
-  }
-}
-
-async function saveLastWorkspaceId(id: string): Promise<void> {
-  try {
-    await chrome.storage.local.set({ [LAST_WORKSPACE_KEY]: id })
-  } catch {
-    // Non-extension context
-  }
-}
-
-function pushRecentGroup(existing: RecentGroup[], next: RecentGroup): RecentGroup[] {
-  const filtered = existing.filter(
-    (g) => !(g.groupId === next.groupId && g.categoryId === next.categoryId),
-  )
-  return [next, ...filtered].slice(0, MAX_RECENT)
-}
-
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
-
-function SyncDot({ state }: { state: SyncState }): React.JSX.Element {
-  const colorMap: Record<SyncState, string> = {
-    idle: 'var(--color-success)',
-    syncing: 'var(--color-warning)',
-    error: 'var(--color-danger)',
-  }
-  const labelMap: Record<SyncState, string> = {
-    idle: 'Sync up to date',
-    syncing: 'Syncing…',
-    error: 'Sync error',
-  }
-  return (
-    <span
-      title={labelMap[state]}
-      aria-label={labelMap[state]}
-      style={{
-        display: 'inline-block',
-        width: 8,
-        height: 8,
-        borderRadius: 'var(--radius-full)',
-        backgroundColor: colorMap[state],
-        flexShrink: 0,
-      }}
-    />
-  )
-}
-
-interface SelectFieldProps {
-  id: string
-  label: string
-  value: string
-  onChange: (v: string) => void
-  disabled?: boolean
-  children: React.ReactNode
-}
-
-function SelectField({ id, label, value, onChange, disabled, children }: SelectFieldProps): React.JSX.Element {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-      <label
-        htmlFor={id}
-        style={{ fontSize: 'var(--text-xs)', fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}
-      >
-        {label}
-      </label>
-      <select
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-        aria-label={label}
-        style={{
-          padding: 'var(--space-2) var(--space-3)',
-          borderRadius: 'var(--radius-md)',
-          border: '1px solid var(--border-default)',
-          backgroundColor: 'var(--bg-surface)',
-          color: 'var(--text-primary)',
-          fontSize: 'var(--text-sm)',
-          fontFamily: 'var(--font-sans)',
-          cursor: disabled ? 'not-allowed' : 'pointer',
-          opacity: disabled ? 0.6 : 1,
-          width: '100%',
-        }}
-      >
-        {children}
-      </select>
-    </div>
-  )
+  favIconUrl?: string | undefined
 }
 
 // ---------------------------------------------------------------------------

@@ -13,8 +13,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const baseArgs = {
-  workspaceName: 'Personal',
-  onWorkspaceClick: () => console.log('workspace clicked'),
   onSearch: () => console.log('search opened'),
   onActiveTabsToggle: () => console.log('active tabs toggled'),
   onSettingsClick: () => console.log('settings opened'),
@@ -65,12 +63,12 @@ export const NeverSynced: Story = {
   },
 };
 
-export const LongWorkspaceName: Story = {
+export const WithClock: Story = {
   args: {
     ...baseArgs,
-    workspaceName: 'My Very Long Workspace Name That Should Truncate',
     activeTabsOpen: false,
     syncState: 'idle',
     lastSyncAt: Date.now(),
+    showClock: true,
   },
 };
