@@ -1,0 +1,249 @@
+<!-- TabNest Privacy Policy — Off By 1 LLC
+     Host at e.g. https://offby1.tech/tabnest-privacy
+     Self-contained: no external fonts, scripts, or trackers (deliberate — a privacy
+     page that quietly loaded third-party assets would undercut its own claims).
+     Before going public, confirm the two facts called out in the chat message:
+       1. The exact Google Drive OAuth scope you request.
+       2. That "nothing is collected or transmitted to us" is literally true. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="all">
+<title>TabNest Privacy Policy — Off By 1 LLC</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --ink: #181b22;
+    --muted: #5a616e;
+    --hair: #e4e7ec;
+    --accent: #2f54c9;
+    --accent-soft: #eef1fb;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1115;
+      --surface: #161a21;
+      --ink: #e9ecf1;
+      --muted: #9aa3b2;
+      --hair: #262c36;
+      --accent: #8aa0f0;
+      --accent-soft: #1a2236;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 64px 24px 96px;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 14px;
+  }
+  .wordmark { color: var(--ink); }
+  .wordmark b { color: var(--accent); font-weight: 700; }
+  h1 {
+    font-size: clamp(30px, 6vw, 42px);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin: 0 0 10px;
+    font-weight: 700;
+  }
+  .dates {
+    color: var(--muted);
+    font-size: 14.5px;
+    margin: 0 0 36px;
+  }
+  .tldr {
+    background: var(--surface);
+    border: 1px solid var(--hair);
+    border-left: 3px solid var(--accent);
+    border-radius: 10px;
+    padding: 22px 24px;
+    margin: 0 0 44px;
+  }
+  .tldr h2 {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 10px;
+  }
+  .tldr p { margin: 0; }
+  h2.sec {
+    font-size: 13px;
+    font-family: var(--mono);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 48px 0 4px;
+  }
+  h3 {
+    font-size: 21px;
+    letter-spacing: -0.01em;
+    margin: 6px 0 12px;
+    font-weight: 650;
+  }
+  p { margin: 0 0 16px; }
+  ul { margin: 0 0 16px; padding-left: 22px; }
+  li { margin: 0 0 8px; }
+  a { color: var(--accent); text-underline-offset: 2px; }
+  code {
+    font-family: var(--mono);
+    font-size: 0.88em;
+    background: var(--accent-soft);
+    color: var(--ink);
+    padding: 1px 6px;
+    border-radius: 5px;
+  }
+  hr {
+    border: 0;
+    border-top: 1px solid var(--hair);
+    margin: 56px 0 28px;
+  }
+  .contact {
+    background: var(--surface);
+    border: 1px solid var(--hair);
+    border-radius: 10px;
+    padding: 22px 24px;
+  }
+  .contact p:last-child { margin-bottom: 0; }
+  footer {
+    margin-top: 48px;
+    color: var(--muted);
+    font-size: 13.5px;
+  }
+  footer .wordmark b { color: var(--accent); }
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">Privacy Policy</p>
+  <h1>TabNest</h1>
+  <p class="dates">
+    Provided by <span class="wordmark">Off By <b>1</b> LLC</span> &nbsp;·&nbsp;
+    Effective June 9, 2026 &nbsp;·&nbsp; Last updated June 9, 2026
+  </p>
+
+  <div class="tldr">
+    <h2>The short version</h2>
+    <p>TabNest stores your tab and session data in <strong>your own Google Drive</strong>.
+    We don't collect it, we never see it, and it isn't sent to any server we run. There are
+    no analytics, no advertising, and no selling or sharing of your data — there's nothing to sell.</p>
+  </div>
+
+  <h2 class="sec">01 — Who this covers</h2>
+  <h3>The basics</h3>
+  <p>This policy explains how the <strong>TabNest</strong> browser extension ("TabNest,"
+  "the extension") handles information. TabNest is published by <strong>Off By 1 LLC</strong>,
+  a Washington limited liability company ("we," "us," "our"). It applies to your use of the
+  extension and to the Google account data the extension accesses on your behalf.</p>
+
+  <h2 class="sec">02 — What TabNest does</h2>
+  <h3>Saving and syncing your tabs</h3>
+  <p>TabNest lets you save, organize, and restore browser tabs and tab groups. To make your
+  saved tabs available across your devices, TabNest can sync that data to your own Google Drive
+  using Google's authorization (OAuth). Drive sync is something you turn on by signing in with
+  your Google account; if you don't connect Drive, your data stays only in your browser.</p>
+
+  <h2 class="sec">03 — Information TabNest handles</h2>
+  <h3>Your tab data, and your Google Drive</h3>
+  <p>The information TabNest works with is the content you choose to save in it — for example,
+  the page titles and URLs of tabs you store, the names of your tab groups, and your extension
+  settings.</p>
+  <p>When you enable Drive sync, TabNest uses the <code>drive.file</code> authorization scope.
+  This scope lets TabNest read and write <strong>only the files it creates</strong> in your
+  Google Drive. It cannot see, open, or touch any of your other Drive files. The TabNest data
+  file lives in your Drive, under your control.</p>
+  <p>TabNest does not request your name, email address, contacts, browsing history, or any other
+  personal information beyond what's described above.</p>
+
+  <h2 class="sec">04 — What we collect</h2>
+  <h3>Nothing reaches us</h3>
+  <p>Off By 1 LLC operates no server or backend for TabNest. Your saved data moves directly
+  between your browser and your own Google Drive. We do not receive, store, log, or have access
+  to your tab data, your Drive contents, or your Google account credentials. We do not use
+  cookies, analytics SDKs, fingerprinting, or any third-party tracking inside the extension.</p>
+
+  <h2 class="sec">05 — How Google user data is used</h2>
+  <h3>Limited Use commitment</h3>
+  <p>TabNest's access to information from Google APIs is limited to providing and improving the
+  tab-sync features described above. TabNest's use and transfer of information received from
+  Google APIs adheres to the
+  <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener" target="_blank">Google
+  API Services User Data Policy</a>, including its Limited Use requirements. Specifically,
+  TabNest does not:</p>
+  <ul>
+    <li>transfer or sell Google user data to third parties, ad platforms, data brokers, or for
+    any advertising purpose;</li>
+    <li>use Google user data for serving ads;</li>
+    <li>allow humans to read your Google user data, except where you give explicit consent for
+    specific files, where it's necessary for security or to comply with applicable law, or where
+    the data has been aggregated and anonymized.</li>
+  </ul>
+
+  <h2 class="sec">06 — Sharing</h2>
+  <h3>We don't share what we don't have</h3>
+  <p>Because we don't collect your data, we have nothing to share, sell, or disclose. The only
+  party your data is exchanged with is Google, as the provider of the Drive storage you've chosen
+  to sync to, under Google's own
+  <a href="https://policies.google.com/privacy" rel="noopener" target="_blank">Privacy Policy</a>.</p>
+
+  <h2 class="sec">07 — Keeping and deleting your data</h2>
+  <h3>You're in control</h3>
+  <p>Your TabNest data persists in your browser and, if sync is enabled, in your Google Drive
+  for as long as you keep it. To remove it:</p>
+  <ul>
+    <li>Delete saved tabs or clear data from within the extension.</li>
+    <li>Delete the TabNest file from your Google Drive.</li>
+    <li>Revoke TabNest's access to your Google account at
+    <a href="https://myaccount.google.com/permissions" rel="noopener" target="_blank">myaccount.google.com/permissions</a>.</li>
+    <li>Uninstall the extension to remove its locally stored data.</li>
+  </ul>
+
+  <h2 class="sec">08 — Security</h2>
+  <h3>How your data is protected</h3>
+  <p>Data synced to Google Drive is protected by Google's account security and encryption. Data
+  stored locally is protected by your browser and device. Because no copy of your data reaches a
+  server we operate, there is no central store on our side to be breached.</p>
+
+  <h2 class="sec">09 — Children</h2>
+  <h3>Not directed to children</h3>
+  <p>TabNest is a general-audience productivity tool and is not directed to children under 13.
+  We do not knowingly collect personal information from children.</p>
+
+  <h2 class="sec">10 — Changes</h2>
+  <h3>Updates to this policy</h3>
+  <p>If we change how TabNest handles data, we'll update this page and revise the "Last updated"
+  date above. Material changes that affect how your data is used will be reflected here before
+  they take effect in a published release.</p>
+
+  <hr>
+
+  <div class="contact">
+    <p style="font-family:var(--mono);font-size:12.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin:0 0 8px;">Contact</p>
+    <p>Questions about this policy or your data? Reach us at
+    <a href="mailto:contact@offby1.tech">contact@offby1.tech</a>.</p>
+    <p>Off By 1 LLC · Washington, USA</p>
+  </div>
+
+  <footer>
+    <span class="wordmark">Off By <b>1</b> LLC</span> · TabNest Privacy Policy
+  </footer>
+</div>

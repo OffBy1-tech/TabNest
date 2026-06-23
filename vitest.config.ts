@@ -3,15 +3,15 @@ import react from '@vitejs/plugin-react';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
-const dirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
+import { playwright } from '@vitest/browser-playwright';
 
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
-const __dirname = fileURLToPath(new URL('.', import.meta.url));
+const dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src')
+      '@': path.resolve(dirname, './src')
     }
   },
   test: {
@@ -20,7 +20,7 @@ export default defineConfig({
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/**/*.d.ts']
     },
-    workspace: [{
+    projects: [{
       extends: true,
       test: {
         globals: true,
@@ -40,7 +40,7 @@ export default defineConfig({
         browser: {
           enabled: true,
           headless: true,
-          provider: 'playwright',
+          provider: playwright(),
           instances: [{
             browser: 'chromium'
           }]

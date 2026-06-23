@@ -80,6 +80,11 @@ export const UserSettingsSchema = z.object({
   show_clock: z.boolean(),
 })
 
+/** Bounds for the user-resizable sidebar (px). */
+export const SIDEBAR_WIDTH_MIN = 180
+export const SIDEBAR_WIDTH_MAX = 600
+export const SIDEBAR_WIDTH_DEFAULT = 240
+
 /**
  * Per-device settings — stored in chrome.storage.local only, never written
  * to Drive. Each browser instance manages its own sync preferences independently.
@@ -92,6 +97,8 @@ export const LocalSettingsSchema = z.object({
     z.literal(30),
     z.null(),
   ]),
+  /** Sidebar width in px, set by the resize handle. Optional so pre-existing data parses. */
+  sidebar_width: z.number().int().min(SIDEBAR_WIDTH_MIN).max(SIDEBAR_WIDTH_MAX).optional(),
 })
 
 // ---------------------------------------------------------------------------

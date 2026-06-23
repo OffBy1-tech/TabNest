@@ -11,7 +11,7 @@ import { useTabs } from '@/hooks/useTabs'
 import { useToast } from '@/components/Toast/ToastProvider'
 import type { Category, TabGroup, UserSettings, Workspace } from '@/lib/schema'
 import type { SearchRecord } from '@/lib/search'
-import { DEFAULT_SETTINGS, DEFAULT_LOCAL_SETTINGS, DEFAULT_SYNC_META } from '@/lib/schema'
+import { DEFAULT_SETTINGS, DEFAULT_LOCAL_SETTINGS, DEFAULT_SYNC_META, SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_DEFAULT } from '@/lib/schema'
 import { patchSettings, patchLocalSettings, restoreFromTrash, deleteFromTrash, emptyTrash, createWorkspace, renameWorkspace, createCategory, renameGroup, removeTabFromGroup, renameCategory, deleteCategory, setCategoryCollapsed, moveTabBetweenGroups, addTabToGroup, addTabsToGroup, reorderCategories, saveTabGroup, saveTabNote, saveGroupNote } from '@/lib/storage'
 
 // ---------------------------------------------------------------------------
@@ -26,6 +26,11 @@ const shellStyle: React.CSSProperties = {
   height: '100vh',
   overflow: 'hidden',
   backgroundColor: 'var(--bg-base)',
+  position: 'relative',
+}
+
+function clampSidebarWidth(width: number): number {
+  return Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, Math.round(width)))
 }
 
 const sidebarStyle: React.CSSProperties = {
@@ -74,7 +79,7 @@ function openTab(url: string, behavior: string | undefined): void {
   if (behavior === 'current') {
     window.location.href = url
   } else if (behavior === 'new_window') {
-    window.open(url, '_blank', 'noopener,noreferrer,toolbar=0,location=0,menubar=0')
+    window.open(url, '_blank', 'noopener,noreferrer')
   } else {
     // 'new_tab' is the default
     window.open(url, '_blank', 'noopener,noreferrer')
@@ -98,7 +103,7 @@ interface GroupGridProps {
   onSaveTabNote: (groupId: string, tabId: string, note: string) => void
   showFavicons: boolean
   /** When defined, shows a New Group button. Pass undefined for the "All" view. */
-  onCreateGroup?: (name: string) => void
+  onCreateGroup?: ((name: string) => void) | undefined
   /** Controlled by App so the N keyboard shortcut can trigger it. */
   creatingGroup?: boolean
   onCreatingGroupChange?: (v: boolean) => void
@@ -337,6 +342,59 @@ export function App(): React.JSX.Element {
   const [onboardingOpen, setOnboardingOpen] = useState(false)
   const [creatingGroup, setCreatingGroup] = useState(false)
   const viewMode: 'grid' | 'list' = data?.settings.default_view ?? 'grid'
+
+  // Sidebar resize — draft holds the in-session width (live during drag);
+  // the persisted value in local_settings is the fallback on load.
+  const [draftSidebarWidth, setDraftSidebarWidth] = useState<number | null>(null)
+  const [resizingSidebar, setResizingSidebar] = useState(false)
+  const sidebarWidth =
+    draftSidebarWidth ?? data?.local_settings.sidebar_width ?? SIDEBAR_WIDTH_DEFAULT
+
+  const persistSidebarWidth = useCallback((width: number): void => {
+    patchLocalSettings({ sidebar_width: width }).catch(() => {
+      // Non-critical: the width still applies for this session
+    })
+  }, [])
+
+  const handleSidebarResizeStart = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>): void => {
+      e.preventDefault()
+      const startX = e.clientX
+      const startWidth = sidebarWidth
+      setResizingSidebar(true)
+
+      function onMove(ev: PointerEvent): void {
+        setDraftSidebarWidth(clampSidebarWidth(startWidth + ev.clientX - startX))
+      }
+      function onUp(ev: PointerEvent): void {
+        document.removeEventListener('pointermove', onMove)
+        document.removeEventListener('pointerup', onUp)
+        setResizingSidebar(false)
+        const final = clampSidebarWidth(startWidth + ev.clientX - startX)
+        setDraftSidebarWidth(final)
+        persistSidebarWidth(final)
+      }
+      document.addEventListener('pointermove', onMove)
+      document.addEventListener('pointerup', onUp)
+    },
+    [sidebarWidth, persistSidebarWidth],
+  )
+
+  const handleSidebarResizeKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>): void => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+      e.preventDefault()
+      const next = clampSidebarWidth(sidebarWidth + (e.key === 'ArrowRight' ? 16 : -16))
+      setDraftSidebarWidth(next)
+      persistSidebarWidth(next)
+    },
+    [sidebarWidth, persistSidebarWidth],
+  )
+
+  const handleSidebarResizeReset = useCallback((): void => {
+    setDraftSidebarWidth(SIDEBAR_WIDTH_DEFAULT)
+    persistSidebarWidth(SIDEBAR_WIDTH_DEFAULT)
+  }, [persistSidebarWidth])
 
   // Track whether active_tabs_on_load has been applied on first data load
   const activeTabsInitialized = useRef(false)
@@ -692,6 +750,8 @@ export function App(): React.JSX.Element {
   )
 
   const handleSelectWorkspace = useCallback((id: string): void => {
+    // Always return to the "All" view when switching workspaces
+    setSelectedCategoryId(null)
     patchSettings({ default_workspace_id: id }).catch(() => {
       showToast('Failed to switch workspace. Please try again.', 'error')
     })
@@ -799,7 +859,11 @@ export function App(): React.JSX.Element {
     <>
       <div
         className={activeTabsOpen ? 'tabnest-main-with-panel' : undefined}
-        style={shellStyle}
+        style={{
+          ...shellStyle,
+          ...(resizingSidebar ? { userSelect: 'none', cursor: 'col-resize' } : {}),
+          ['--sidebar-width' as string]: `${sidebarWidth}px`,
+        }}
       >
         {/* TopBar */}
         <div style={{ gridArea: 'topbar' }}>
@@ -832,6 +896,40 @@ export function App(): React.JSX.Element {
             onRenameWorkspace={handleRenameWorkspace}
           />
         </div>
+
+        {/* Sidebar resize handle — straddles the sidebar/main border */}
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize sidebar"
+          aria-valuenow={sidebarWidth}
+          aria-valuemin={SIDEBAR_WIDTH_MIN}
+          aria-valuemax={SIDEBAR_WIDTH_MAX}
+          tabIndex={0}
+          title="Drag to resize sidebar. Double-click to reset."
+          onPointerDown={handleSidebarResizeStart}
+          onKeyDown={handleSidebarResizeKeyDown}
+          onDoubleClick={handleSidebarResizeReset}
+          style={{
+            position: 'absolute',
+            top: 'var(--topbar-height)',
+            bottom: 0,
+            left: 'calc(var(--sidebar-width) - 3px)',
+            width: 6,
+            cursor: 'col-resize',
+            zIndex: 10,
+            backgroundColor: resizingSidebar ? 'var(--color-brand-500)' : 'transparent',
+            transition: 'background-color var(--duration-fast) var(--ease-default)',
+          }}
+          onMouseEnter={(e) => {
+            ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--color-brand-500)'
+          }}
+          onMouseLeave={(e) => {
+            if (!resizingSidebar) {
+              ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent'
+            }
+          }}
+        />
 
         {/* Main content */}
         <div style={mainStyle}>

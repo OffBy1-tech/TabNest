@@ -10,7 +10,7 @@ Tab Nest lets you save, organize, and search your browser tabs without losing co
 
 ---
 
-[Install from Chrome Web Store](https://chromewebstore.google.com) *(coming soon)*
+[Install from Chrome Web Store](https://chromewebstore.google.com/detail/tab-nest/necndpocofifkmoekdgbocklmmnldegp)
 
 ---
 

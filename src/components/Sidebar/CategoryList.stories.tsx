@@ -61,12 +61,23 @@ const mockCategories: Category[] = [
   },
 ];
 
+const mockWorkspaces = [
+  { id: 'ws-1', name: 'Default', created_at: NOW, categories: mockCategories },
+  { id: 'ws-2', name: 'Side Projects', created_at: NOW, categories: [] },
+];
+
 const sharedArgs = {
   onSelectCategory: (id: string | null) => console.log('select', id),
   onCreateCategory: () => console.log('create category'),
   onRenameCategory: (id: string, name: string) => console.log('rename', id, name),
   onDeleteCategory: (id: string) => console.log('delete', id),
   onReorderCategories: (ids: string[]) => console.log('reorder', ids),
+  onToggleCollapse: (id: string) => console.log('toggle collapse', id),
+  workspaces: mockWorkspaces,
+  activeWorkspaceId: 'ws-1',
+  onSelectWorkspace: (id: string) => console.log('select workspace', id),
+  onCreateWorkspace: (name: string) => console.log('create workspace', name),
+  onRenameWorkspace: (id: string, name: string) => console.log('rename workspace', id, name),
 };
 
 // ---------------------------------------------------------------------------

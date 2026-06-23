@@ -1004,7 +1004,7 @@ interface ActiveTabsPanelProps {
   onCloseTab: (tabId: number) => void
   workspaces: Workspace[]
   showFavicons?: boolean
-  activeWorkspaceId?: string
+  activeWorkspaceId?: string | undefined
   activeCategoryId?: string | null
 }
 
