@@ -24,8 +24,8 @@ If this PR includes UI changes, add before/after screenshots here.
 
 ## Checklist
 
-- [ ] `pnpm typecheck` passes with no errors
-- [ ] `pnpm test` passes with no failures
-- [ ] `pnpm build` produces a valid `dist/` folder
+- [ ] `npm run typecheck` passes with no errors
+- [ ] `npm test` passes with no failures
+- [ ] `npm run build` produces a valid `dist/` folder
 - [ ] No use of `eval()` or dynamically loaded remote code
 - [ ] No hardcoded secrets, tokens, or credentials
