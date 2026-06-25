@@ -8,6 +8,11 @@ export interface HelpTabProps {
 }
 
 export function HelpTab({ onShowOnboarding }: HelpTabProps): React.JSX.Element {
+  // Read from the manifest so this always matches the published extension
+  // version. Guarded for the dev server / Storybook (non-extension contexts
+  // where chrome.runtime is unavailable).
+  const version = chrome?.runtime?.getManifest?.().version ?? 'dev'
+
   return (
     <div>
       <h3 style={sectionHeadingStyle}>Help</h3>
@@ -45,7 +50,7 @@ export function HelpTab({ onShowOnboarding }: HelpTabProps): React.JSX.Element {
             color: 'var(--text-muted)',
           }}
         >
-          Version: v1.0.0
+          Version: v{version}
         </div>
       </div>
     </div>

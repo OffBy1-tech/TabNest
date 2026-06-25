@@ -5,6 +5,13 @@ import { ConfirmDialog } from './ConfirmDialog';
 const meta = {
   title: 'Components/ConfirmDialog',
   component: ConfirmDialog,
+  args: {
+    isOpen: false,
+    title: 'Confirm',
+    message: '',
+    onConfirm: () => {},
+    onCancel: () => {},
+  },
   parameters: {
     layout: 'fullscreen',
   },
@@ -49,8 +56,8 @@ function ConfirmDemo({
         isOpen={open}
         title={title}
         message={message}
-        confirmLabel={confirmLabel}
-        destructive={destructive}
+        {...(confirmLabel ? { confirmLabel } : {})}
+        {...(destructive ? { destructive } : {})}
         onConfirm={() => {
           alert('Confirmed!');
           setOpen(false);

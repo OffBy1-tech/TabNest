@@ -133,8 +133,9 @@ export function ThemeProvider({
         if (area !== 'local') return
         const dataChange = changes['tabnest_data']
         if (!dataChange?.newValue) return
-        const oldTheme = (dataChange.oldValue as Record<string, unknown> | undefined)?.settings?.theme
-        const newTheme = (dataChange.newValue as Record<string, unknown>)?.settings?.theme
+        type ThemeShape = { settings?: { theme?: string } }
+        const oldTheme = (dataChange.oldValue as ThemeShape | undefined)?.settings?.theme
+        const newTheme = (dataChange.newValue as ThemeShape | undefined)?.settings?.theme
         if (newTheme !== oldTheme && (newTheme === 'light' || newTheme === 'dark' || newTheme === 'system')) {
           setTheme(newTheme)
         }

@@ -5,6 +5,12 @@ import { Modal } from './Modal';
 const meta = {
   title: 'Components/Modal',
   component: Modal,
+  args: {
+    isOpen: false,
+    onClose: () => {},
+    title: 'Modal',
+    children: null,
+  },
   parameters: {
     layout: 'fullscreen',
   },
@@ -43,7 +49,12 @@ function ModalDemo({
       >
         Open modal
       </button>
-      <Modal isOpen={open} onClose={() => setOpen(false)} title={title} size={size}>
+      <Modal
+        isOpen={open}
+        onClose={() => setOpen(false)}
+        title={title}
+        {...(size ? { size } : {})}
+      >
         {children ?? (
           <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.6 }}>
             This is the modal body content. It can contain any React elements.

@@ -17,7 +17,7 @@ export interface ModalProps {
   children: React.ReactNode
   size?: 'sm' | 'md' | 'lg'
   /** If provided, this element receives focus when the modal opens instead of the first focusable element. */
-  initialFocusRef?: React.RefObject<HTMLElement>
+  initialFocusRef?: React.RefObject<HTMLElement | null>
 }
 
 const FOCUSABLE_SELECTORS = [
@@ -74,12 +74,12 @@ export function Modal({
         if (e.shiftKey) {
           if (document.activeElement === first) {
             e.preventDefault()
-            last.focus()
+            last?.focus()
           }
         } else {
           if (document.activeElement === last) {
             e.preventDefault()
-            first.focus()
+            first?.focus()
           }
         }
       }
