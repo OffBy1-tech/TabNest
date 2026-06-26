@@ -1,6 +1,6 @@
 {
   "name": "tabnest",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Free tab manager with Google Drive sync. Save, organize, and search your tabs — privacy-first.",
   "private": true,
   "type": "module",
