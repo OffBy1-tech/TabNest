@@ -9,9 +9,10 @@ export interface HelpTabProps {
 
 export function HelpTab({ onShowOnboarding }: HelpTabProps): React.JSX.Element {
   // Read from the manifest so this always matches the published extension
-  // version. Guarded for the dev server / Storybook (non-extension contexts
-  // where chrome.runtime is unavailable).
-  const version = chrome?.runtime?.getManifest?.().version ?? 'dev'
+  // version. Accessed via globalThis because in non-extension contexts (dev
+  // server, Storybook, jsdom tests) the `chrome` identifier is undeclared and
+  // a bare `chrome?.` would throw ReferenceError.
+  const version = globalThis.chrome?.runtime?.getManifest?.().version ?? 'dev'
 
   return (
     <div>
