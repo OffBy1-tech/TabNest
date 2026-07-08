@@ -270,6 +270,10 @@ export function GroupCard({
         gap: 'var(--space-2)',
         outline: 'none',
         transition: 'box-shadow var(--duration-fast) var(--ease-default), border-color var(--duration-fast) var(--ease-default)',
+        // Spec §16: skip rendering work for offscreen cards in large collections.
+        // containIntrinsicSize reserves approximate space so scrollbars stay stable.
+        contentVisibility: 'auto',
+        containIntrinsicSize: 'auto 240px',
       }}
       onFocus={(e) => {
         if (e.target === cardRef.current) {

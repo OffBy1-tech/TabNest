@@ -8,6 +8,7 @@ import React, {
   useCallback,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
 } from 'react'
@@ -174,9 +175,15 @@ export function PopupApp(): React.JSX.Element {
   // ---------------------------------------------------------------------------
 
   const selectedWorkspace = workspaces.find((w) => w.id === selectedWorkspaceId)
-  const categories: Category[] = selectedWorkspace?.categories ?? []
+  const categories: Category[] = useMemo(
+    () => selectedWorkspace?.categories ?? [],
+    [selectedWorkspace?.categories],
+  )
   const selectedCategory = categories.find((c) => c.id === selectedCategoryId)
-  const groups: TabGroup[] = selectedCategory?.groups ?? []
+  const groups: TabGroup[] = useMemo(
+    () => selectedCategory?.groups ?? [],
+    [selectedCategory?.groups],
+  )
 
   // ---------------------------------------------------------------------------
   // Handlers

@@ -428,3 +428,7 @@ Confirmed by direct code evidence on the `componentRefactor` branch.
 - [x] **Sync failure toast with Retry** — Toast supports an inline action button; App toasts on the → error transition with the sync error message and a Retry that re-triggers sync
 - [x] **Expired-token reauthentication** — runSync distinguishes never-authorized (idle) from was-connected (error: "authorization expired, reconnect in Settings → Sync"), surfaced by the same toast
 - [x] **Quota-specific save errors** — QuotaExceededError from writeStorage maps to a "storage is full" message in the main save paths
+
+### Performance & code health (spec §16)
+- [x] **Offscreen render skipping** — `content-visibility: auto` + `contain-intrinsic-size` on group cards, note cards, and active-tab rows (pragmatic §16 virtualization; true windowing deferred unless profiling demands it)
+- [x] **All react-hooks lint warnings fixed** — categories/groups/notes derivations memoized in App.tsx and PopupApp.tsx; Modal effect deps completed. `npm run lint` is fully clean

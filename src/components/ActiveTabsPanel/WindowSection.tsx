@@ -332,6 +332,9 @@ export function WindowSection({
                   cursor: 'grab',
                   borderLeft: isActive ? '2px solid var(--color-brand-500)' : '2px solid transparent',
                   paddingLeft: 'calc(var(--space-2) - 2px)',
+                  // Spec §16: skip offscreen row rendering for windows with many tabs
+                  contentVisibility: 'auto',
+                  containIntrinsicSize: 'auto 40px',
                 }}
                 onMouseEnter={(e) => {
                   ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--bg-elevated)'

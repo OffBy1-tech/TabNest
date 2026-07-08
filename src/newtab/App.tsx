@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { TopBar } from '@/components/TopBar/TopBar'
 import { CategoryList } from '@/components/Sidebar/CategoryList'
 import { SearchOverlay } from '@/components/Search/SearchOverlay'
@@ -160,25 +160,38 @@ export function App(): React.JSX.Element {
 
 
 
-  // Derive active workspace — use default_workspace_id from settings, or first
-  const workspaces: Workspace[] = data?.workspaces ?? []
-  const activeWorkspace: Workspace | undefined =
-    workspaces.find((w) => w.id === data?.settings.default_workspace_id) ??
-    workspaces[0]
+  // Derive active workspace — use default_workspace_id from settings, or first.
+  // Memoized so hook dependency arrays get stable references between renders.
+  const workspaces: Workspace[] = useMemo(() => data?.workspaces ?? [], [data?.workspaces])
+  const activeWorkspace: Workspace | undefined = useMemo(
+    () => workspaces.find((w) => w.id === data?.settings.default_workspace_id) ?? workspaces[0],
+    [workspaces, data?.settings.default_workspace_id],
+  )
 
   // Derive categories from active workspace
-  const categories: Category[] = activeWorkspace?.categories ?? []
+  const categories: Category[] = useMemo(
+    () => activeWorkspace?.categories ?? [],
+    [activeWorkspace?.categories],
+  )
 
   // Derive groups for selected category (or all non-collapsed groups)
-  const groups: TabGroup[] = selectedCategoryId
-    ? (categories.find((c) => c.id === selectedCategoryId)?.groups ?? [])
-    : categories.filter((c) => !c.collapsed).flatMap((c) => c.groups)
+  const groups: TabGroup[] = useMemo(
+    () =>
+      selectedCategoryId
+        ? (categories.find((c) => c.id === selectedCategoryId)?.groups ?? [])
+        : categories.filter((c) => !c.collapsed).flatMap((c) => c.groups),
+    [categories, selectedCategoryId],
+  )
 
   // Standalone notes mirror the group derivation (spec §7.1). `?? []` guards
   // pre-migration data read before onInstalled has run.
-  const standaloneNotes = selectedCategoryId
-    ? (categories.find((c) => c.id === selectedCategoryId)?.notes ?? [])
-    : categories.filter((c) => !c.collapsed).flatMap((c) => c.notes ?? [])
+  const standaloneNotes = useMemo(
+    () =>
+      selectedCategoryId
+        ? (categories.find((c) => c.id === selectedCategoryId)?.notes ?? [])
+        : categories.filter((c) => !c.collapsed).flatMap((c) => c.notes ?? []),
+    [categories, selectedCategoryId],
+  )
 
   // Sync meta for TopBar
   const syncState = data?.sync_meta.sync_state ?? 'idle'

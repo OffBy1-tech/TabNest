@@ -36,6 +36,8 @@ export function NoteCard({ note, viewMode, onChange, onDelete }: NoteCardProps):
         width: isGrid ? undefined : '100%',
         padding: 'var(--space-4)',
         gap: 'var(--space-2)',
+        contentVisibility: 'auto',
+        containIntrinsicSize: 'auto 160px',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>

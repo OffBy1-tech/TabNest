@@ -111,7 +111,7 @@ export function Modal({
     }
 
     return undefined
-  }, [isOpen, handleKeyDown])
+  }, [isOpen, handleKeyDown, initialFocusRef])
 
   if (!isOpen) return null
 
