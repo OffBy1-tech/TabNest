@@ -44,8 +44,7 @@ A plain-text note editor now exists (NoteEditor.tsx: auto-focus textarea, saves 
 
 ## Search
 
-- [ ] **Note content indexed in search** — spec §8.1 says to search note content; search.ts deliberately excludes it (privacy comment in code). Product decision still unresolved — needs explicit sign-off either way
-- [ ] **Filter chips** — spec §8.3: filter by workspace, category, date range, type (tab / note); no filter UI in SearchOverlay
+- [ ] **Filter chips** — spec §8.3: filter by workspace, category, date range, type (tab / group / category); no filter UI in SearchOverlay
 - [ ] **Sort options in search** — spec §8.3: Relevance, Newest, Oldest, A-Z; no sort controls
 - [ ] **Active filter persistence for the session** — spec §8.3; n/a until filters exist
 
@@ -84,7 +83,7 @@ The sidebar ContextMenu still only has Rename / Delete.
 
 ## Settings
 
-- [ ] **Background setting** — spec §11.2: solid color, gradient, or custom image for the new tab background; nothing in schema or SettingsModal
+- [ ] **Background setting** — spec §11.2 (as amended 2026-07): solid color or gradient preset for the new tab background — no image upload; schema field exists, UI not yet built
 - [ ] **Keyboard shortcut `Arrow keys` on group list** — spec §11.4: arrow keys navigate the group list; GroupCard handles E/Delete/Enter when focused but GroupGrid has no arrow-key navigation between cards
 - [ ] **Keyboard shortcut `Cmd/Ctrl+S` / `Enter` in popup** — spec §11.4 / §12: PopupApp has no keydown handlers; Enter does not submit the save form
 - [ ] **`Alt+T` keyboard shortcut** — spec §11.4 / §5.2: open the popup from any page; manifest.json has no `commands` key
@@ -114,7 +113,6 @@ The sidebar ContextMenu still only has Rename / Delete.
 
 - [ ] **Default "Getting Started" category with welcome group** — spec §15: `DEFAULT_WORKSPACE()` still creates a "General" category with no groups
 - [ ] **Example tabs in welcome group** — spec §15: TabNest help page and keyboard shortcuts links; not created on install
-- [ ] **Onboarding Step 1 — layout overview** — spec §15: Step 1 is still "Save your first tab", skipping the layout overview (may be an intentional redesign — confirm and either implement or waive)
 
 ---
 

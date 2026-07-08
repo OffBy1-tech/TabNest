@@ -5,9 +5,10 @@ import React, {
 } from 'react'
 import { MoreHorizontal, StickyNote } from 'lucide-react'
 import type { TabGroup, SavedTab } from '../../lib/schema'
+import { normalizeUrlInput } from '../../lib/tabTitle'
 import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog'
 import { InlineNameEditor } from './InlineNameEditor'
-import { KebabMenu } from './KebabMenu'
+import { KebabMenu, type KebabMenuItem } from './KebabMenu'
 import { NoteEditor } from './NoteEditor'
 import { TabRow } from './TabRow'
 import { DRAG_TYPE, type DragPayload } from './dragTypes'
@@ -28,6 +29,10 @@ export interface GroupCardProps {
   onSaveGroupNote: (groupId: string, content: string) => void
   onSaveTabNote: (groupId: string, tabId: string, note: string) => void
   showFavicons?: boolean
+  /** Opens the whole group in an unfocused new window (spec §6.3). */
+  onOpenAllInBackground?: (() => void) | undefined
+  /** Adds a manually entered URL to this group (spec §6.2). */
+  onAddTab?: ((groupId: string, url: string) => void) | undefined
 }
 
 // ---------------------------------------------------------------------------
@@ -35,6 +40,9 @@ export interface GroupCardProps {
 // ---------------------------------------------------------------------------
 
 const MAX_VISIBLE_TABS = 5
+
+/** Opening more tabs than this at once asks for confirmation first (spec §17). */
+export const LARGE_OPEN_THRESHOLD = 20
 
 export function GroupCard({
   group,
@@ -48,6 +56,8 @@ export function GroupCard({
   onSaveGroupNote,
   onSaveTabNote,
   showFavicons = true,
+  onOpenAllInBackground,
+  onAddTab,
 }: GroupCardProps): React.JSX.Element {
   const [isEditing, setIsEditing] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -55,11 +65,40 @@ export function GroupCard({
   const [noteOpen, setNoteOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
+  // Holds the open action awaiting large-group confirmation, or null
+  const [confirmOpenAction, setConfirmOpenAction] = useState<(() => void) | null>(null)
+  const [addingTab, setAddingTab] = useState(false)
+  const [addTabUrl, setAddTabUrl] = useState('')
+  const [addTabError, setAddTabError] = useState(false)
   const cardRef = useRef<HTMLElement>(null)
   const kebabRef = useRef<HTMLButtonElement>(null)
 
   const groupNote = group.notes[0]?.content ?? ''
   const hasGroupNote = Boolean(groupNote)
+
+  /** Run an open action directly, or ask first when the group is large. */
+  const requestOpen = useCallback(
+    (action: () => void): void => {
+      if (group.tabs.length > LARGE_OPEN_THRESHOLD) {
+        setConfirmOpenAction(() => action)
+      } else {
+        action()
+      }
+    },
+    [group.tabs.length],
+  )
+
+  function handleAddTabSubmit(): void {
+    const normalized = normalizeUrlInput(addTabUrl)
+    if (!normalized) {
+      setAddTabError(true)
+      return
+    }
+    onAddTab?.(group.id, normalized)
+    setAddTabUrl('')
+    setAddTabError(false)
+    setAddingTab(false)
+  }
 
   function handleDragOver(e: React.DragEvent<HTMLElement>): void {
     if (!e.dataTransfer.types.includes(DRAG_TYPE)) return
@@ -106,7 +145,7 @@ export function GroupCard({
       setConfirmDelete(true)
     } else if (e.key === 'Enter') {
       e.preventDefault()
-      onOpenAll()
+      requestOpen(onOpenAll)
     }
   }
 
@@ -228,7 +267,7 @@ export function GroupCard({
         <button
           type="button"
           aria-label="Open all tabs"
-          onClick={onOpenAll}
+          onClick={() => requestOpen(onOpenAll)}
           style={{
             fontSize: 'var(--text-xs)',
             color: 'var(--color-brand-500)',
@@ -333,18 +372,49 @@ export function GroupCard({
           <KebabMenu
             anchorRef={kebabRef}
             onClose={() => setMenuOpen(false)}
-            onRename={() => {
-              setMenuOpen(false)
-              setIsEditing(true)
-            }}
-            onDelete={() => {
-              setMenuOpen(false)
-              setConfirmDelete(true)
-            }}
-            onOpenAll={() => {
-              setMenuOpen(false)
-              onOpenAll()
-            }}
+            items={[
+              {
+                label: 'Open All',
+                onClick: () => {
+                  setMenuOpen(false)
+                  requestOpen(onOpenAll)
+                },
+              },
+              ...(onOpenAllInBackground
+                ? [{
+                    label: 'Open All in Background',
+                    onClick: () => {
+                      setMenuOpen(false)
+                      requestOpen(onOpenAllInBackground)
+                    },
+                  } satisfies KebabMenuItem]
+                : []),
+              ...(onAddTab
+                ? [{
+                    label: 'Add tab by URL',
+                    onClick: () => {
+                      setMenuOpen(false)
+                      setAddingTab(true)
+                    },
+                  } satisfies KebabMenuItem]
+                : []),
+              {
+                label: 'Rename',
+                onClick: () => {
+                  setMenuOpen(false)
+                  setIsEditing(true)
+                },
+              },
+              {
+                label: 'Delete',
+                danger: true,
+                dividerBefore: true,
+                onClick: () => {
+                  setMenuOpen(false)
+                  setConfirmDelete(true)
+                },
+              },
+            ]}
           />
         )}
       </div>
@@ -400,6 +470,63 @@ export function GroupCard({
         </button>
       )}
 
+      {/* Add tab by URL */}
+      {addingTab && onAddTab && (
+        <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+          <input
+            type="text"
+            autoFocus
+            value={addTabUrl}
+            placeholder="Paste or type a URL…"
+            aria-label="URL of tab to add"
+            aria-invalid={addTabError}
+            onChange={(e) => {
+              setAddTabUrl(e.target.value)
+              setAddTabError(false)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); handleAddTabSubmit() }
+              if (e.key === 'Escape') { e.preventDefault(); setAddingTab(false); setAddTabUrl(''); setAddTabError(false) }
+            }}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              padding: 'var(--space-1) var(--space-2)',
+              fontSize: 'var(--text-sm)',
+              fontFamily: 'var(--font-sans)',
+              color: 'var(--text-primary)',
+              backgroundColor: 'var(--bg-base)',
+              border: `1px solid ${addTabError ? 'var(--color-danger)' : 'var(--border-default)'}`,
+              borderRadius: 'var(--radius-sm)',
+              outline: 'none',
+            }}
+          />
+          <button
+            type="button"
+            onClick={handleAddTabSubmit}
+            aria-label="Add tab to group"
+            style={{
+              fontSize: 'var(--text-xs)',
+              color: 'var(--text-inverse)',
+              backgroundColor: 'var(--color-brand-500)',
+              border: 'none',
+              borderRadius: 'var(--radius-sm)',
+              padding: '4px var(--space-2)',
+              cursor: 'pointer',
+              fontWeight: 500,
+              flexShrink: 0,
+            }}
+          >
+            Add
+          </button>
+        </div>
+      )}
+      {addingTab && addTabError && (
+        <span role="alert" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-danger)' }}>
+          Enter a valid web address (http/https).
+        </span>
+      )}
+
       {/* Group note panel */}
       {noteOpen && (
         <div style={{ padding: 'var(--space-2) var(--space-3) var(--space-3)' }}>
@@ -420,6 +547,19 @@ export function GroupCard({
         destructive
         onConfirm={handleConfirmDelete}
         onCancel={() => setConfirmDelete(false)}
+      />
+
+      {/* Large-group open confirmation (spec §17) */}
+      <ConfirmDialog
+        isOpen={confirmOpenAction !== null}
+        title="Open many tabs"
+        message={`This will open ${group.tabs.length} tabs at once. Continue?`}
+        confirmLabel={`Open ${group.tabs.length} tabs`}
+        onConfirm={() => {
+          confirmOpenAction?.()
+          setConfirmOpenAction(null)
+        }}
+        onCancel={() => setConfirmOpenAction(null)}
       />
     </article>
   )

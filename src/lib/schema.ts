@@ -78,6 +78,13 @@ export const UserSettingsSchema = z.object({
   active_tabs_on_load: z.boolean(),
   default_workspace_id: z.string().nullable(),
   show_clock: z.boolean(),
+  /**
+   * New-tab background: a preset id from BACKGROUND_PRESETS ('' = theme default).
+   * Defaulted so pre-existing local and Drive documents parse cleanly.
+   */
+  background: z.string().default(''),
+  /** When true, opening a whole group moves it to trash (spec §6.3 restore toggle). */
+  delete_group_on_open: z.boolean().default(false),
 })
 
 /** Bounds for the user-resizable sidebar (px). */
@@ -229,7 +236,23 @@ export const DEFAULT_SETTINGS: UserSettings = {
   active_tabs_on_load: false,
   default_workspace_id: null,
   show_clock: true,
+  background: '',
+  delete_group_on_open: false,
 }
+
+/**
+ * New-tab background presets. The id is stored in settings.background;
+ * the value is a CSS background (color or gradient). '' = theme default.
+ */
+export const BACKGROUND_PRESETS: ReadonlyArray<{ id: string; label: string; css: string }> = [
+  { id: '', label: 'Default', css: '' },
+  { id: 'slate', label: 'Slate', css: '#1e293b' },
+  { id: 'warm', label: 'Warm', css: '#fef3c7' },
+  { id: 'ocean', label: 'Ocean', css: 'linear-gradient(160deg, #0f2027 0%, #203a43 50%, #2c5364 100%)' },
+  { id: 'sunset', label: 'Sunset', css: 'linear-gradient(160deg, #355c7d 0%, #6c5b7b 50%, #c06c84 100%)' },
+  { id: 'meadow', label: 'Meadow', css: 'linear-gradient(160deg, #134e5e 0%, #2e8b57 100%)' },
+  { id: 'lavender', label: 'Lavender', css: 'linear-gradient(160deg, #e0c3fc 0%, #8ec5fc 100%)' },
+]
 
 export const DEFAULT_LOCAL_SETTINGS: LocalSettings = {
   sync_enabled: false,

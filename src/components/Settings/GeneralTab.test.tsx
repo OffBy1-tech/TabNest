@@ -1,19 +1,13 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import type { UserSettings } from '../../lib/schema'
+import { DEFAULT_SETTINGS, type UserSettings } from '../../lib/schema'
 import { ThemeProvider } from '../ThemeProvider'
 import { GeneralTab } from './GeneralTab'
 
 const baseSettings: UserSettings = {
+  ...DEFAULT_SETTINGS,
   theme: 'light',
-  default_view: 'grid',
-  open_tab_behavior: 'new_tab',
-  save_and_close: false,
-  show_favicons: true,
-  compact_mode: false,
   active_tabs_on_load: true,
-  default_workspace_id: null,
-  show_clock: true,
 }
 
 function renderTab(settings: Partial<UserSettings> = {}, onChange = vi.fn()) {

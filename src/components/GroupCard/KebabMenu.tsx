@@ -1,24 +1,26 @@
 import React, { useEffect, useRef } from 'react'
 
+export interface KebabMenuItem {
+  label: string
+  onClick: () => void
+  /** Render in the danger color (e.g. Delete). */
+  danger?: boolean
+  /** Draw a divider line above this item. */
+  dividerBefore?: boolean
+}
+
 export interface KebabMenuProps {
-  onRename: () => void
-  onDelete: () => void
-  onOpenAll: () => void
+  items: KebabMenuItem[]
   onClose: () => void
   anchorRef: React.RefObject<HTMLButtonElement | null>
 }
 
 /**
- * Popup menu of group actions (Open All / Rename / Delete). Closes on Escape or
- * on a click outside both the menu and its anchor button.
+ * Popup menu of group actions. Closes on Escape or on a click outside both
+ * the menu and its anchor button. Items are provided by the parent so the
+ * same menu shell serves any action set.
  */
-export function KebabMenu({
-  onRename,
-  onDelete,
-  onOpenAll,
-  onClose,
-  anchorRef,
-}: KebabMenuProps): React.JSX.Element {
+export function KebabMenu({ items, onClose, anchorRef }: KebabMenuProps): React.JSX.Element {
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -54,6 +56,7 @@ export function KebabMenu({
     cursor: 'pointer',
     textAlign: 'left',
     borderRadius: 'var(--radius-sm)',
+    whiteSpace: 'nowrap',
   }
 
   return (
@@ -75,55 +78,33 @@ export function KebabMenu({
         minWidth: 160,
       }}
     >
-      <button
-        type="button"
-        role="menuitem"
-        style={menuItemStyle}
-        onClick={onOpenAll}
-        onMouseEnter={(e) => {
-          ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--bg-elevated)'
-        }}
-        onMouseLeave={(e) => {
-          ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'
-        }}
-      >
-        Open All
-      </button>
-      <button
-        type="button"
-        role="menuitem"
-        style={menuItemStyle}
-        onClick={onRename}
-        onMouseEnter={(e) => {
-          ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--bg-elevated)'
-        }}
-        onMouseLeave={(e) => {
-          ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'
-        }}
-      >
-        Rename
-      </button>
-      <hr
-        style={{
-          border: 'none',
-          borderTop: '1px solid var(--border-default)',
-          margin: 'var(--space-1) 0',
-        }}
-      />
-      <button
-        type="button"
-        role="menuitem"
-        style={{ ...menuItemStyle, color: 'var(--color-danger)' }}
-        onClick={onDelete}
-        onMouseEnter={(e) => {
-          ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--bg-elevated)'
-        }}
-        onMouseLeave={(e) => {
-          ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'
-        }}
-      >
-        Delete
-      </button>
+      {items.map((item) => (
+        <React.Fragment key={item.label}>
+          {item.dividerBefore && (
+            <hr
+              style={{
+                border: 'none',
+                borderTop: '1px solid var(--border-default)',
+                margin: 'var(--space-1) 0',
+              }}
+            />
+          )}
+          <button
+            type="button"
+            role="menuitem"
+            style={item.danger ? { ...menuItemStyle, color: 'var(--color-danger)' } : menuItemStyle}
+            onClick={item.onClick}
+            onMouseEnter={(e) => {
+              ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--bg-elevated)'
+            }}
+            onMouseLeave={(e) => {
+              ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'
+            }}
+          >
+            {item.label}
+          </button>
+        </React.Fragment>
+      ))}
     </div>
   )
 }

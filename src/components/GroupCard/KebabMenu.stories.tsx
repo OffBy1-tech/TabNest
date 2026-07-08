@@ -22,9 +22,12 @@ const meta = {
   component: KebabMenu,
   parameters: { layout: 'centered' },
   args: {
-    onRename: () => console.log('rename'),
-    onDelete: () => console.log('delete'),
-    onOpenAll: () => console.log('open all'),
+    items: [
+      { label: 'Open All', onClick: () => console.log('open all') },
+      { label: 'Open All in Background', onClick: () => console.log('open all bg') },
+      { label: 'Rename', onClick: () => console.log('rename') },
+      { label: 'Delete', onClick: () => console.log('delete'), danger: true, dividerBefore: true },
+    ],
     onClose: () => console.log('close'),
     // Placeholder — KebabMenuWithAnchor supplies the real anchor ref.
     anchorRef: { current: null },

@@ -31,6 +31,7 @@ import {
   type TrashItem,
   ExtensionMessageSchema,
 } from '../lib/schema'
+import { tabTitleOrHostname } from '../lib/tabTitle'
 
 // ---------------------------------------------------------------------------
 // Alarm names
@@ -164,7 +165,9 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
   const savedTab: SavedTab = {
     id: crypto.randomUUID(),
-    title: isLink ? (info.linkUrl ?? url) : (tab.title ?? url),
+    // Links have no title of their own; pages fall back to the hostname when
+    // the tab has no title (spec §17 — never show a raw URL as a title).
+    title: isLink ? tabTitleOrHostname(undefined, url) : tabTitleOrHostname(tab.title, url),
     url,
     favicon: tab.favIconUrl,
     saved_at: Date.now(),

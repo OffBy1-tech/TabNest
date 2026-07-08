@@ -89,6 +89,15 @@ export function GeneralTab({ settings, onChange }: GeneralTabProps): React.JSX.E
         />
       </SettingRow>
 
+      <SettingRow label="Delete group after opening">
+        <ToggleSwitch
+          id="toggle-delete-on-open"
+          label="Move a group to trash after opening all its tabs"
+          checked={settings.delete_group_on_open}
+          onChange={(v) => onChange({ delete_group_on_open: v })}
+        />
+      </SettingRow>
+
       <SettingRow label="Show favicons">
         <ToggleSwitch
           id="toggle-favicons"

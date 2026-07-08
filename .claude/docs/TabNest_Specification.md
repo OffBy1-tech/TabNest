@@ -281,22 +281,23 @@ The Active Tabs Panel shows all currently open tabs across all Chrome windows in
 ### 8.1 Global Search
 
 - Triggered by clicking the search bar or pressing `/` or `Cmd/Ctrl+K`
-- Searches across all workspaces: tab titles, URLs, domains, note content, group names, category names
+- Searches across all workspaces: tab titles, URLs, domains, group names, category names
+- **Note content is deliberately excluded from the index** — notes can contain sensitive personal information and must never surface in search results (decision 2026-07; overrides earlier drafts that indexed notes)
 - Results appear as a command-palette-style dropdown with keyboard navigation (arrow keys, Enter to select, Escape to close)
-- Results grouped by type: Tabs, Notes, Groups, Categories
+- Results grouped by type: Tabs, Groups, Categories
 - Each result shows breadcrumb: Workspace > Category > Group
 - Clicking a tab result opens that URL; clicking a group result navigates to that group in the UI
 
 ### 8.2 Search Algorithm
 
 - Powered by Fuse.js for fuzzy matching — handles typos and partial matches
-- Weighted scoring: title > URL domain > note content
+- Weighted scoring: title > URL domain > group name
 - Results ranked by relevance score, then recency
 - Minimum 1 character to trigger results
 
 ### 8.3 Filter & Sort
 
-- Filter chips below search bar: by workspace, by category, by date range, by type (tab / note)
+- Filter chips below search bar: by workspace, by category, by date range, by type (tab / group / category)
 - Sort options: Relevance, Newest, Oldest, A-Z
 - Active filters persist for the session
 
@@ -372,7 +373,7 @@ All sync is optional. TabNest works fully offline using `chrome.storage.local`. 
 | Active tabs on load | Show/hide Active Tabs panel automatically when new tab opens |
 | Default workspace | Which workspace to display on new tab open |
 | Show clock | Toggle a simple digital clock in the top-right corner |
-| Background | Solid color, gradient, or custom image upload for the new tab background |
+| Background | Solid color or gradient preset for the new tab background (decision 2026-07: no custom image upload — avoids storing large blobs in chrome.storage) |
 
 ### 11.3 Sync
 
@@ -456,8 +457,8 @@ All optional permissions are requested on-demand (when the user initiates the re
 ## 15. First Run Experience
 
 - On first install, new tab page shows a brief 3-step onboarding overlay (dismissible)
-- **Step 1:** Overview of the layout — sidebar, main area, active tabs
-- **Step 2:** Save your first tab — prompts user to save any open tab
+- **Step 1:** Save your first tab — prompts user to save any open tab (decision 2026-07: the flow starts hands-on; the separate layout-overview step from earlier drafts was dropped)
+- **Step 2:** Meet your workspace — workspaces, categories, and groups
 - **Step 3:** Optional — connect Google Drive for sync
 - A default workspace **"My Workspace"** and one example category **"Getting Started"** with a welcome group are created
 - The welcome group contains 2–3 example saved tabs (TabNest help page, keyboard shortcuts page)

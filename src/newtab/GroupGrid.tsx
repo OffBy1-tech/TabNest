@@ -8,6 +8,8 @@ export interface GroupGridProps {
   onRenameGroup: (id: string, name: string) => void
   onDeleteGroup: (id: string) => void
   onOpenAll: (group: TabGroup) => void
+  onOpenAllInBackground?: ((group: TabGroup) => void) | undefined
+  onAddTab?: ((groupId: string, url: string) => void) | undefined
   onRemoveTab: (groupId: string, tabId: string) => void
   onMoveTab: (fromGroupId: string, toGroupId: string, tabId: string) => void
   onOpenTab: (url: string) => void
@@ -28,6 +30,8 @@ export function GroupGrid({
   onRenameGroup,
   onDeleteGroup,
   onOpenAll,
+  onOpenAllInBackground,
+  onAddTab,
   onRemoveTab,
   onMoveTab,
   onOpenTab,
@@ -219,6 +223,8 @@ export function GroupGrid({
                 onRename={onRenameGroup}
                 onDelete={() => onDeleteGroup(group.id)}
                 onOpenAll={() => onOpenAll(group)}
+                onOpenAllInBackground={onOpenAllInBackground ? () => onOpenAllInBackground(group) : undefined}
+                onAddTab={onAddTab}
                 onOpenTab={onOpenTab}
                 onRemoveTab={onRemoveTab}
                 onMoveTab={onMoveTab}

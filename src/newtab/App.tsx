@@ -10,7 +10,8 @@ import { useTabs } from '@/hooks/useTabs'
 import { useToast } from '@/components/Toast/ToastProvider'
 import { LoadingPlaceholder } from './LoadingPlaceholder'
 import { GroupGrid } from './GroupGrid'
-import { openTab, openAllTabs } from './openTab'
+import { openTab, openAllTabs, openAllTabsInBackground } from './openTab'
+import { tabTitleOrHostname } from '@/lib/tabTitle'
 import type { Category, TabGroup, UserSettings, Workspace } from '@/lib/schema'
 import type { SearchRecord } from '@/lib/search'
 import { DEFAULT_SETTINGS, DEFAULT_LOCAL_SETTINGS, DEFAULT_SYNC_META, SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_DEFAULT } from '@/lib/schema'
@@ -245,12 +246,59 @@ export function App(): React.JSX.Element {
     [tabs, activeWorkspace, selectedCategoryId, categories, showToast],
   )
 
+  // Spec §6.3: opening a group can optionally move it to trash afterwards
+  const deleteGroupAfterOpen = useCallback(
+    (group: TabGroup): void => {
+      if (data?.settings.delete_group_on_open !== true) return
+      if (!activeWorkspace) return
+      const catId = categories.find((c) => c.groups.some((g) => g.id === group.id))?.id
+      if (!catId) return
+      tabs.delete(group.id, catId, activeWorkspace.id).catch(() => {
+        showToast('Opened tabs, but failed to move the group to trash.', 'error')
+      })
+    },
+    [data?.settings.delete_group_on_open, activeWorkspace, categories, tabs, showToast],
+  )
+
   // Issue 2: handleOpenAll uses open_tab_behavior setting
   const handleOpenAll = useCallback(
     (group: TabGroup): void => {
       openAllTabs(group.tabs.map((tab) => tab.url), data?.settings.open_tab_behavior)
+      deleteGroupAfterOpen(group)
     },
-    [data?.settings.open_tab_behavior],
+    [data?.settings.open_tab_behavior, deleteGroupAfterOpen],
+  )
+
+  const handleOpenAllInBackground = useCallback(
+    (group: TabGroup): void => {
+      openAllTabsInBackground(group.tabs.map((tab) => tab.url))
+      deleteGroupAfterOpen(group)
+    },
+    [deleteGroupAfterOpen],
+  )
+
+  // Spec §6.2: add a manually entered URL to a group (with duplicate warning, spec §17)
+  const handleAddTabByUrl = useCallback(
+    (groupId: string, url: string): void => {
+      if (!activeWorkspace) return
+      const cat = categories.find((c) => c.groups.some((g) => g.id === groupId))
+      const group = cat?.groups.find((g) => g.id === groupId)
+      if (!cat || !group) return
+      if (group.tabs.some((t) => t.url === url)) {
+        showToast('That URL is already in this group.', 'error')
+        return
+      }
+      const savedTab = {
+        id: crypto.randomUUID(),
+        title: tabTitleOrHostname(undefined, url),
+        url,
+        saved_at: Date.now(),
+      }
+      addTabToGroup(activeWorkspace.id, cat.id, groupId, savedTab).catch(() => {
+        showToast('Failed to add tab. Please try again.', 'error')
+      })
+    },
+    [activeWorkspace, categories, showToast],
   )
 
   const handleRemoveTab = useCallback(
@@ -309,10 +357,23 @@ export function App(): React.JSX.Element {
       workspaceId: string,
       groupId: string | null,
     ): void => {
-      if (!tab.id || !tab.url || !tab.title) return
+      if (!tab.id || !tab.url) return
+
+      // Spec §17: warn when the URL already exists in the target group
+      if (groupId !== null) {
+        const targetGroup = workspaces
+          .find((w) => w.id === workspaceId)
+          ?.categories.find((c) => c.id === categoryId)
+          ?.groups.find((g) => g.id === groupId)
+        if (targetGroup?.tabs.some((t) => t.url === tab.url)) {
+          showToast('That tab is already saved in this group.', 'error')
+          return
+        }
+      }
+
       const savedTab = {
         id: crypto.randomUUID(),
-        title: tab.title,
+        title: tabTitleOrHostname(tab.title, tab.url),
         url: tab.url,
         favicon: tab.favIconUrl,
         saved_at: Date.now(),
@@ -351,7 +412,7 @@ export function App(): React.JSX.Element {
         }).then(onSuccess).catch(onError)
       }
     },
-    [tabs, showToast, data?.settings.save_and_close],
+    [tabs, showToast, data?.settings.save_and_close, workspaces],
   )
 
   const handleSaveWindowTabs = useCallback(
@@ -362,11 +423,11 @@ export function App(): React.JSX.Element {
       workspaceId: string,
       groupId: string | null,
     ): void => {
-      const savedTabs = chromeTabs
-        .filter((t) => t.url && t.title)
+      let savedTabs = chromeTabs
+        .filter((t) => t.url)
         .map((t) => ({
           id: crypto.randomUUID(),
-          title: t.title!,
+          title: tabTitleOrHostname(t.title, t.url!),
           url: t.url!,
           favicon: t.favIconUrl,
           saved_at: Date.now(),
@@ -378,6 +439,25 @@ export function App(): React.JSX.Element {
       }
 
       if (groupId !== null) {
+        // Spec §17: don't add URLs that already exist in the target group
+        const targetGroup = workspaces
+          .find((w) => w.id === workspaceId)
+          ?.categories.find((c) => c.id === categoryId)
+          ?.groups.find((g) => g.id === groupId)
+        if (targetGroup) {
+          const existing = new Set(targetGroup.tabs.map((t) => t.url))
+          const skipped = savedTabs.filter((t) => existing.has(t.url)).length
+          if (skipped > 0) {
+            savedTabs = savedTabs.filter((t) => !existing.has(t.url))
+            showToast(
+              savedTabs.length === 0
+                ? 'All of those tabs are already in this group.'
+                : `Skipped ${skipped} tab${skipped === 1 ? '' : 's'} already in this group.`,
+              'error',
+            )
+            if (savedTabs.length === 0) return
+          }
+        }
         addTabsToGroup(workspaceId, categoryId, groupId, savedTabs).catch(onError)
       } else {
         tabs.save({
@@ -388,7 +468,7 @@ export function App(): React.JSX.Element {
         }).catch(onError)
       }
     },
-    [tabs, showToast],
+    [tabs, showToast, workspaces],
   )
 
   const handleCloseActiveTab = useCallback((tabId: number): void => {
@@ -672,6 +752,8 @@ export function App(): React.JSX.Element {
               onRenameGroup={handleRenameGroup}
               onDeleteGroup={handleDeleteGroup}
               onOpenAll={handleOpenAll}
+              onOpenAllInBackground={handleOpenAllInBackground}
+              onAddTab={handleAddTabByUrl}
               onRemoveTab={handleRemoveTab}
               onMoveTab={handleMoveTab}
               onOpenTab={handleOpenTab}
