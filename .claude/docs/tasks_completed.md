@@ -414,3 +414,7 @@ Confirmed by direct code evidence on the `componentRefactor` branch.
 - [x] **Popup note field** — optional note stored on the SavedTab (spec §12)
 - [x] **Alt+T command** — `commands._execute_action` in manifest.json opens the popup
 - [x] **Popup untitled-tab fallback** — popup saves now use tabTitleOrHostname too
+
+### Trash & First Run (spec §13/§15)
+- [x] **Original location in trash UI** — TrashTab resolves original_location ids to "Workspace > Category" names, with "(deleted …)" fallbacks
+- [x] **Getting Started category + welcome group** — buildDefaultStorage (fresh installs only) adds a "Getting Started" category with a welcome group: 2 example tabs (help/readme + keyboard shortcuts) and a checklist note

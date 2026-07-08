@@ -19,19 +19,6 @@ Items verified as complete were moved to `tasks_completed.md` (see its "Re-audit
 
 ---
 
-## Trash
-
-- [ ] **Original location shown in trash UI** — spec §13: TrashTab shows type badge and deletion date but not the original workspace/category name
-
----
-
-## First Run Experience
-
-- [ ] **Default "Getting Started" category with welcome group** — spec §15: `DEFAULT_WORKSPACE()` still creates a "General" category with no groups
-- [ ] **Example tabs in welcome group** — spec §15: TabNest help page and keyboard shortcuts links; not created on install
-
----
-
 ## Performance
 
 - [ ] **Virtual scrolling for large tab lists** — spec §16: virtual scrolling for 1000+ tab entries; GroupGrid renders everything with no virtualization

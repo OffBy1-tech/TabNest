@@ -128,8 +128,56 @@ const MIGRATIONS: Record<number, (data: any) => any> = {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * First-run content (spec §15): a "Getting Started" category with a welcome
+ * group of example tabs. Only added by buildDefaultStorage (fresh installs) —
+ * new workspaces created later start with just the default category.
+ */
+function buildGettingStartedCategory(): Category {
+  const now = Date.now()
+  return {
+    id: crypto.randomUUID(),
+    name: 'Getting Started',
+    color: '#10b981',
+    emoji: '👋',
+    collapsed: false,
+    order: 1,
+    notes: [],
+    groups: [
+      {
+        id: crypto.randomUUID(),
+        name: 'Welcome to Tab Nest',
+        created_at: now,
+        updated_at: now,
+        order: 0,
+        notes: [{
+          id: crypto.randomUUID(),
+          content: 'Tips:\n- [ ] Save a tab from the **Active Tabs** panel\n- [ ] Press `/` to search\n- [ ] Press `N` to create a group',
+          created_at: now,
+          updated_at: now,
+        }],
+        tabs: [
+          {
+            id: crypto.randomUUID(),
+            title: 'Tab Nest — Help & Documentation',
+            url: 'https://github.com/OffBy1-tech/TabNest#readme',
+            saved_at: now,
+          },
+          {
+            id: crypto.randomUUID(),
+            title: 'Keyboard shortcuts',
+            url: 'https://github.com/OffBy1-tech/TabNest#keyboard-shortcuts',
+            saved_at: now,
+          },
+        ],
+      },
+    ],
+  }
+}
+
 function buildDefaultStorage(): StorageSchema {
   const workspace = DEFAULT_WORKSPACE()
+  workspace.categories = [...workspace.categories, buildGettingStartedCategory()]
   return {
     schema_version: SCHEMA_VERSION,
     workspaces: [workspace],

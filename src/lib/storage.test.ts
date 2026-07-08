@@ -4,6 +4,7 @@ import {
   DEFAULT_LOCAL_SETTINGS,
   DEFAULT_SYNC_META,
   SCHEMA_VERSION,
+  StorageSchemaZod,
   type StorageSchema,
   type Workspace,
   type Category,
@@ -109,6 +110,16 @@ describe('readStorage', () => {
     expect(data.trash).toEqual([])
     expect(data.settings.default_workspace_id).toBe(data.workspaces[0]!.id)
     expect(data.local_settings).toEqual(DEFAULT_LOCAL_SETTINGS)
+  })
+
+  it('fresh installs get a Getting Started category with a welcome group (spec §15)', async () => {
+    const data = await storage.readStorage()
+    const gettingStarted = data.workspaces[0]!.categories.find((c) => c.name === 'Getting Started')
+    expect(gettingStarted).toBeDefined()
+    expect(gettingStarted!.groups[0]!.name).toBe('Welcome to Tab Nest')
+    expect(gettingStarted!.groups[0]!.tabs.length).toBeGreaterThanOrEqual(2)
+    // The whole default document must be schema-valid
+    expect(StorageSchemaZod.safeParse(data).success).toBe(true)
   })
 
   it('returns the stored document as-is when present', async () => {

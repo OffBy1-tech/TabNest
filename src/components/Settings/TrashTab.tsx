@@ -1,5 +1,5 @@
 import React from 'react'
-import type { TrashItem } from '../../lib/schema'
+import type { TrashItem, Workspace } from '../../lib/schema'
 import { sectionHeadingStyle, dangerBtnStyle, ghostBtnStyle } from './styles'
 
 export interface TrashTabProps {
@@ -7,6 +7,19 @@ export interface TrashTabProps {
   onRestore: (id: string) => void
   onDeletePermanently: (id: string) => void
   onEmptyTrash: () => void
+  /** Used to resolve original_location ids into names (spec §13). */
+  workspaces?: Workspace[] | undefined
+}
+
+/** "Workspace > Category" path for a trash item, or '' when nothing resolves. */
+function originalLocationLabel(item: TrashItem, workspaces: Workspace[]): string {
+  const ws = workspaces.find((w) => w.id === item.original_location.workspace_id)
+  // A workspace item's original location is itself — no path to show
+  if (item.type === 'workspace') return ''
+  const wsName = ws?.name ?? '(deleted workspace)'
+  if (!item.original_location.category_id) return wsName
+  const cat = ws?.categories.find((c) => c.id === item.original_location.category_id)
+  return `${wsName} > ${cat?.name ?? '(deleted category)'}`
 }
 
 export function TrashTab({
@@ -14,6 +27,7 @@ export function TrashTab({
   onRestore,
   onDeletePermanently,
   onEmptyTrash,
+  workspaces = [],
 }: TrashTabProps): React.JSX.Element {
   const sorted = [...trashItems].sort((a, b) => b.deleted_at - a.deleted_at)
 
@@ -53,6 +67,7 @@ export function TrashTab({
             const itemData = item.data as Record<string, unknown>
             const itemName = (itemData['name'] as string | undefined) ?? 'Untitled'
             const deletedDate = new Date(item.deleted_at).toLocaleDateString()
+            const location = originalLocationLabel(item, workspaces)
 
             return (
               <li
@@ -90,8 +105,8 @@ export function TrashTab({
                   <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {itemName}
                   </div>
-                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-                    Deleted {deletedDate}
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {location ? `${location} · ` : ''}Deleted {deletedDate}
                   </div>
                 </div>
 
