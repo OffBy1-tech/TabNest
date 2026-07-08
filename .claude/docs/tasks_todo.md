@@ -6,31 +6,6 @@ Items verified as complete were moved to `tasks_completed.md` (see its "Re-audit
 
 ---
 
-## Core Tab Management
-
-- [ ] **"Open All in Background"** — no implementation; spec §6.3 requires opening all tabs in a new window while staying focused on the current window (`chrome.windows.create({ focused: false })`)
-- [ ] **Large group open-all confirmation dialog** — spec §17 requires a confirmation dialog when opening more than 20 tabs at once; `handleOpenAll` in App.tsx has no such guard
-- [ ] **Non-destructive restore toggle** — opening a group never deletes it (non-destructive is now the only behavior), but the spec §6.3 setting to toggle auto-delete-on-restore does not exist
-- [ ] **Duplicate URL warning on save** — spec §17: warn when a URL already exists in the same group. Partial progress: the Active Tabs panel dims tabs whose URL is already saved anywhere (`savedUrls` in WindowSection.tsx), but there is no warning at save time for duplicates within a group
-- [ ] **Tab with no title fallback** — spec §17: display URL hostname as title. Context-menu *group names* use hostname (background/index.ts:144), but the saved tab title still falls back to the raw URL (`tab.title ?? url`), not the hostname
-- [ ] **Add tab manually via URL** — spec §6.2: "+ button to enter a URL manually" within a group; no such input exists on group cards
-
----
-
-## Group Card — Missing Actions
-
-KebabMenu still only has Open All / Rename / Delete.
-
-- [ ] **Move group to different category** — spec §6.2 / §3.4: "Move to category" menu option; no menu item or storage function
-- [ ] **Duplicate group** — spec §6.2 / §3.4: creates a copy in the same category; no option or storage function
-- [ ] **Archive group** — spec §6.2: moves group to a special Archive category; `archived` field exists on TabGroupSchema but no archive logic in storage or UI
-- [ ] **Group creation date display** — spec §3.4: each group card shows creation date; not rendered in GroupCard
-- [ ] **Inline notes preview on group card** — spec §3.4: "optional note preview". Partial: the sticky-note icon is highlighted when a note exists and toggles an inline editor, but no preview text is shown on the card itself
-- [ ] **Reorder tabs within a group via drag** — spec §6.2: TabRow is draggable but drops only move tabs *between* groups (`onMoveTab`); no within-group reordering
-- [ ] **Export group as URL list** — spec §11.5: export a single group as a text list of URLs; no menu item or export function
-
----
-
 ## Notes & To-Dos
 
 A plain-text note editor now exists (NoteEditor.tsx: auto-focus textarea, saves on blur, group + per-tab notes). The rest of the spec's note system is unbuilt:

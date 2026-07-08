@@ -732,6 +732,190 @@ export async function saveGroupNote(
 }
 
 /**
+ * Move a group to a different category within the same workspace.
+ * No-ops if the group is already in the target category.
+ */
+export async function moveGroupToCategory(
+  workspaceId: string,
+  groupId: string,
+  toCategoryId: string,
+): Promise<void> {
+  const data = await readStorage()
+  let moved: TabGroup | undefined
+
+  const afterRemove = data.workspaces.map((ws) => {
+    if (ws.id !== workspaceId) return ws
+    return {
+      ...ws,
+      categories: ws.categories.map((cat) => {
+        if (cat.id === toCategoryId) return cat
+        const found = cat.groups.find((g) => g.id === groupId)
+        if (found == null) return cat
+        moved = found
+        return { ...cat, groups: cat.groups.filter((g) => g.id !== groupId) }
+      }),
+    }
+  })
+
+  if (moved == null) return // already in the target category (or not found)
+  const group = moved
+
+  const workspaces = afterRemove.map((ws) => {
+    if (ws.id !== workspaceId) return ws
+    return {
+      ...ws,
+      categories: ws.categories.map((cat) => {
+        if (cat.id !== toCategoryId) return cat
+        return { ...cat, groups: [...cat.groups, { ...group, order: cat.groups.length, updated_at: Date.now() }] }
+      }),
+    }
+  })
+
+  await writeStorage({ workspaces })
+}
+
+/**
+ * Duplicate a group in place (same category). All ids are regenerated; the
+ * copy is appended after the original with " (copy)" suffixed to its name.
+ * Returns the new group's id.
+ */
+export async function duplicateGroup(
+  workspaceId: string,
+  categoryId: string,
+  groupId: string,
+): Promise<string> {
+  const data = await readStorage()
+  const now = Date.now()
+  const newId = crypto.randomUUID()
+  let found = false
+
+  const workspaces = data.workspaces.map((ws) => {
+    if (ws.id !== workspaceId) return ws
+    return {
+      ...ws,
+      categories: ws.categories.map((cat) => {
+        if (cat.id !== categoryId) return cat
+        const original = cat.groups.find((g) => g.id === groupId)
+        if (original == null) return cat
+        found = true
+        const copy: TabGroup = {
+          ...original,
+          id: newId,
+          name: `${original.name} (copy)`,
+          created_at: now,
+          updated_at: now,
+          order: cat.groups.length,
+          tabs: original.tabs.map((t) => ({ ...t, id: crypto.randomUUID() })),
+          notes: original.notes.map((n) => ({ ...n, id: crypto.randomUUID() })),
+        }
+        return { ...cat, groups: [...cat.groups, copy] }
+      }),
+    }
+  })
+
+  if (!found) {
+    throw new Error(`Group ${groupId} not found in category ${categoryId}`)
+  }
+
+  await writeStorage({ workspaces })
+  return newId
+}
+
+/** Name of the special category that archived groups are moved into. */
+export const ARCHIVE_CATEGORY_NAME = 'Archive'
+
+/**
+ * Archive a group (spec §6.2): moves it into a special collapsed "Archive"
+ * category (created on demand) and sets its archived flag. A collapsed
+ * category is hidden from the "All" view but stays reachable from the
+ * sidebar and search.
+ */
+export async function archiveGroup(
+  workspaceId: string,
+  categoryId: string,
+  groupId: string,
+): Promise<void> {
+  const data = await readStorage()
+  let archived: TabGroup | undefined
+
+  const afterRemove = data.workspaces.map((ws) => {
+    if (ws.id !== workspaceId) return ws
+    return {
+      ...ws,
+      categories: ws.categories.map((cat) => {
+        if (cat.id !== categoryId) return cat
+        archived = cat.groups.find((g) => g.id === groupId)
+        return { ...cat, groups: cat.groups.filter((g) => g.id !== groupId) }
+      }),
+    }
+  })
+
+  if (archived == null) {
+    throw new Error(`Group ${groupId} not found in category ${categoryId}`)
+  }
+  const group: TabGroup = { ...archived, archived: true, updated_at: Date.now() }
+
+  const workspaces = afterRemove.map((ws) => {
+    if (ws.id !== workspaceId) return ws
+    let archiveCat = ws.categories.find((c) => c.name === ARCHIVE_CATEGORY_NAME)
+    let categories: Category[]
+    if (archiveCat == null) {
+      archiveCat = {
+        id: crypto.randomUUID(),
+        name: ARCHIVE_CATEGORY_NAME,
+        color: '#64748b',
+        emoji: '🗄️',
+        collapsed: true,
+        order: ws.categories.length,
+        groups: [group],
+      }
+      categories = [...ws.categories, archiveCat]
+    } else {
+      categories = ws.categories.map((cat) =>
+        cat.id === archiveCat!.id
+          ? { ...cat, groups: [...cat.groups, { ...group, order: cat.groups.length }] }
+          : cat,
+      )
+    }
+    return { ...ws, categories }
+  })
+
+  await writeStorage({ workspaces })
+}
+
+/**
+ * Move a tab to a new position within its group.
+ */
+export async function reorderTabInGroup(
+  workspaceId: string,
+  groupId: string,
+  tabId: string,
+  toIndex: number,
+): Promise<void> {
+  const data = await readStorage()
+  const workspaces = data.workspaces.map((ws) => {
+    if (ws.id !== workspaceId) return ws
+    return {
+      ...ws,
+      categories: ws.categories.map((cat) => ({
+        ...cat,
+        groups: cat.groups.map((g) => {
+          if (g.id !== groupId) return g
+          const fromIndex = g.tabs.findIndex((t) => t.id === tabId)
+          if (fromIndex === -1) return g
+          const tabs = [...g.tabs]
+          const [tab] = tabs.splice(fromIndex, 1)
+          const clamped = Math.max(0, Math.min(toIndex, tabs.length))
+          tabs.splice(clamped, 0, tab!)
+          return { ...g, tabs, updated_at: Date.now() }
+        }),
+      })),
+    }
+  })
+  await writeStorage({ workspaces })
+}
+
+/**
  * Move a single tab from one group to another within the same workspace.
  * Groups may live in different categories — the function searches all categories
  * to locate both. No-ops if fromGroupId === toGroupId.

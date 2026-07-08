@@ -15,7 +15,7 @@ import { tabTitleOrHostname } from '@/lib/tabTitle'
 import type { Category, TabGroup, UserSettings, Workspace } from '@/lib/schema'
 import type { SearchRecord } from '@/lib/search'
 import { DEFAULT_SETTINGS, DEFAULT_LOCAL_SETTINGS, DEFAULT_SYNC_META, SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_DEFAULT } from '@/lib/schema'
-import { patchSettings, patchLocalSettings, restoreFromTrash, deleteFromTrash, emptyTrash, createWorkspace, renameWorkspace, createCategory, renameGroup, removeTabFromGroup, renameCategory, deleteCategory, setCategoryCollapsed, moveTabBetweenGroups, addTabToGroup, addTabsToGroup, reorderCategories, saveTabGroup, saveTabNote, saveGroupNote } from '@/lib/storage'
+import { patchSettings, patchLocalSettings, restoreFromTrash, deleteFromTrash, emptyTrash, createWorkspace, renameWorkspace, createCategory, renameGroup, removeTabFromGroup, renameCategory, deleteCategory, setCategoryCollapsed, moveTabBetweenGroups, addTabToGroup, addTabsToGroup, reorderCategories, saveTabGroup, saveTabNote, saveGroupNote, moveGroupToCategory, duplicateGroup, archiveGroup, reorderTabInGroup } from '@/lib/storage'
 
 // ---------------------------------------------------------------------------
 // Layout shell styles
@@ -320,6 +320,62 @@ export function App(): React.JSX.Element {
       if (!activeWorkspace) return
       moveTabBetweenGroups(activeWorkspace.id, fromGroupId, toGroupId, tabId).catch(() => {
         showToast('Failed to move tab. Please try again.', 'error')
+      })
+    },
+    [activeWorkspace, showToast],
+  )
+
+  const handleMoveGroupToCategory = useCallback(
+    (groupId: string, toCategoryId: string): void => {
+      if (!activeWorkspace) return
+      moveGroupToCategory(activeWorkspace.id, groupId, toCategoryId).catch(() => {
+        showToast('Failed to move group. Please try again.', 'error')
+      })
+    },
+    [activeWorkspace, showToast],
+  )
+
+  const handleDuplicateGroup = useCallback(
+    (groupId: string): void => {
+      if (!activeWorkspace) return
+      const catId = categories.find((c) => c.groups.some((g) => g.id === groupId))?.id
+      if (!catId) return
+      duplicateGroup(activeWorkspace.id, catId, groupId).catch(() => {
+        showToast('Failed to duplicate group. Please try again.', 'error')
+      })
+    },
+    [activeWorkspace, categories, showToast],
+  )
+
+  const handleArchiveGroup = useCallback(
+    (groupId: string): void => {
+      if (!activeWorkspace) return
+      const catId = categories.find((c) => c.groups.some((g) => g.id === groupId))?.id
+      if (!catId) return
+      archiveGroup(activeWorkspace.id, catId, groupId)
+        .then(() => showToast('Group archived.', 'success'))
+        .catch(() => showToast('Failed to archive group. Please try again.', 'error'))
+    },
+    [activeWorkspace, categories, showToast],
+  )
+
+  // Spec §11.5: copy the group as "url | title" lines (round-trips with OneTab import)
+  const handleExportGroup = useCallback(
+    (group: TabGroup): void => {
+      const text = group.tabs.map((t) => `${t.url} | ${t.title}`).join('\n')
+      navigator.clipboard
+        .writeText(text)
+        .then(() => showToast(`Copied ${group.tabs.length} URL${group.tabs.length === 1 ? '' : 's'} to clipboard.`, 'success'))
+        .catch(() => showToast('Failed to copy to clipboard.', 'error'))
+    },
+    [showToast],
+  )
+
+  const handleReorderTab = useCallback(
+    (groupId: string, tabId: string, toIndex: number): void => {
+      if (!activeWorkspace) return
+      reorderTabInGroup(activeWorkspace.id, groupId, tabId, toIndex).catch(() => {
+        showToast('Failed to reorder tab. Please try again.', 'error')
       })
     },
     [activeWorkspace, showToast],
@@ -754,6 +810,13 @@ export function App(): React.JSX.Element {
               onOpenAll={handleOpenAll}
               onOpenAllInBackground={handleOpenAllInBackground}
               onAddTab={handleAddTabByUrl}
+              categories={categories.map((c) => ({ id: c.id, name: c.name, emoji: c.emoji }))}
+              categoryIdOf={(groupId) => categories.find((c) => c.groups.some((g) => g.id === groupId))?.id}
+              onMoveToCategory={handleMoveGroupToCategory}
+              onDuplicate={handleDuplicateGroup}
+              onArchive={handleArchiveGroup}
+              onExport={handleExportGroup}
+              onReorderTab={handleReorderTab}
               onRemoveTab={handleRemoveTab}
               onMoveTab={handleMoveTab}
               onOpenTab={handleOpenTab}

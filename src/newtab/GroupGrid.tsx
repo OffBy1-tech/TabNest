@@ -10,6 +10,15 @@ export interface GroupGridProps {
   onOpenAll: (group: TabGroup) => void
   onOpenAllInBackground?: ((group: TabGroup) => void) | undefined
   onAddTab?: ((groupId: string, url: string) => void) | undefined
+  /** Move-to-category targets shown in the kebab menu. */
+  categories?: Array<{ id: string; name: string; emoji: string }> | undefined
+  /** Resolves which category a group currently lives in (for filtering move targets). */
+  categoryIdOf?: ((groupId: string) => string | undefined) | undefined
+  onMoveToCategory?: ((groupId: string, toCategoryId: string) => void) | undefined
+  onDuplicate?: ((groupId: string) => void) | undefined
+  onArchive?: ((groupId: string) => void) | undefined
+  onExport?: ((group: TabGroup) => void) | undefined
+  onReorderTab?: ((groupId: string, tabId: string, toIndex: number) => void) | undefined
   onRemoveTab: (groupId: string, tabId: string) => void
   onMoveTab: (fromGroupId: string, toGroupId: string, tabId: string) => void
   onOpenTab: (url: string) => void
@@ -32,6 +41,13 @@ export function GroupGrid({
   onOpenAll,
   onOpenAllInBackground,
   onAddTab,
+  categories,
+  categoryIdOf,
+  onMoveToCategory,
+  onDuplicate,
+  onArchive,
+  onExport,
+  onReorderTab,
   onRemoveTab,
   onMoveTab,
   onOpenTab,
@@ -225,6 +241,13 @@ export function GroupGrid({
                 onOpenAll={() => onOpenAll(group)}
                 onOpenAllInBackground={onOpenAllInBackground ? () => onOpenAllInBackground(group) : undefined}
                 onAddTab={onAddTab}
+                categories={categories}
+                currentCategoryId={categoryIdOf?.(group.id)}
+                onMoveToCategory={onMoveToCategory}
+                onDuplicate={onDuplicate}
+                onArchive={onArchive}
+                onExport={onExport}
+                onReorderTab={onReorderTab}
                 onOpenTab={onOpenTab}
                 onRemoveTab={onRemoveTab}
                 onMoveTab={onMoveTab}

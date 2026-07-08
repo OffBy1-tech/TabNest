@@ -361,3 +361,22 @@ Confirmed by direct code evidence on the `componentRefactor` branch.
 - [x] **Write queue no longer poisoned by a failed write** — `enqueueWrite` in storage.ts chains new writes onto the previous write whether it settled or rejected, and keeps the queue itself always-settled; the caller's promise still reflects its own write's outcome. Regression test: "recovers after a failed write" in `storage.test.ts`
 - [x] **`patchLocalSettings` stale-merge fixed** — the local_settings merge now happens inside the queued work (read-before-write at execution time), so a concurrent local-settings write can't be clobbered
 - [x] **"Open in Current Window" for groups** (spec §6.3) — new `openAllTabs(urls, behavior)` helper in `openTab.ts`: `current` adds every tab to the current Chrome window via `chrome.tabs.create({ active: false })` (previously only the last tab survived), `new_window` opens one window with all tabs, `new_tab` opens one tab per URL; App.tsx `handleOpenAll` delegates to it. Covered in `openTab.test.ts`
+
+## workItems branch — 2026-07-08
+
+### Core Tab Management (spec §6.2/§6.3/§17)
+- [x] **Open All in Background** — `openAllTabsInBackground` (openTab.ts): one unfocused window with all tabs; kebab menu item
+- [x] **Large-group open confirmation** — GroupCard asks before opening >20 tabs (LARGE_OPEN_THRESHOLD)
+- [x] **Non-destructive restore toggle** — `delete_group_on_open` setting (General tab): moves group to trash after Open All
+- [x] **Duplicate URL warning on save** — single/bulk/manual saves warn and skip URLs already in the target group
+- [x] **Hostname fallback for untitled tabs** — `tabTitleOrHostname` (lib/tabTitle.ts), used by newtab saves and context-menu saves
+- [x] **Add tab manually via URL** — kebab item + inline input with normalization (`normalizeUrlInput`)
+
+### Group Card actions (spec §3.4/§6.2/§11.5)
+- [x] **Move to category** — kebab submenu listing other categories; `moveGroupToCategory` in storage
+- [x] **Duplicate group** — `duplicateGroup`: fresh ids, "(copy)" name, appended in place
+- [x] **Archive group** — `archiveGroup`: moves into a collapsed "Archive" category created on demand, sets `archived` flag (collapsed = hidden from All view, still searchable)
+- [x] **Creation date display** — card footer
+- [x] **Note preview** — first line shown italic under the tab list; click opens the editor
+- [x] **Within-group tab reorder** — drop a dragged tab on another row of the same group; `reorderTabInGroup`
+- [x] **Copy as URL list** — "url | title" lines to clipboard (round-trips with OneTab import)
