@@ -397,3 +397,8 @@ Confirmed by direct code evidence on the `componentRefactor` branch.
 - [x] **Multi-select + Save Selected** — checkbox per tab row; "Save N" button in the window header opens the save popover for just the selected tabs
 - [x] **Drag active tabs onto group cards and sidebar categories** — drag payload now carries url/title/favicon; GroupCard appends (with dup warning), CategoryList saves a new hostname-named group
 - [x] **Sort options** — Window order / By title / By domain select in the panel header; drag-to-reorder disabled while sorted (index math needs browser order)
+
+### Sidebar (spec §3.3)
+- [x] **Category color picker** — "Change color…" in the context menu with an 8-swatch palette (`CATEGORY_COLORS`); category color now shown as a dot beside the name; `patchCategory` in storage
+- [x] **Category emoji picker** — "Change emoji…" with a 16-emoji grid (`CATEGORY_EMOJIS`)
+- [x] **Collapse all groups** — context-menu action collapsing every category (`setAllCategoriesCollapsed`)

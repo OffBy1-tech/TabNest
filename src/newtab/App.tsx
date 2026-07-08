@@ -16,7 +16,7 @@ import type { Category, TabGroup, UserSettings, Workspace } from '@/lib/schema'
 import type { ActiveTabDragPayload } from '@/components/GroupCard/dragTypes'
 import type { SearchRecord } from '@/lib/search'
 import { DEFAULT_SETTINGS, DEFAULT_LOCAL_SETTINGS, DEFAULT_SYNC_META, SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_DEFAULT } from '@/lib/schema'
-import { patchSettings, patchLocalSettings, restoreFromTrash, deleteFromTrash, emptyTrash, createWorkspace, renameWorkspace, createCategory, renameGroup, removeTabFromGroup, renameCategory, deleteCategory, setCategoryCollapsed, moveTabBetweenGroups, addTabToGroup, addTabsToGroup, reorderCategories, saveTabGroup, saveTabNote, saveGroupNote, moveGroupToCategory, duplicateGroup, archiveGroup, reorderTabInGroup, createCategoryNote, saveCategoryNote, deleteCategoryNote } from '@/lib/storage'
+import { patchSettings, patchLocalSettings, restoreFromTrash, deleteFromTrash, emptyTrash, createWorkspace, renameWorkspace, createCategory, renameGroup, removeTabFromGroup, renameCategory, deleteCategory, setCategoryCollapsed, moveTabBetweenGroups, addTabToGroup, addTabsToGroup, reorderCategories, saveTabGroup, saveTabNote, saveGroupNote, moveGroupToCategory, duplicateGroup, archiveGroup, reorderTabInGroup, createCategoryNote, saveCategoryNote, deleteCategoryNote, patchCategory, setAllCategoriesCollapsed } from '@/lib/storage'
 
 // ---------------------------------------------------------------------------
 // Layout shell styles
@@ -691,6 +691,33 @@ export function App(): React.JSX.Element {
     [activeWorkspace, selectedCategoryId, showToast],
   )
 
+  const handleChangeCategoryColor = useCallback(
+    (id: string, color: string): void => {
+      if (!activeWorkspace) return
+      patchCategory(activeWorkspace.id, id, { color }).catch(() => {
+        showToast('Failed to update category color.', 'error')
+      })
+    },
+    [activeWorkspace, showToast],
+  )
+
+  const handleChangeCategoryEmoji = useCallback(
+    (id: string, emoji: string): void => {
+      if (!activeWorkspace) return
+      patchCategory(activeWorkspace.id, id, { emoji }).catch(() => {
+        showToast('Failed to update category emoji.', 'error')
+      })
+    },
+    [activeWorkspace, showToast],
+  )
+
+  const handleCollapseAll = useCallback((): void => {
+    if (!activeWorkspace) return
+    setAllCategoriesCollapsed(activeWorkspace.id, true).catch(() => {
+      showToast('Failed to collapse categories.', 'error')
+    })
+  }, [activeWorkspace, showToast])
+
   const handleToggleCollapse = useCallback(
     (categoryId: string): void => {
       if (!activeWorkspace) return
@@ -849,6 +876,9 @@ export function App(): React.JSX.Element {
             onCreateWorkspace={handleCreateWorkspace}
             onRenameWorkspace={handleRenameWorkspace}
             onDropActiveTab={handleDropActiveTabOnCategory}
+            onChangeCategoryColor={handleChangeCategoryColor}
+            onChangeCategoryEmoji={handleChangeCategoryEmoji}
+            onCollapseAll={handleCollapseAll}
           />
         </div>
 

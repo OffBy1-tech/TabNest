@@ -33,6 +33,10 @@ export interface CategoryListProps {
   onRenameWorkspace: (id: string, name: string) => void
   /** A tab dragged from the Active Tabs panel was dropped on a category (spec §5.1). */
   onDropActiveTab?: ((categoryId: string, payload: ActiveTabDragPayload) => void) | undefined
+  /** Category context-menu extras (spec §3.3). */
+  onChangeCategoryColor?: ((id: string, color: string) => void) | undefined
+  onChangeCategoryEmoji?: ((id: string, emoji: string) => void) | undefined
+  onCollapseAll?: (() => void) | undefined
 }
 
 interface ContextMenuState {
@@ -60,6 +64,9 @@ export function CategoryList({
   onCreateWorkspace,
   onRenameWorkspace,
   onDropActiveTab,
+  onChangeCategoryColor,
+  onChangeCategoryEmoji,
+  onCollapseAll,
 }: CategoryListProps): React.JSX.Element {
   const [dragOverCategoryId, setDragOverCategoryId] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
@@ -493,6 +500,20 @@ export function CategoryList({
                     {category.emoji}
                   </span>
 
+                  {/* Category color dot (spec §3.3) */}
+                  {category.color && (
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: 'var(--radius-full)',
+                        backgroundColor: category.color,
+                        flexShrink: 0,
+                      }}
+                    />
+                  )}
+
                   {renaming ? (
                     <RenameInput
                       initialValue={category.name}
@@ -638,6 +659,32 @@ export function CategoryList({
             closeContextMenu()
           }}
           onClose={closeContextMenu}
+          currentColor={categories.find((c) => c.id === contextMenu.categoryId)?.color}
+          currentEmoji={categories.find((c) => c.id === contextMenu.categoryId)?.emoji}
+          onChangeColor={
+            onChangeCategoryColor
+              ? (color) => {
+                  onChangeCategoryColor(contextMenu.categoryId, color)
+                  closeContextMenu()
+                }
+              : undefined
+          }
+          onChangeEmoji={
+            onChangeCategoryEmoji
+              ? (emoji) => {
+                  onChangeCategoryEmoji(contextMenu.categoryId, emoji)
+                  closeContextMenu()
+                }
+              : undefined
+          }
+          onCollapseAll={
+            onCollapseAll
+              ? () => {
+                  onCollapseAll()
+                  closeContextMenu()
+                }
+              : undefined
+          }
         />
       )}
     </nav>

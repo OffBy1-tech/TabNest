@@ -408,6 +408,43 @@ export async function renameCategory(
   await writeStorage({ workspaces })
 }
 
+/**
+ * Patch presentational fields of a category (color, emoji) in place.
+ */
+export async function patchCategory(
+  workspaceId: string,
+  categoryId: string,
+  patch: Partial<Pick<Category, 'color' | 'emoji'>>,
+): Promise<void> {
+  const data = await readStorage()
+  const workspaces = data.workspaces.map((ws) => {
+    if (ws.id !== workspaceId) return ws
+    return {
+      ...ws,
+      categories: ws.categories.map((cat) =>
+        cat.id === categoryId ? { ...cat, ...patch } : cat,
+      ),
+    }
+  })
+  await writeStorage({ workspaces })
+}
+
+/**
+ * Collapse (or expand) every category in a workspace at once (spec §3.3
+ * "Collapse all groups").
+ */
+export async function setAllCategoriesCollapsed(
+  workspaceId: string,
+  collapsed: boolean,
+): Promise<void> {
+  const data = await readStorage()
+  const workspaces = data.workspaces.map((ws) => {
+    if (ws.id !== workspaceId) return ws
+    return { ...ws, categories: ws.categories.map((cat) => ({ ...cat, collapsed })) }
+  })
+  await writeStorage({ workspaces })
+}
+
 export async function setCategoryCollapsed(
   workspaceId: string,
   categoryId: string,

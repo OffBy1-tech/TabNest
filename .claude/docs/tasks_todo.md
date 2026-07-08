@@ -6,16 +6,6 @@ Items verified as complete were moved to `tasks_completed.md` (see its "Re-audit
 
 ---
 
-## Sidebar — Category Management
-
-The sidebar ContextMenu still only has Rename / Delete.
-
-- [ ] **Category color picker** — spec §3.3: `color` field exists on CategorySchema but no "Change color" menu option
-- [ ] **Category emoji picker** — spec §3.3: emoji is rendered in the list but there is no "Change emoji" option
-- [ ] **"Collapse all groups" in category context menu** — spec §3.3: not in context menu
-
----
-
 ## Sync — Google Drive
 
 > **Decision (2026-07):** TabNest stays on the hidden `appDataFolder` space with the

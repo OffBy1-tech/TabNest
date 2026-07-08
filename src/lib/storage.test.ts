@@ -308,6 +308,30 @@ describe('moveTabBetweenGroups', () => {
   })
 })
 
+describe('patchCategory / setAllCategoriesCollapsed', () => {
+  it('updates color and emoji in place', async () => {
+    const cat = makeCategory()
+    const ws = makeWorkspace('WS', [cat])
+    seed([ws])
+
+    await storage.patchCategory(ws.id, cat.id, { color: '#ef4444', emoji: '🎮' })
+
+    const updated = stored().workspaces[0]!.categories[0]!
+    expect(updated.color).toBe('#ef4444')
+    expect(updated.emoji).toBe('🎮')
+    expect(updated.name).toBe(cat.name)
+  })
+
+  it('collapses every category in the workspace', async () => {
+    const ws = makeWorkspace('WS', [makeCategory('A'), makeCategory('B')])
+    seed([ws])
+
+    await storage.setAllCategoriesCollapsed(ws.id, true)
+
+    expect(stored().workspaces[0]!.categories.every((c) => c.collapsed)).toBe(true)
+  })
+})
+
 describe('standalone category notes', () => {
   it('creates, updates, and deletes a note in a category', async () => {
     const cat = makeCategory()
