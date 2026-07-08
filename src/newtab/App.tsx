@@ -13,6 +13,7 @@ import { GroupGrid } from './GroupGrid'
 import { openTab, openAllTabs, openAllTabsInBackground } from './openTab'
 import { tabTitleOrHostname } from '@/lib/tabTitle'
 import type { Category, TabGroup, UserSettings, Workspace } from '@/lib/schema'
+import type { ActiveTabDragPayload } from '@/components/GroupCard/dragTypes'
 import type { SearchRecord } from '@/lib/search'
 import { DEFAULT_SETTINGS, DEFAULT_LOCAL_SETTINGS, DEFAULT_SYNC_META, SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_DEFAULT } from '@/lib/schema'
 import { patchSettings, patchLocalSettings, restoreFromTrash, deleteFromTrash, emptyTrash, createWorkspace, renameWorkspace, createCategory, renameGroup, removeTabFromGroup, renameCategory, deleteCategory, setCategoryCollapsed, moveTabBetweenGroups, addTabToGroup, addTabsToGroup, reorderCategories, saveTabGroup, saveTabNote, saveGroupNote, moveGroupToCategory, duplicateGroup, archiveGroup, reorderTabInGroup, createCategoryNote, saveCategoryNote, deleteCategoryNote } from '@/lib/storage'
@@ -385,6 +386,56 @@ export function App(): React.JSX.Element {
       })
     },
     [activeWorkspace, showToast],
+  )
+
+  // Spec §4.2: tab dragged from the Active Tabs panel onto a group card
+  const handleDropActiveTabOnGroup = useCallback(
+    (groupId: string, payload: ActiveTabDragPayload): void => {
+      if (!activeWorkspace || !payload.url) return
+      const cat = categories.find((c) => c.groups.some((g) => g.id === groupId))
+      const group = cat?.groups.find((g) => g.id === groupId)
+      if (!cat || !group) return
+      if (group.tabs.some((t) => t.url === payload.url)) {
+        showToast('That tab is already saved in this group.', 'error')
+        return
+      }
+      const savedTab = {
+        id: crypto.randomUUID(),
+        title: tabTitleOrHostname(payload.title, payload.url),
+        url: payload.url,
+        favicon: payload.favIconUrl,
+        saved_at: Date.now(),
+      }
+      addTabToGroup(activeWorkspace.id, cat.id, groupId, savedTab)
+        .then(() => showToast('Tab saved.', 'success'))
+        .catch(() => showToast('Failed to save tab. Please try again.', 'error'))
+    },
+    [activeWorkspace, categories, showToast],
+  )
+
+  // Spec §5.1: tab dragged from the Active Tabs panel onto a sidebar category
+  const handleDropActiveTabOnCategory = useCallback(
+    (categoryId: string, payload: ActiveTabDragPayload): void => {
+      if (!activeWorkspace || !payload.url) return
+      const url = payload.url
+      let groupName = url
+      try { groupName = new URL(url).hostname } catch { /* keep raw url */ }
+      tabs.save({
+        tabs: [{
+          id: crypto.randomUUID(),
+          title: tabTitleOrHostname(payload.title, url),
+          url,
+          favicon: payload.favIconUrl,
+          saved_at: Date.now(),
+        }],
+        group_name: groupName,
+        category_id: categoryId,
+        workspace_id: activeWorkspace.id,
+      })
+        .then(() => showToast('Tab saved to category.', 'success'))
+        .catch(() => showToast('Failed to save tab. Please try again.', 'error'))
+    },
+    [activeWorkspace, tabs, showToast],
   )
 
   const handleSaveGroupNote = useCallback(
@@ -797,6 +848,7 @@ export function App(): React.JSX.Element {
             onSelectWorkspace={handleSelectWorkspace}
             onCreateWorkspace={handleCreateWorkspace}
             onRenameWorkspace={handleRenameWorkspace}
+            onDropActiveTab={handleDropActiveTabOnCategory}
           />
         </div>
 
@@ -854,6 +906,7 @@ export function App(): React.JSX.Element {
               onArchive={handleArchiveGroup}
               onExport={handleExportGroup}
               onReorderTab={handleReorderTab}
+              onDropActiveTab={handleDropActiveTabOnGroup}
               onRemoveTab={handleRemoveTab}
               onMoveTab={handleMoveTab}
               onOpenTab={handleOpenTab}

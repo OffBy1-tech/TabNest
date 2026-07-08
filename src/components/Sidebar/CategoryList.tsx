@@ -6,6 +6,7 @@ import React, {
 } from 'react'
 import { GripVertical, Plus, ChevronDown, Eye, EyeOff } from 'lucide-react'
 import type { Category, Workspace } from '../../lib/schema'
+import { ACTIVE_TAB_DRAG_TYPE, type ActiveTabDragPayload } from '../GroupCard/dragTypes'
 import { WorkspaceDropdown } from './WorkspaceDropdown'
 import { RenameInput } from './RenameInput'
 import { ContextMenu } from './ContextMenu'
@@ -30,6 +31,8 @@ export interface CategoryListProps {
   onSelectWorkspace: (id: string) => void
   onCreateWorkspace: (name: string) => void
   onRenameWorkspace: (id: string, name: string) => void
+  /** A tab dragged from the Active Tabs panel was dropped on a category (spec §5.1). */
+  onDropActiveTab?: ((categoryId: string, payload: ActiveTabDragPayload) => void) | undefined
 }
 
 interface ContextMenuState {
@@ -56,7 +59,9 @@ export function CategoryList({
   onSelectWorkspace,
   onCreateWorkspace,
   onRenameWorkspace,
+  onDropActiveTab,
 }: CategoryListProps): React.JSX.Element {
+  const [dragOverCategoryId, setDragOverCategoryId] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [focusedIndex, setFocusedIndex] = useState<number>(-1)
@@ -378,10 +383,40 @@ export function CategoryList({
             <li
               draggable
               onDragStart={(e) => handleDragStart(e, category.id)}
-              onDragOver={(e) => handleDragOver(e, idx)}
-              onDrop={handleDrop}
+              onDragOver={(e) => {
+                // Active-panel tab hovering this row — highlight as a save target
+                if (onDropActiveTab && e.dataTransfer.types.includes(ACTIVE_TAB_DRAG_TYPE)) {
+                  e.preventDefault()
+                  e.dataTransfer.dropEffect = 'copy'
+                  setDragOverCategoryId(category.id)
+                  return
+                }
+                handleDragOver(e, idx)
+              }}
+              onDragLeave={() => {
+                setDragOverCategoryId((cur) => (cur === category.id ? null : cur))
+              }}
+              onDrop={(e) => {
+                const activeRaw = e.dataTransfer.getData(ACTIVE_TAB_DRAG_TYPE)
+                if (activeRaw && onDropActiveTab) {
+                  e.preventDefault()
+                  setDragOverCategoryId(null)
+                  try {
+                    onDropActiveTab(category.id, JSON.parse(activeRaw) as ActiveTabDragPayload)
+                  } catch {
+                    // Malformed payload — ignore
+                  }
+                  return
+                }
+                handleDrop(e)
+              }}
               onDragEnd={clearDrag}
-              style={{ opacity: isDragged ? 0.4 : 1 }}
+              style={{
+                opacity: isDragged ? 0.4 : 1,
+                ...(dragOverCategoryId === category.id
+                  ? { boxShadow: 'inset 0 0 0 2px var(--color-brand-500)', borderRadius: 'var(--radius-md)' }
+                  : {}),
+              }}
             >
               {/* Row wrapper — owns hover, selection background, and left accent border */}
               <div

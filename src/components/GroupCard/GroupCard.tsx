@@ -11,7 +11,7 @@ import { InlineNameEditor } from './InlineNameEditor'
 import { KebabMenu, type KebabMenuItem } from './KebabMenu'
 import { MarkdownNote } from '../Notes/MarkdownNote'
 import { TabRow } from './TabRow'
-import { DRAG_TYPE, type DragPayload } from './dragTypes'
+import { DRAG_TYPE, ACTIVE_TAB_DRAG_TYPE, type DragPayload, type ActiveTabDragPayload } from './dragTypes'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -44,6 +44,8 @@ export interface GroupCardProps {
   onReorderTab?: ((groupId: string, tabId: string, toIndex: number) => void) | undefined
   /** The category this group currently belongs to (filtered out of move targets). */
   currentCategoryId?: string | undefined
+  /** A tab dragged from the Active Tabs panel was dropped on this card (spec §4.2). */
+  onDropActiveTab?: ((groupId: string, payload: ActiveTabDragPayload) => void) | undefined
 }
 
 // ---------------------------------------------------------------------------
@@ -76,6 +78,7 @@ export function GroupCard({
   onExport,
   onReorderTab,
   currentCategoryId,
+  onDropActiveTab,
 }: GroupCardProps): React.JSX.Element {
   const [isEditing, setIsEditing] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -172,9 +175,11 @@ export function GroupCard({
   ]
 
   function handleDragOver(e: React.DragEvent<HTMLElement>): void {
-    if (!e.dataTransfer.types.includes(DRAG_TYPE)) return
+    const isSavedTab = e.dataTransfer.types.includes(DRAG_TYPE)
+    const isActiveTab = onDropActiveTab != null && e.dataTransfer.types.includes(ACTIVE_TAB_DRAG_TYPE)
+    if (!isSavedTab && !isActiveTab) return
     e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
+    e.dataTransfer.dropEffect = isActiveTab ? 'copy' : 'move'
     setIsDragOver(true)
   }
 
@@ -188,6 +193,18 @@ export function GroupCard({
   function handleDrop(e: React.DragEvent<HTMLElement>): void {
     e.preventDefault()
     setIsDragOver(false)
+
+    // A tab dragged from the Active Tabs panel — save it into this group
+    const activeRaw = e.dataTransfer.getData(ACTIVE_TAB_DRAG_TYPE)
+    if (activeRaw && onDropActiveTab) {
+      try {
+        onDropActiveTab(group.id, JSON.parse(activeRaw) as ActiveTabDragPayload)
+      } catch {
+        // Malformed payload — ignore
+      }
+      return
+    }
+
     const raw = e.dataTransfer.getData(DRAG_TYPE)
     if (!raw) return
     try {

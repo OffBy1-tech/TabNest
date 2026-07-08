@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { GroupCard } from '@/components/GroupCard/GroupCard'
 import { NoteCard } from '@/components/Notes/NoteCard'
+import type { ActiveTabDragPayload } from '@/components/GroupCard/dragTypes'
 import type { Note, TabGroup } from '@/lib/schema'
 
 export interface GroupGridProps {
@@ -20,6 +21,7 @@ export interface GroupGridProps {
   onArchive?: ((groupId: string) => void) | undefined
   onExport?: ((group: TabGroup) => void) | undefined
   onReorderTab?: ((groupId: string, tabId: string, toIndex: number) => void) | undefined
+  onDropActiveTab?: ((groupId: string, payload: ActiveTabDragPayload) => void) | undefined
   onRemoveTab: (groupId: string, tabId: string) => void
   onMoveTab: (fromGroupId: string, toGroupId: string, tabId: string) => void
   onOpenTab: (url: string) => void
@@ -55,6 +57,7 @@ export function GroupGrid({
   onArchive,
   onExport,
   onReorderTab,
+  onDropActiveTab,
   onRemoveTab,
   onMoveTab,
   onOpenTab,
@@ -290,6 +293,7 @@ export function GroupGrid({
                 onArchive={onArchive}
                 onExport={onExport}
                 onReorderTab={onReorderTab}
+                onDropActiveTab={onDropActiveTab}
                 onOpenTab={onOpenTab}
                 onRemoveTab={onRemoveTab}
                 onMoveTab={onMoveTab}

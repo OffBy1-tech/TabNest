@@ -1,7 +1,29 @@
-import React from 'react'
+import React, { useState } from 'react'
 import type { Workspace } from '../../lib/schema'
 import { useActiveTabs } from './useActiveTabs'
 import { WindowSection } from './WindowSection'
+
+/** Sort orders for tabs within each window section (spec §4.3). */
+export type ActiveTabsSort = 'window' | 'title' | 'domain'
+
+function domainOf(tab: chrome.tabs.Tab): string {
+  try {
+    return tab.url ? new URL(tab.url).hostname.replace(/^www\./, '') : ''
+  } catch {
+    return ''
+  }
+}
+
+export function sortActiveTabs(tabs: chrome.tabs.Tab[], sort: ActiveTabsSort): chrome.tabs.Tab[] {
+  if (sort === 'window') return tabs // browser order
+  const sorted = [...tabs]
+  if (sort === 'title') {
+    sorted.sort((a, b) => (a.title ?? '').localeCompare(b.title ?? ''))
+  } else {
+    sorted.sort((a, b) => domainOf(a).localeCompare(domainOf(b)) || (a.title ?? '').localeCompare(b.title ?? ''))
+  }
+  return sorted
+}
 
 // ---------------------------------------------------------------------------
 // ActiveTabsPanel
@@ -39,6 +61,7 @@ export function ActiveTabsPanel({
   activeCategoryId,
 }: ActiveTabsPanelProps): React.JSX.Element {
   const windows = useActiveTabs()
+  const [sort, setSort] = useState<ActiveTabsSort>('window')
 
   const totalTabs = windows.reduce((sum, win) => sum + win.tabs.length, 0)
 
@@ -106,6 +129,27 @@ export function ActiveTabsPanel({
           </span>
         </h2>
 
+        <select
+          aria-label="Sort tabs"
+          value={sort}
+          onChange={(e) => setSort(e.target.value as ActiveTabsSort)}
+          style={{
+            fontSize: 'var(--text-xs)',
+            padding: '2px var(--space-1)',
+            borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--border-default)',
+            backgroundColor: 'var(--bg-surface)',
+            color: 'var(--text-secondary)',
+            fontFamily: 'var(--font-sans)',
+            cursor: 'pointer',
+            flexShrink: 0,
+          }}
+        >
+          <option value="window">Window order</option>
+          <option value="title">By title</option>
+          <option value="domain">By domain</option>
+        </select>
+
         <button
           type="button"
           aria-label="Close duplicate tabs"
@@ -161,7 +205,8 @@ export function ActiveTabsPanel({
           windows.map((win, idx) => (
             <WindowSection
               key={win.windowId}
-              tabs={win.tabs}
+              tabs={sortActiveTabs(win.tabs, sort)}
+              allowReorder={sort === 'window'}
               windowId={win.windowId}
               windowIndex={idx}
               workspaces={workspaces}

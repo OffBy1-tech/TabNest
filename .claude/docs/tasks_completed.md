@@ -392,3 +392,8 @@ Confirmed by direct code evidence on the `componentRefactor` branch.
 - [x] **Filter chips** — type toggle chips (Tabs/Groups/Categories) + workspace/category/date-range selects in SearchOverlay; `filterRecords` in lib/search.ts
 - [x] **Sort options** — Relevance / Newest / Oldest / A–Z select; `sortRecords`; records carry a `timestamp` (tab saved_at, group created_at)
 - [x] **Session filter persistence** — filter/sort state lives outside the isOpen reset, surviving close/reopen
+
+### Active Tabs Panel (spec §4.2/§4.3/§5.1)
+- [x] **Multi-select + Save Selected** — checkbox per tab row; "Save N" button in the window header opens the save popover for just the selected tabs
+- [x] **Drag active tabs onto group cards and sidebar categories** — drag payload now carries url/title/favicon; GroupCard appends (with dup warning), CategoryList saves a new hostname-named group
+- [x] **Sort options** — Window order / By title / By domain select in the panel header; drag-to-reorder disabled while sorted (index math needs browser order)

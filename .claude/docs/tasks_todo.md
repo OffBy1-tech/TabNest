@@ -6,14 +6,6 @@ Items verified as complete were moved to `tasks_completed.md` (see its "Re-audit
 
 ---
 
-## Active Tabs Panel
-
-- [ ] **"Save Selected" with multi-select checkboxes** — spec §4.2: checkbox multi-select then bulk save; no checkbox or multi-select logic in WindowSection
-- [ ] **Drag active tabs into sidebar category or group card** — spec §4.2 / §5.1: `ACTIVE_TAB_DRAG_TYPE` exists but is only produced and consumed inside WindowSection (within-panel reorder); GroupCard and CategoryList do not accept it
-- [ ] **Sort options for active tabs** — spec §4.3: sort by domain, by window, by title; no sort controls
-
----
-
 ## Sidebar — Category Management
 
 The sidebar ContextMenu still only has Rename / Delete.
