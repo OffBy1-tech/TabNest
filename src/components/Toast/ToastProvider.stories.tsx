@@ -5,6 +5,9 @@ import { ToastProvider, useToast } from './ToastProvider';
 const meta = {
   title: 'Components/Toast/ToastProvider',
   component: ToastProvider,
+  args: {
+    children: null,
+  },
   parameters: {
     layout: 'centered',
   },

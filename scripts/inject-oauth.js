@@ -2,6 +2,8 @@
  * inject-oauth.js
  * Replaces the __OAUTH_CLIENT_ID__ placeholder in the built manifest.json
  * with the real OAuth client ID from the TABNEST_OAUTH_CLIENT_ID env var.
+ * Also syncs the manifest "version" field from package.json so the two
+ * never drift (package.json is the single source of truth).
  *
  * Usage: node scripts/inject-oauth.js
  * Run after `npm build`.
@@ -30,6 +32,18 @@ if (existsSync(envLocalPath)) {
 }
 
 const manifestPath = join(__dirname, '..', 'dist', 'manifest.json')
+
+// Sync the manifest version from package.json (single source of truth).
+// Done before the OAuth guards below so it always runs, even when OAuth/key
+// env vars are unset.
+const { version } = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'))
+const manifestWithVersion = readFileSync(manifestPath, 'utf8').replace(
+  /("version"\s*:\s*)"[^"]*"/,
+  `$1"${version}"`,
+)
+writeFileSync(manifestPath, manifestWithVersion, 'utf8')
+console.log(`[inject-version] manifest version set to ${version}`)
+
 const clientId = process.env.TABNEST_OAUTH_CLIENT_ID
 
 if (!clientId) {

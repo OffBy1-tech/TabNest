@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tab Nest",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "key": "__GOOGLE_EXTENSION_KEY__",
   "description": "Free tab manager with Google Drive sync. Save, organize, and search your tabs — privacy-first.",
   "minimum_chrome_version": "120",

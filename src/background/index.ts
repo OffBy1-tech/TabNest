@@ -21,7 +21,6 @@ import {
   restoreFromTrash,
 } from '../lib/storage'
 import {
-  DEFAULT_WORKSPACE,
   StorageSchemaZod,
   type ExtensionMessage,
   type MessageResponse,
@@ -410,7 +409,8 @@ async function runSync(): Promise<void> {
 
 async function acquireToken(interactive: boolean): Promise<string | null> {
   return new Promise((resolve) => {
-    chrome.identity.getAuthToken({ interactive }, (token) => {
+    chrome.identity.getAuthToken({ interactive }, (result) => {
+      const token = typeof result === 'string' ? result : result?.token
       if (chrome.runtime.lastError || !token) {
         resolve(null)
       } else {

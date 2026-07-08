@@ -21,7 +21,6 @@ const NOW = Date.now();
 
 const defaultSettings: UserSettings = {
   theme: 'light',
-  accent_color: '#1A56DB',
   default_view: 'grid',
   open_tab_behavior: 'new_tab',
   save_and_close: false,

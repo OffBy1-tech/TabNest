@@ -4,7 +4,8 @@
 
 [![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-coming%20soon-lightgrey?logo=googlechrome)](https://chromewebstore.google.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![CI](https://github.com/your-org/tabnest/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/tabnest/actions/workflows/ci.yml)
+[![CI](https://github.com/OffBy1-tech/TabNest/actions/workflows/ci.yml/badge.svg)](https://github.com/OffBy1-tech/TabNest/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https://offby1-tech.github.io/TabNest/coverage-badge.json)](https://offby1-tech.github.io/TabNest/)
 
 Tab Nest lets you save, organize, and search your browser tabs without losing context. Sessions are stored locally by default and can be optionally synced to your personal Google Drive — no third-party servers, no subscriptions, no data sold to anyone.
 

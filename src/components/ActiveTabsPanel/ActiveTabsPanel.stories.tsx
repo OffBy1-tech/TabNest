@@ -146,7 +146,7 @@ function withMockWindows(
       return () => {
         (globalThis as Record<string, unknown>).chrome = original;
       };
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, []);
 
     return (
       <div style={{ width: 320, height: 600, position: 'relative' }}>

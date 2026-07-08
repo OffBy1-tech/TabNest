@@ -42,6 +42,20 @@ const STORAGE_KEY = 'tabnest_data'
 
 let writeQueue: Promise<void> = Promise.resolve()
 
+/**
+ * Enqueue a write behind all previously queued writes.
+ * The returned promise reflects this write's own outcome, but the queue
+ * itself always settles — a failed write must not poison later writes.
+ */
+function enqueueWrite(work: () => Promise<void>): Promise<void> {
+  const run = writeQueue.then(work, work)
+  writeQueue = run.then(
+    () => undefined,
+    () => undefined,
+  )
+  return run
+}
+
 // ---------------------------------------------------------------------------
 // Migration table
 // Each key is the schema_version the data is currently AT, the function
@@ -49,13 +63,17 @@ let writeQueue: Promise<void> = Promise.resolve()
 // Empty for v1 — add entries here as the schema evolves.
 // ---------------------------------------------------------------------------
 
+// Migrations operate on arbitrary, not-yet-validated legacy data shapes, so
+// both the input and the output are intentionally `any`. The per-migration
+// `data` params below infer this `any` from the signature (no explicit
+// annotation needed), keeping the no-explicit-any disable to this one line.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const MIGRATIONS: Record<number, (data: any) => any> = {
   /**
    * v1 → v2: Move sync_enabled and sync_interval_minutes out of `settings`
    * (which syncs to Drive) into `local_settings` (device-only, never synced).
    */
-  1: (data: any) => {
+  1: (data) => {
     const { sync_enabled, sync_interval_minutes, ...sharedSettings } = data.settings ?? {}
     return {
       ...data,
@@ -72,7 +90,7 @@ const MIGRATIONS: Record<number, (data: any) => any> = {
    * v2 → v3: Clear accent_color if it still holds the old hardcoded default
    * (#1A56DB). Empty string means "use the CSS token" — no inline override.
    */
-  2: (data: any) => ({
+  2: (data) => ({
     ...data,
     schema_version: 3,
     settings: {
@@ -84,7 +102,7 @@ const MIGRATIONS: Record<number, (data: any) => any> = {
   /**
    * v3 → v4: Remove accent_color entirely — colors come from CSS themes only.
    */
-  3: (data: any) => {
+  3: (data) => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { accent_color: _removed, ...rest } = data.settings ?? {}
     return { ...data, schema_version: 4, settings: rest }
@@ -185,7 +203,7 @@ export async function readStorage(): Promise<StorageSchema> {
  * freshest data.
  */
 export function writeStorage(patch: Partial<StorageSchema>): Promise<void> {
-  writeQueue = writeQueue.then(async () => {
+  return enqueueWrite(async () => {
     const current = await readStorage()
     const merged: StorageSchema = { ...current, ...patch }
 
@@ -199,7 +217,6 @@ export function writeStorage(patch: Partial<StorageSchema>): Promise<void> {
 
     await chromeSet(merged)
   })
-  return writeQueue
 }
 
 // ---------------------------------------------------------------------------
@@ -436,15 +453,14 @@ export async function patchSettings(patch: Partial<UserSettings>): Promise<void>
  * Never bumps last_modified_at — these fields are not synced to Drive.
  */
 export async function patchLocalSettings(patch: Partial<LocalSettings>): Promise<void> {
-  const data = await readStorage()
-  const local_settings: LocalSettings = { ...data.local_settings, ...patch }
-  // Write via writeStorage but local_settings is excluded from touchesUserData check,
-  // so last_modified_at is not bumped.
-  writeQueue = writeQueue.then(async () => {
+  // Merge inside the queued work (read-before-write at execution time) so a
+  // concurrent local_settings write isn't clobbered by a stale merge. Bypasses
+  // writeStorage's touchesUserData check, so last_modified_at is not bumped.
+  return enqueueWrite(async () => {
     const current = await readStorage()
+    const local_settings: LocalSettings = { ...current.local_settings, ...patch }
     await chromeSet({ ...current, local_settings })
   })
-  return writeQueue
 }
 
 // ---------------------------------------------------------------------------
@@ -830,7 +846,6 @@ export async function migrateIfNeeded(): Promise<void> {
   while (version < SCHEMA_VERSION) {
     const migrate = MIGRATIONS[version]
     if (migrate != null) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       current = migrate(current)
     }
     version += 1
