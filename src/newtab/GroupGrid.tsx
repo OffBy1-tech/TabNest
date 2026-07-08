@@ -73,7 +73,23 @@ export function GroupGrid({
   onCreateNote,
 }: GroupGridProps): React.JSX.Element {
   const inputRef = useRef<HTMLInputElement>(null)
+  const cardsRef = useRef<HTMLDivElement>(null)
   const [newGroupName, setNewGroupName] = useState('')
+
+  // Spec §11.4: arrow keys move focus between group cards. Only reacts when a
+  // card itself has focus, so inputs and buttons inside cards keep their keys.
+  function handleCardsKeyDown(e: React.KeyboardEvent<HTMLDivElement>): void {
+    if (!['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].includes(e.key)) return
+    const target = e.target as HTMLElement
+    if (target.tagName.toLowerCase() !== 'article') return
+    const cards = Array.from(cardsRef.current?.querySelectorAll<HTMLElement>('article') ?? [])
+    const idx = cards.indexOf(target)
+    if (idx === -1) return
+    e.preventDefault()
+    const delta = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : -1
+    const next = cards[Math.max(0, Math.min(cards.length - 1, idx + delta))]
+    next?.focus()
+  }
 
   useEffect(() => {
     if (creatingGroup) {
@@ -268,6 +284,8 @@ export function GroupGrid({
           </div>
         ) : (
           <div
+            ref={cardsRef}
+            onKeyDown={handleCardsKeyDown}
             style={{
               display: 'flex',
               flexDirection: viewMode === 'grid' ? 'row' : 'column',

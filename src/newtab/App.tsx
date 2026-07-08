@@ -15,7 +15,7 @@ import { tabTitleOrHostname } from '@/lib/tabTitle'
 import type { Category, TabGroup, UserSettings, Workspace } from '@/lib/schema'
 import type { ActiveTabDragPayload } from '@/components/GroupCard/dragTypes'
 import type { SearchRecord } from '@/lib/search'
-import { DEFAULT_SETTINGS, DEFAULT_LOCAL_SETTINGS, DEFAULT_SYNC_META, SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_DEFAULT } from '@/lib/schema'
+import { DEFAULT_SETTINGS, DEFAULT_LOCAL_SETTINGS, DEFAULT_SYNC_META, SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_DEFAULT, BACKGROUND_PRESETS } from '@/lib/schema'
 import { patchSettings, patchLocalSettings, restoreFromTrash, deleteFromTrash, emptyTrash, createWorkspace, renameWorkspace, deleteWorkspace, createCategory, renameGroup, removeTabFromGroup, renameCategory, deleteCategory, setCategoryCollapsed, moveTabBetweenGroups, addTabToGroup, addTabsToGroup, reorderCategories, saveTabGroup, saveTabNote, saveGroupNote, moveGroupToCategory, duplicateGroup, archiveGroup, reorderTabInGroup, createCategoryNote, saveCategoryNote, deleteCategoryNote, patchCategory, setAllCategoriesCollapsed } from '@/lib/storage'
 
 // ---------------------------------------------------------------------------
@@ -850,6 +850,10 @@ export function App(): React.JSX.Element {
 
   const showFavicons = data?.settings.show_favicons ?? true
 
+  // Spec §11.2: background preset (color or gradient) for the new tab page
+  const backgroundCss =
+    BACKGROUND_PRESETS.find((p) => p.id === (data?.settings.background ?? ''))?.css ?? ''
+
   return (
     <>
       <div
@@ -857,6 +861,7 @@ export function App(): React.JSX.Element {
         style={{
           ...shellStyle,
           ...(resizingSidebar ? { userSelect: 'none', cursor: 'col-resize' } : {}),
+          ...(backgroundCss ? { background: backgroundCss } : {}),
           ['--sidebar-width' as string]: `${sidebarWidth}px`,
         }}
       >

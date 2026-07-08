@@ -20,6 +20,14 @@
   "optional_permissions": [
     "bookmarks"
   ],
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+T"
+      },
+      "description": "Open the Tab Nest popup"
+    }
+  },
   "action": {
     "default_popup": "popup.html",
     "default_title": "Tab Nest",

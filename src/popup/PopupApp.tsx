@@ -12,6 +12,7 @@ import React, {
   useState,
 } from 'react'
 import { FaviconImage } from '../components/GroupCard/FaviconImage'
+import { tabTitleOrHostname } from '../lib/tabTitle'
 import type {
   Category,
   TabGroup,
@@ -59,6 +60,7 @@ export function PopupApp(): React.JSX.Element {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('')
   const [selectedGroupId, setSelectedGroupId] = useState<string>('__new__')
   const [newGroupName, setNewGroupName] = useState<string>('')
+  const [noteText, setNoteText] = useState<string>('')
 
   const [recentGroups, setRecentGroups] = useState<RecentGroup[]>([])
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
@@ -223,13 +225,16 @@ export function PopupApp(): React.JSX.Element {
       if (!target.categoryId || !target.workspaceId) return
 
       setSaveState('saving')
+      setNoteText('')
 
       const savedTab = {
         id: crypto.randomUUID(),
-        title: currentTab.title,
+        title: tabTitleOrHostname(currentTab.title, currentTab.url),
         url: currentTab.url,
         favicon: currentTab.favIconUrl,
         saved_at: Date.now(),
+        // Spec §12: optional note attached to the saved tab
+        note: noteText.trim() || undefined,
       }
 
       try {
@@ -273,6 +278,7 @@ export function PopupApp(): React.JSX.Element {
       selectedCategoryId,
       selectedWorkspaceId,
       recentGroups,
+      noteText,
     ],
   )
 
@@ -281,6 +287,26 @@ export function PopupApp(): React.JSX.Element {
     // Close the popup
     window.close()
   }, [doSave])
+
+  // Spec §11.4/§12: Enter and Cmd/Ctrl+S save from anywhere in the popup
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent): void {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault()
+        void handleSaveAndClose()
+        return
+      }
+      if (e.key === 'Enter') {
+        const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase()
+        // Leave Enter alone on buttons (activates them) and selects (picks an option)
+        if (tag === 'button' || tag === 'select') return
+        e.preventDefault()
+        void handleSaveAndClose()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [handleSaveAndClose])
 
   useEffect(() => {
     return () => {
@@ -510,6 +536,37 @@ export function PopupApp(): React.JSX.Element {
                 />
               </div>
             )}
+            {/* Note field (spec §12): optional note attached to the saved tab */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+              <label
+                htmlFor="popup-note"
+                style={{ fontSize: 'var(--text-xs)', fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+              >
+                Note (optional)
+              </label>
+              <input
+                id="popup-note"
+                type="text"
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+                placeholder="Add a note to this tab…"
+                aria-label="Note for the saved tab"
+                style={{
+                  padding: 'var(--space-2) var(--space-3)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-default)',
+                  backgroundColor: 'var(--bg-surface)',
+                  color: 'var(--text-primary)',
+                  fontSize: 'var(--text-sm)',
+                  fontFamily: 'var(--font-sans)',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  outline: 'none',
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--border-focus)' }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border-default)' }}
+              />
+            </div>
           </div>
 
           {/* Recent groups */}

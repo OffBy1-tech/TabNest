@@ -406,3 +406,11 @@ Confirmed by direct code evidence on the `componentRefactor` branch.
 ### Workspace Management (spec §10)
 - [x] **Delete workspace with trash behavior** — trash icon per row in WorkspaceDropdown (hidden for the last workspace), ConfirmDialog, `deleteWorkspace` now moves the workspace to Trash and `restoreFromTrash` handles the 'workspace' type; App falls back to the first remaining workspace if the active one is deleted
 - [x] **Create workspace from template** — "Copy categories from …" select in the create form; `createWorkspace(name, templateId)` copies category structure (names/colors/emojis) without groups or notes
+
+### Settings, popup & keyboard (spec §11.2/§11.4/§12)
+- [x] **Background setting** — preset swatch picker (color/gradient) in New Tab Page tab; applied to the shell via BACKGROUND_PRESETS
+- [x] **Arrow-key navigation on the group list** — arrows move focus between cards when a card is focused (GroupGrid)
+- [x] **Popup Enter / Cmd/Ctrl+S** — both save-and-close from anywhere in the popup (buttons/selects keep native Enter)
+- [x] **Popup note field** — optional note stored on the SavedTab (spec §12)
+- [x] **Alt+T command** — `commands._execute_action` in manifest.json opens the popup
+- [x] **Popup untitled-tab fallback** — popup saves now use tabTitleOrHostname too

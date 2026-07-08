@@ -19,21 +19,6 @@ Items verified as complete were moved to `tasks_completed.md` (see its "Re-audit
 
 ---
 
-## Settings
-
-- [ ] **Background setting** — spec §11.2 (as amended 2026-07): solid color or gradient preset for the new tab background — no image upload; schema field exists, UI not yet built
-- [ ] **Keyboard shortcut `Arrow keys` on group list** — spec §11.4: arrow keys navigate the group list; GroupCard handles E/Delete/Enter when focused but GroupGrid has no arrow-key navigation between cards
-- [ ] **Keyboard shortcut `Cmd/Ctrl+S` / `Enter` in popup** — spec §11.4 / §12: PopupApp has no keydown handlers; Enter does not submit the save form
-- [ ] **`Alt+T` keyboard shortcut** — spec §11.4 / §5.2: open the popup from any page; manifest.json has no `commands` key
-
----
-
-## Toolbar Popup
-
-- [ ] **"Add note" field on saved tab** — spec §12: optional note attached to the saved tab; PopupApp has no note input
-
----
-
 ## Trash
 
 - [ ] **Original location shown in trash UI** — spec §13: TrashTab shows type badge and deletion date but not the original workspace/category name
