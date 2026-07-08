@@ -107,6 +107,20 @@ const MIGRATIONS: Record<number, (data: any) => any> = {
     const { accent_color: _removed, ...rest } = data.settings ?? {}
     return { ...data, schema_version: 4, settings: rest }
   },
+
+  /**
+   * v4 → v5: Categories gain a standalone `notes` array (spec §7.1).
+   */
+  4: (data) => ({
+    ...data,
+    schema_version: 5,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    workspaces: (data.workspaces ?? []).map((ws: any) => ({
+      ...ws,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      categories: (ws.categories ?? []).map((cat: any) => ({ ...cat, notes: cat.notes ?? [] })),
+    })),
+  }),
 }
 
 // ---------------------------------------------------------------------------
@@ -564,6 +578,7 @@ export async function createCategory(workspaceId: string, name: string): Promise
     color: '#6366f1',
     emoji: '📁',
     collapsed: false,
+    notes: [],
     order: data.workspaces.find((w) => w.id === workspaceId)?.categories.length ?? 0,
     groups: [],
   }
@@ -731,6 +746,89 @@ export async function saveGroupNote(
   await writeStorage({ workspaces })
 }
 
+// ---------------------------------------------------------------------------
+// Standalone category notes (spec §7.1)
+// ---------------------------------------------------------------------------
+
+/**
+ * Create a standalone note in a category. Returns the new note's id.
+ */
+export async function createCategoryNote(
+  workspaceId: string,
+  categoryId: string,
+  content = '',
+): Promise<string> {
+  const data = await readStorage()
+  const now = Date.now()
+  const noteId = crypto.randomUUID()
+  const workspaces = data.workspaces.map((ws) => {
+    if (ws.id !== workspaceId) return ws
+    return {
+      ...ws,
+      categories: ws.categories.map((cat) =>
+        cat.id === categoryId
+          ? { ...cat, notes: [...(cat.notes ?? []), { id: noteId, content, created_at: now, updated_at: now }] }
+          : cat,
+      ),
+    }
+  })
+  await writeStorage({ workspaces })
+  return noteId
+}
+
+/**
+ * Update a standalone note's content in place.
+ */
+export async function saveCategoryNote(
+  workspaceId: string,
+  categoryId: string,
+  noteId: string,
+  content: string,
+): Promise<void> {
+  const data = await readStorage()
+  const now = Date.now()
+  const workspaces = data.workspaces.map((ws) => {
+    if (ws.id !== workspaceId) return ws
+    return {
+      ...ws,
+      categories: ws.categories.map((cat) =>
+        cat.id === categoryId
+          ? {
+              ...cat,
+              notes: (cat.notes ?? []).map((n) =>
+                n.id === noteId ? { ...n, content, updated_at: now } : n,
+              ),
+            }
+          : cat,
+      ),
+    }
+  })
+  await writeStorage({ workspaces })
+}
+
+/**
+ * Permanently delete a standalone note from a category.
+ */
+export async function deleteCategoryNote(
+  workspaceId: string,
+  categoryId: string,
+  noteId: string,
+): Promise<void> {
+  const data = await readStorage()
+  const workspaces = data.workspaces.map((ws) => {
+    if (ws.id !== workspaceId) return ws
+    return {
+      ...ws,
+      categories: ws.categories.map((cat) =>
+        cat.id === categoryId
+          ? { ...cat, notes: (cat.notes ?? []).filter((n) => n.id !== noteId) }
+          : cat,
+      ),
+    }
+  })
+  await writeStorage({ workspaces })
+}
+
 /**
  * Move a group to a different category within the same workspace.
  * No-ops if the group is already in the target category.
@@ -866,6 +964,7 @@ export async function archiveGroup(
         color: '#64748b',
         emoji: '🗄️',
         collapsed: true,
+        notes: [],
         order: ws.categories.length,
         groups: [group],
       }

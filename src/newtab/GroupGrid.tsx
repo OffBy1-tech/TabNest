@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { GroupCard } from '@/components/GroupCard/GroupCard'
-import type { TabGroup } from '@/lib/schema'
+import { NoteCard } from '@/components/Notes/NoteCard'
+import type { Note, TabGroup } from '@/lib/schema'
 
 export interface GroupGridProps {
   groups: TabGroup[]
@@ -30,6 +31,12 @@ export interface GroupGridProps {
   /** Controlled by App so the N keyboard shortcut can trigger it. */
   creatingGroup?: boolean
   onCreatingGroupChange?: (v: boolean) => void
+  /** Standalone notes to render as cards after the groups (spec §7.1). */
+  notes?: Note[] | undefined
+  onSaveNote?: ((noteId: string, content: string) => void) | undefined
+  onDeleteNote?: ((noteId: string) => void) | undefined
+  /** When defined, shows a New Note button next to New Group. */
+  onCreateNote?: (() => void) | undefined
 }
 
 /** The main content area: the grid/list of GroupCards plus inline group creation. */
@@ -57,6 +64,10 @@ export function GroupGrid({
   onCreateGroup,
   creatingGroup = false,
   onCreatingGroupChange,
+  notes,
+  onSaveNote,
+  onDeleteNote,
+  onCreateNote,
 }: GroupGridProps): React.JSX.Element {
   const inputRef = useRef<HTMLInputElement>(null)
   const [newGroupName, setNewGroupName] = useState('')
@@ -88,9 +99,40 @@ export function GroupGrid({
           flexDirection: 'column',
         }}
       >
-        {/* Header row: New Group button */}
+        {/* Header row: New Group / New Note buttons */}
         {canCreate && !creatingGroup && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-4)', flexShrink: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)', marginBottom: 'var(--space-4)', flexShrink: 0 }}>
+            {onCreateNote && (
+              <button
+                type="button"
+                onClick={onCreateNote}
+                aria-label="Create new note"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 'var(--space-1)',
+                  padding: 'var(--space-2) var(--space-3)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-default)',
+                  backgroundColor: 'transparent',
+                  color: 'var(--text-secondary)',
+                  fontSize: 'var(--text-sm)',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-sans)',
+                  transition: 'border-color var(--duration-fast) var(--ease-default), color var(--duration-fast) var(--ease-default)',
+                }}
+                onMouseEnter={(e) => {
+                  ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-warning, #f59e0b)'
+                  ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--color-warning, #f59e0b)'
+                }}
+                onMouseLeave={(e) => {
+                  ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-default)'
+                  ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)'
+                }}
+              >
+                + New Note
+              </button>
+            )}
             <button
               type="button"
               onClick={() => onCreatingGroupChange?.(true)}
@@ -200,7 +242,7 @@ export function GroupGrid({
         )}
 
         {/* Empty state */}
-        {groups.length === 0 && !creatingGroup ? (
+        {groups.length === 0 && (notes?.length ?? 0) === 0 && !creatingGroup ? (
           <div
             style={{
               flex: 1,
@@ -256,6 +298,16 @@ export function GroupGrid({
                 showFavicons={showFavicons}
               />
             ))}
+            {onSaveNote && onDeleteNote &&
+              (notes ?? []).map((note) => (
+                <NoteCard
+                  key={note.id}
+                  note={note}
+                  viewMode={viewMode}
+                  onChange={onSaveNote}
+                  onDelete={onDeleteNote}
+                />
+              ))}
           </div>
         )}
       </div>

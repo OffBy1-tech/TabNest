@@ -10,7 +10,7 @@ import { z } from 'zod'
 // Version
 // ---------------------------------------------------------------------------
 
-export const SCHEMA_VERSION = 4
+export const SCHEMA_VERSION = 5
 
 // ---------------------------------------------------------------------------
 // Core entities — Zod schemas first, TypeScript types inferred from them
@@ -51,6 +51,8 @@ export const CategorySchema = z.object({
   collapsed: z.boolean(),
   order: z.number().int().nonnegative(),
   groups: z.array(TabGroupSchema),
+  /** Standalone notes (spec §7.1) — cards with no associated tabs. Defaulted so pre-existing data parses. */
+  notes: z.array(NoteSchema).default([]),
 })
 
 export const WorkspaceSchema = z.object({
@@ -295,6 +297,7 @@ export function DEFAULT_WORKSPACE(): Workspace {
         color: '#6366f1',
         emoji: '📁',
         collapsed: false,
+        notes: [],
         order: 0,
         groups: [],
       },

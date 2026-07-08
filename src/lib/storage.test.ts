@@ -72,7 +72,7 @@ function makeGroup(name = 'Group', tabs: SavedTab[] = []): TabGroup {
 }
 
 function makeCategory(name = 'Category', groups: TabGroup[] = []): Category {
-  return { id: crypto.randomUUID(), name, color: '#6366f1', emoji: '📁', collapsed: false, order: 0, groups }
+  return { id: crypto.randomUUID(), name, color: '#6366f1', emoji: '📁', collapsed: false, order: 0, groups, notes: [] }
 }
 
 function makeWorkspace(name = 'Workspace', categories: Category[] = [makeCategory()]): Workspace {
@@ -305,6 +305,27 @@ describe('moveTabBetweenGroups', () => {
     const seeded = seed([ws])
     await storage.moveTabBetweenGroups(ws.id, group.id, group.id, tab.id)
     expect(stored()).toEqual(seeded)
+  })
+})
+
+describe('standalone category notes', () => {
+  it('creates, updates, and deletes a note in a category', async () => {
+    const cat = makeCategory()
+    const ws = makeWorkspace('WS', [cat])
+    seed([ws])
+
+    const noteId = await storage.createCategoryNote(ws.id, cat.id, 'hello')
+    let notes = stored().workspaces[0]!.categories[0]!.notes
+    expect(notes).toHaveLength(1)
+    expect(notes[0]).toMatchObject({ id: noteId, content: 'hello' })
+
+    await storage.saveCategoryNote(ws.id, cat.id, noteId, 'updated')
+    notes = stored().workspaces[0]!.categories[0]!.notes
+    expect(notes[0]!.content).toBe('updated')
+    expect(notes[0]!.updated_at).toBeGreaterThanOrEqual(notes[0]!.created_at)
+
+    await storage.deleteCategoryNote(ws.id, cat.id, noteId)
+    expect(stored().workspaces[0]!.categories[0]!.notes).toHaveLength(0)
   })
 })
 
@@ -578,6 +599,32 @@ describe('migrateIfNeeded', () => {
     expect(data.settings).not.toHaveProperty('sync_interval_minutes')
     expect(data.settings).not.toHaveProperty('accent_color')
     expect(data.workspaces).toEqual([ws])
+  })
+
+  it('migrates v4 data: categories gain an empty notes array', async () => {
+    const ws = makeWorkspace()
+    // Simulate v4 data — categories have no notes field
+    const v4ws = {
+      ...ws,
+      categories: ws.categories.map((c) => {
+        const withoutNotes: Record<string, unknown> = { ...c }
+        delete withoutNotes['notes']
+        return withoutNotes
+      }),
+    }
+    store['tabnest_data'] = {
+      schema_version: 4,
+      workspaces: [v4ws],
+      settings: { ...DEFAULT_SETTINGS },
+      sync_meta: DEFAULT_SYNC_META(),
+      trash: [],
+    }
+
+    await storage.migrateIfNeeded()
+
+    const data = stored()
+    expect(data.schema_version).toBe(SCHEMA_VERSION)
+    expect(data.workspaces[0]!.categories[0]!.notes).toEqual([])
   })
 
   it('flags a sync error instead of persisting an invalid migrated document', async () => {

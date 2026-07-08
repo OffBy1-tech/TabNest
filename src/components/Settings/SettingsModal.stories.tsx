@@ -68,6 +68,7 @@ const mockWorkspaces: Workspace[] = [
         color: '#1A56DB',
         emoji: '💼',
         collapsed: false,
+        notes: [],
         order: 0,
         groups: [
           {

@@ -6,17 +6,6 @@ Items verified as complete were moved to `tasks_completed.md` (see its "Re-audit
 
 ---
 
-## Notes & To-Dos
-
-A plain-text note editor now exists (NoteEditor.tsx: auto-focus textarea, saves on blur, group + per-tab notes). The rest of the spec's note system is unbuilt:
-
-- [ ] **Markdown rendering** — spec §7.2: rendered preview with bold, italic, inline code, headers, lists, checkboxes; editor is a plain textarea, no Markdown renderer installed
-- [ ] **Standalone Note** — spec §7.1: a card in a category with no associated tabs; no creation path, rendering, or storage operation
-- [ ] **Interactive checkboxes in notes** — spec §7.3: click to toggle checked state without entering edit mode; not implemented
-- [ ] **"Clear checked items" option** — spec §7.3: removes all completed checklist items from a note; not implemented
-
----
-
 ## Search
 
 - [ ] **Filter chips** — spec §8.3: filter by workspace, category, date range, type (tab / group / category); no filter UI in SearchOverlay

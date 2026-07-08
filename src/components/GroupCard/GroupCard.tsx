@@ -9,7 +9,7 @@ import { normalizeUrlInput } from '../../lib/tabTitle'
 import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog'
 import { InlineNameEditor } from './InlineNameEditor'
 import { KebabMenu, type KebabMenuItem } from './KebabMenu'
-import { NoteEditor } from './NoteEditor'
+import { MarkdownNote } from '../Notes/MarkdownNote'
 import { TabRow } from './TabRow'
 import { DRAG_TYPE, type DragPayload } from './dragTypes'
 
@@ -626,10 +626,11 @@ export function GroupCard({
       {/* Group note panel */}
       {noteOpen && (
         <div style={{ padding: 'var(--space-2) var(--space-3) var(--space-3)' }}>
-          <NoteEditor
-            initialValue={groupNote}
-            placeholder="Add a note for this group…"
-            onSave={(value) => onSaveGroupNote(group.id, value)}
+          <MarkdownNote
+            content={groupNote}
+            placeholder="Add a note for this group… (Markdown supported)"
+            autoEdit={!hasGroupNote}
+            onChange={(value) => onSaveGroupNote(group.id, value)}
           />
         </div>
       )}

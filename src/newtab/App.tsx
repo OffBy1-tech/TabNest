@@ -15,7 +15,7 @@ import { tabTitleOrHostname } from '@/lib/tabTitle'
 import type { Category, TabGroup, UserSettings, Workspace } from '@/lib/schema'
 import type { SearchRecord } from '@/lib/search'
 import { DEFAULT_SETTINGS, DEFAULT_LOCAL_SETTINGS, DEFAULT_SYNC_META, SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_DEFAULT } from '@/lib/schema'
-import { patchSettings, patchLocalSettings, restoreFromTrash, deleteFromTrash, emptyTrash, createWorkspace, renameWorkspace, createCategory, renameGroup, removeTabFromGroup, renameCategory, deleteCategory, setCategoryCollapsed, moveTabBetweenGroups, addTabToGroup, addTabsToGroup, reorderCategories, saveTabGroup, saveTabNote, saveGroupNote, moveGroupToCategory, duplicateGroup, archiveGroup, reorderTabInGroup } from '@/lib/storage'
+import { patchSettings, patchLocalSettings, restoreFromTrash, deleteFromTrash, emptyTrash, createWorkspace, renameWorkspace, createCategory, renameGroup, removeTabFromGroup, renameCategory, deleteCategory, setCategoryCollapsed, moveTabBetweenGroups, addTabToGroup, addTabsToGroup, reorderCategories, saveTabGroup, saveTabNote, saveGroupNote, moveGroupToCategory, duplicateGroup, archiveGroup, reorderTabInGroup, createCategoryNote, saveCategoryNote, deleteCategoryNote } from '@/lib/storage'
 
 // ---------------------------------------------------------------------------
 // Layout shell styles
@@ -164,6 +164,12 @@ export function App(): React.JSX.Element {
   const groups: TabGroup[] = selectedCategoryId
     ? (categories.find((c) => c.id === selectedCategoryId)?.groups ?? [])
     : categories.filter((c) => !c.collapsed).flatMap((c) => c.groups)
+
+  // Standalone notes mirror the group derivation (spec §7.1). `?? []` guards
+  // pre-migration data read before onInstalled has run.
+  const standaloneNotes = selectedCategoryId
+    ? (categories.find((c) => c.id === selectedCategoryId)?.notes ?? [])
+    : categories.filter((c) => !c.collapsed).flatMap((c) => c.notes ?? [])
 
   // Sync meta for TopBar
   const syncState = data?.sync_meta.sync_state ?? 'idle'
@@ -564,6 +570,37 @@ export function App(): React.JSX.Element {
     })
   }, [activeWorkspace, selectedCategoryId, showToast])
 
+  const handleCreateNote = useCallback((): void => {
+    if (!activeWorkspace || !selectedCategoryId) return
+    createCategoryNote(activeWorkspace.id, selectedCategoryId).catch(() => {
+      showToast('Failed to create note. Please try again.', 'error')
+    })
+  }, [activeWorkspace, selectedCategoryId, showToast])
+
+  const handleSaveStandaloneNote = useCallback(
+    (noteId: string, content: string): void => {
+      if (!activeWorkspace) return
+      const cat = categories.find((c) => (c.notes ?? []).some((n) => n.id === noteId))
+      if (!cat) return
+      saveCategoryNote(activeWorkspace.id, cat.id, noteId, content).catch(() => {
+        showToast('Failed to save note. Please try again.', 'error')
+      })
+    },
+    [activeWorkspace, categories, showToast],
+  )
+
+  const handleDeleteStandaloneNote = useCallback(
+    (noteId: string): void => {
+      if (!activeWorkspace) return
+      const cat = categories.find((c) => (c.notes ?? []).some((n) => n.id === noteId))
+      if (!cat) return
+      deleteCategoryNote(activeWorkspace.id, cat.id, noteId).catch(() => {
+        showToast('Failed to delete note. Please try again.', 'error')
+      })
+    },
+    [activeWorkspace, categories, showToast],
+  )
+
   const handleCreateCategory = useCallback((name: string): void => {
     if (!activeWorkspace) return
     createCategory(activeWorkspace.id, name).catch(() => {
@@ -826,6 +863,10 @@ export function App(): React.JSX.Element {
               onCreateGroup={selectedCategoryId ? handleCreateEmptyGroup : undefined}
               creatingGroup={creatingGroup}
               onCreatingGroupChange={(v) => setCreatingGroup(v)}
+              notes={standaloneNotes}
+              onSaveNote={handleSaveStandaloneNote}
+              onDeleteNote={handleDeleteStandaloneNote}
+              onCreateNote={selectedCategoryId ? handleCreateNote : undefined}
             />
           )}
 

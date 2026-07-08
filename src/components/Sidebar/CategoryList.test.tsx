@@ -4,7 +4,7 @@ import type { Category, Workspace } from '../../lib/schema'
 import { CategoryList } from './CategoryList'
 
 function category(id: string, name: string, emoji = '📁'): Category {
-  return { id, name, color: '', emoji, collapsed: false, order: 0, groups: [] }
+  return { id, name, color: '', emoji, collapsed: false, order: 0, groups: [], notes: [] }
 }
 
 const workspaces: Workspace[] = [{ id: 'ws-1', name: 'Personal', created_at: 0, categories: [] }]

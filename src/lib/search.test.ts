@@ -22,7 +22,7 @@ function makeGroup(name: string, tabs: SavedTab[], noteContent?: string): TabGro
 }
 
 function makeCategory(name: string, groups: TabGroup[]): Category {
-  return { id: crypto.randomUUID(), name, color: '#6366f1', emoji: '📁', collapsed: false, order: 0, groups }
+  return { id: crypto.randomUUID(), name, color: '#6366f1', emoji: '📁', collapsed: false, order: 0, groups, notes: [] }
 }
 
 function makeWorkspace(name: string, categories: Category[]): Workspace {

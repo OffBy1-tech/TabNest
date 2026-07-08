@@ -380,3 +380,10 @@ Confirmed by direct code evidence on the `componentRefactor` branch.
 - [x] **Note preview** — first line shown italic under the tab list; click opens the editor
 - [x] **Within-group tab reorder** — drop a dragged tab on another row of the same group; `reorderTabInGroup`
 - [x] **Copy as URL list** — "url | title" lines to clipboard (round-trips with OneTab import)
+
+### Notes system (spec §7)
+- [x] **Markdown rendering** — dependency-free subset parser (lib/markdown.ts): #/##/### headers, bold, italic, inline code, lists, checkboxes; rendered by MarkdownNote (components/Notes/)
+- [x] **Click-to-edit with auto-save on blur** — MarkdownNote switches preview ↔ textarea; group notes use it (per-tab notes keep the plain NoteEditor)
+- [x] **Interactive checkboxes** — toggle from preview without entering edit mode (`toggleCheckbox` edits the source text)
+- [x] **Clear checked items** — button appears when any box is checked (`clearCheckedItems`)
+- [x] **Standalone notes** — Category.notes (schema v5 + migration), NoteCard rendered alongside groups, "+ New Note" button in category view, storage CRUD (createCategoryNote/saveCategoryNote/deleteCategoryNote)
