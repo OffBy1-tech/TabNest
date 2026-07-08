@@ -37,6 +37,14 @@ function clampSidebarWidth(width: number): number {
   return Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, Math.round(width)))
 }
 
+/** Spec §16: surface storage-quota failures with a specific message. */
+function saveErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message.startsWith('QuotaExceededError')) {
+    return 'Storage is full — delete some groups or empty the trash to free space.'
+  }
+  return fallback
+}
+
 const sidebarStyle: React.CSSProperties = {
   gridArea: 'sidebar',
   backgroundColor: 'var(--bg-surface)',
@@ -176,6 +184,27 @@ export function App(): React.JSX.Element {
   const syncState = data?.sync_meta.sync_state ?? 'idle'
   const lastSyncAt = data?.sync_meta.last_sync_at ?? 0
   const pendingSync = data?.sync_meta.pending_sync ?? false
+
+  // Spec §17: surface sync failures as a toast with a Retry action.
+  // Fires only on the idle/syncing → error transition, not on every render.
+  const prevSyncStateRef = useRef<string | null>(null)
+  useEffect(() => {
+    const prev = prevSyncStateRef.current
+    prevSyncStateRef.current = syncState
+    if (syncState === 'error' && prev !== null && prev !== 'error') {
+      const message = data?.sync_meta.error_message ?? 'Drive sync failed.'
+      showToast(message, 'error', 8000, {
+        label: 'Retry',
+        onClick: () => {
+          try {
+            chrome.runtime.sendMessage({ type: 'TRIGGER_SYNC' })
+          } catch {
+            // Non-extension context
+          }
+        },
+      })
+    }
+  }, [syncState, data?.sync_meta.error_message, showToast])
 
   // Spec §9.2 multi-device: pull the latest Drive data when the page loads,
   // at most once per page and only when the last sync is stale (>1 min).
@@ -318,8 +347,8 @@ export function App(): React.JSX.Element {
         url,
         saved_at: Date.now(),
       }
-      addTabToGroup(activeWorkspace.id, cat.id, groupId, savedTab).catch(() => {
-        showToast('Failed to add tab. Please try again.', 'error')
+      addTabToGroup(activeWorkspace.id, cat.id, groupId, savedTab).catch((err: unknown) => {
+        showToast(saveErrorMessage(err, 'Failed to add tab. Please try again.'), 'error')
       })
     },
     [activeWorkspace, categories, showToast],
@@ -523,8 +552,8 @@ export function App(): React.JSX.Element {
           }
         }
       }
-      const onError = (): void => {
-        showToast('Failed to save tab. Please try again.', 'error')
+      const onError = (err: unknown): void => {
+        showToast(saveErrorMessage(err, 'Failed to save tab. Please try again.'), 'error')
       }
 
       if (groupId !== null) {
@@ -564,8 +593,8 @@ export function App(): React.JSX.Element {
         }))
       if (savedTabs.length === 0) return
 
-      const onError = (): void => {
-        showToast('Failed to save tabs. Please try again.', 'error')
+      const onError = (err: unknown): void => {
+        showToast(saveErrorMessage(err, 'Failed to save tabs. Please try again.'), 'error')
       }
 
       if (groupId !== null) {

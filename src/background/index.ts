@@ -348,8 +348,17 @@ async function runSync(): Promise<void> {
   try {
     const token = await acquireToken(false)
     if (!token) {
-      // Token not available non-interactively (user hasn't authorized yet)
-      await patchSyncMeta({ sync_state: 'idle' })
+      if (meta.drive_file_id !== null) {
+        // Was connected before — the token expired or was revoked. Surface it
+        // so the UI can prompt re-authentication (spec §17). Data is untouched.
+        await patchSyncMeta({
+          sync_state: 'error',
+          error_message: 'Google Drive authorization expired. Reconnect in Settings → Sync.',
+        })
+      } else {
+        // Never authorized on this device — nothing to sync yet
+        await patchSyncMeta({ sync_state: 'idle' })
+      }
       return
     }
 

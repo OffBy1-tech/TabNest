@@ -19,16 +19,7 @@ Items verified as complete were moved to `tasks_completed.md` (see its "Re-audit
 ## Performance
 
 - [ ] **Virtual scrolling for large tab lists** — spec §16: virtual scrolling for 1000+ tab entries; GroupGrid renders everything with no virtualization
-- [ ] **`chrome.storage.local` quota error surfaced to user** — spec §16: `unlimitedStorage` makes this rare, but `writeStorage` still throws a typed `QuotaExceededError` and only generic "Failed to save" toasts exist — no quota-specific message is surfaced
 
 ---
 
-## Error Handling
-
-- [ ] **Drive sync failure toast with retry button** — spec §17: background auto-retries via `ALARM_RETRY_SYNC` and the sync dot turns red, but there is no user-facing toast with a retry button
-- [ ] **Expired OAuth token re-authentication flow** — spec §17: `acquireToken(false)` returns null silently during scheduled sync; no prompt to re-authenticate
-
----
-
----
 

@@ -423,3 +423,8 @@ Confirmed by direct code evidence on the `componentRefactor` branch.
 - [x] **Restore from backup** — GET_DRIVE_REVISIONS / RESTORE_DRIVE_REVISION messages; Settings > Sync lists the last 10 Drive revisions with confirm-to-restore; revision content is Zod-validated and current workspaces are kept as backup_local before applying
 - [x] **Multi-device pull on load** — runSync on chrome.runtime.onStartup, plus the newtab page triggers a sync once per load when enabled and >1 min stale
 - [x] **Pending-sync indicator** — SyncStatusDot shows an amber "Changes pending sync" dot from sync_meta.pending_sync
+
+### Error handling (spec §16/§17)
+- [x] **Sync failure toast with Retry** — Toast supports an inline action button; App toasts on the → error transition with the sync error message and a Retry that re-triggers sync
+- [x] **Expired-token reauthentication** — runSync distinguishes never-authorized (idle) from was-connected (error: "authorization expired, reconnect in Settings → Sync"), surfaced by the same toast
+- [x] **Quota-specific save errors** — QuotaExceededError from writeStorage maps to a "storage is full" message in the main save paths

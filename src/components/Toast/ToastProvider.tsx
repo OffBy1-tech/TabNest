@@ -11,10 +11,10 @@ import React, {
   useState,
 } from 'react'
 import { Toast } from './Toast'
-import type { ToastItem, ToastType } from './Toast'
+import type { ToastItem, ToastType, ToastAction } from './Toast'
 
 interface ToastContextValue {
-  showToast: (message: string, type: ToastType, duration?: number) => void
+  showToast: (message: string, type: ToastType, duration?: number, action?: ToastAction) => void
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null)
@@ -29,9 +29,9 @@ export function ToastProvider({
   const [toasts, setToasts] = useState<ToastItem[]>([])
 
   const showToast = useCallback(
-    (message: string, type: ToastType, duration: number = DEFAULT_DURATION) => {
+    (message: string, type: ToastType, duration: number = DEFAULT_DURATION, action?: ToastAction) => {
       const id = crypto.randomUUID()
-      setToasts((prev) => [...prev, { id, message, type, duration }])
+      setToasts((prev) => [...prev, { id, message, type, duration, action }])
     },
     [],
   )
