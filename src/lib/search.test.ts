@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { buildSearchIndex, createSearchEngine, search } from './search'
+import {
+  buildSearchIndex,
+  createSearchEngine,
+  search,
+  filterRecords,
+  sortRecords,
+  DEFAULT_SEARCH_FILTERS,
+  type SearchRecord,
+} from './search'
 import type { Workspace, Category, TabGroup, SavedTab } from './schema'
 
 function makeTab(title: string, url: string, note?: string): SavedTab {
@@ -124,5 +132,92 @@ describe('search', () => {
       buildSearchIndex([makeWorkspace('WS', [makeCategory('Cat', [makeGroup('Grp', manyTabs)])])]),
     )
     expect(search(bigEngine, 'Duplicate', 5)).toHaveLength(5)
+  })
+})
+
+describe('filterRecords', () => {
+  const NOW = Date.now()
+  function rec(over: Partial<SearchRecord>): SearchRecord {
+    return {
+      id: crypto.randomUUID(),
+      type: 'tab',
+      title: 'T',
+      workspace_name: 'WS',
+      category_name: 'Cat',
+      breadcrumb: 'WS > Cat',
+      workspace_id: 'ws-1',
+      category_id: 'cat-1',
+      ...over,
+    }
+  }
+
+  it('passes everything through with default filters', () => {
+    const records = [rec({}), rec({ type: 'group' })]
+    expect(filterRecords(records, DEFAULT_SEARCH_FILTERS, NOW)).toHaveLength(2)
+  })
+
+  it('filters by workspace and category', () => {
+    const records = [rec({ workspace_id: 'ws-1' }), rec({ workspace_id: 'ws-2' })]
+    expect(
+      filterRecords(records, { ...DEFAULT_SEARCH_FILTERS, workspaceId: 'ws-1' }, NOW),
+    ).toHaveLength(1)
+
+    const catRecords = [rec({ category_id: 'cat-1' }), rec({ category_id: 'cat-2' })]
+    expect(
+      filterRecords(catRecords, { ...DEFAULT_SEARCH_FILTERS, categoryId: 'cat-2' }, NOW),
+    ).toHaveLength(1)
+  })
+
+  it('filters by type set', () => {
+    const records = [rec({ type: 'tab' }), rec({ type: 'group' }), rec({ type: 'category' })]
+    const filtered = filterRecords(
+      records,
+      { ...DEFAULT_SEARCH_FILTERS, types: new Set<SearchRecord['type']>(['tab', 'group']) },
+      NOW,
+    )
+    expect(filtered.map((r) => r.type)).toEqual(['tab', 'group'])
+  })
+
+  it('filters by date range and drops timestamp-less records when a range is set', () => {
+    const records = [
+      rec({ timestamp: NOW - 1000 }),                          // recent
+      rec({ timestamp: NOW - 8 * 24 * 60 * 60 * 1000 }),       // 8 days ago
+      rec({ type: 'category' }),                                // no timestamp
+    ]
+    const week = filterRecords(records, { ...DEFAULT_SEARCH_FILTERS, dateRange: 'week' }, NOW)
+    expect(week).toHaveLength(1)
+    const month = filterRecords(records, { ...DEFAULT_SEARCH_FILTERS, dateRange: 'month' }, NOW)
+    expect(month).toHaveLength(2)
+  })
+})
+
+describe('sortRecords', () => {
+  const base = { workspace_name: '', category_name: '', breadcrumb: '', workspace_id: 'w' }
+  const records: SearchRecord[] = [
+    { id: '1', type: 'tab', title: 'Banana', timestamp: 200, ...base },
+    { id: '2', type: 'tab', title: 'Apple', timestamp: 300, ...base },
+    { id: '3', type: 'category', title: 'Cherry', ...base },
+  ]
+
+  it('relevance keeps the original order', () => {
+    expect(sortRecords(records, 'relevance').map((r) => r.id)).toEqual(['1', '2', '3'])
+  })
+
+  it('newest sorts by timestamp desc with timestamp-less records last', () => {
+    expect(sortRecords(records, 'newest').map((r) => r.id)).toEqual(['2', '1', '3'])
+  })
+
+  it('oldest sorts by timestamp asc with timestamp-less records last', () => {
+    expect(sortRecords(records, 'oldest').map((r) => r.id)).toEqual(['1', '2', '3'])
+  })
+
+  it('az sorts by title', () => {
+    expect(sortRecords(records, 'az').map((r) => r.title)).toEqual(['Apple', 'Banana', 'Cherry'])
+  })
+
+  it('does not mutate the input array', () => {
+    const input = [...records]
+    sortRecords(input, 'az')
+    expect(input.map((r) => r.id)).toEqual(['1', '2', '3'])
   })
 })

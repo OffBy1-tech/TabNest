@@ -10,7 +10,13 @@ import {
   buildSearchIndex,
   createSearchEngine,
   search,
+  filterRecords,
+  sortRecords,
+  DEFAULT_SEARCH_FILTERS,
   type SearchRecord,
+  type SearchFilters,
+  type SearchSort,
+  type SearchDateRange,
 } from '../../lib/search'
 import type { Workspace } from '../../lib/schema'
 
@@ -76,6 +82,18 @@ function flattenSections(sections: ResultSection[]): SearchRecord[] {
   return sections.flatMap((s) => s.items)
 }
 
+const filterSelectStyle: React.CSSProperties = {
+  fontSize: 'var(--text-xs)',
+  padding: '2px var(--space-1)',
+  borderRadius: 'var(--radius-sm)',
+  border: '1px solid var(--border-default)',
+  backgroundColor: 'var(--bg-surface)',
+  color: 'var(--text-secondary)',
+  fontFamily: 'var(--font-sans)',
+  cursor: 'pointer',
+  maxWidth: 140,
+}
+
 // ---------------------------------------------------------------------------
 // SearchOverlay
 // ---------------------------------------------------------------------------
@@ -88,6 +106,10 @@ export function SearchOverlay({
 }: SearchOverlayProps): React.JSX.Element | null {
   const [query, setQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
+  // Filters and sort deliberately survive close/reopen — spec §8.3 says active
+  // filters persist for the session (the overlay stays mounted while closed).
+  const [filters, setFilters] = useState<SearchFilters>(DEFAULT_SEARCH_FILTERS)
+  const [sort, setSort] = useState<SearchSort>('relevance')
   const inputRef = useRef<HTMLInputElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -103,8 +125,27 @@ export function SearchOverlay({
 
   const results = useMemo<SearchRecord[]>(() => {
     if (query.trim().length === 0) return []
-    return search(engine, query)
-  }, [engine, query])
+    return sortRecords(filterRecords(search(engine, query), filters), sort)
+  }, [engine, query, filters, sort])
+
+  // Category options follow the workspace filter (or span all workspaces)
+  const categoryOptions = useMemo(
+    () =>
+      workspaces
+        .filter((ws) => !filters.workspaceId || ws.id === filters.workspaceId)
+        .flatMap((ws) => ws.categories.map((c) => ({ id: c.id, name: c.name }))),
+    [workspaces, filters.workspaceId],
+  )
+
+  function toggleTypeFilter(type: SearchRecord['type']): void {
+    setFilters((prev) => {
+      const types = new Set(prev.types)
+      if (types.has(type)) types.delete(type)
+      else types.add(type)
+      return { ...prev, types }
+    })
+    setActiveIndex(0)
+  }
 
   const sections = useMemo(() => groupResults(results), [results])
   const flatResults = useMemo(() => flattenSections(sections), [sections])
@@ -316,6 +357,106 @@ export function SearchOverlay({
           >
             Esc
           </kbd>
+        </div>
+
+        {/* Filter chips + sort (spec §8.3) */}
+        <div
+          role="group"
+          aria-label="Search filters"
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: 'var(--space-2)',
+            padding: 'var(--space-2) var(--space-4)',
+            borderBottom: results.length > 0 ? '1px solid var(--border-default)' : 'none',
+          }}
+        >
+          {(['tab', 'group', 'category'] as const).map((type) => {
+            const active = filters.types.has(type)
+            return (
+              <button
+                key={type}
+                type="button"
+                aria-pressed={active}
+                onClick={() => toggleTypeFilter(type)}
+                style={{
+                  fontSize: 'var(--text-xs)',
+                  padding: '2px var(--space-2)',
+                  borderRadius: 'var(--radius-full)',
+                  border: `1px solid ${active ? 'var(--color-brand-500)' : 'var(--border-default)'}`,
+                  backgroundColor: active ? 'var(--color-brand-100)' : 'transparent',
+                  color: active ? 'var(--color-brand-500)' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-sans)',
+                }}
+              >
+                {TYPE_LABELS[type]}
+              </button>
+            )
+          })}
+
+          <select
+            aria-label="Filter by workspace"
+            value={filters.workspaceId}
+            onChange={(e) => {
+              setFilters((prev) => ({ ...prev, workspaceId: e.target.value, categoryId: '' }))
+              setActiveIndex(0)
+            }}
+            style={filterSelectStyle}
+          >
+            <option value="">All workspaces</option>
+            {workspaces.map((ws) => (
+              <option key={ws.id} value={ws.id}>{ws.name}</option>
+            ))}
+          </select>
+
+          <select
+            aria-label="Filter by category"
+            value={filters.categoryId}
+            onChange={(e) => {
+              setFilters((prev) => ({ ...prev, categoryId: e.target.value }))
+              setActiveIndex(0)
+            }}
+            style={filterSelectStyle}
+          >
+            <option value="">All categories</option>
+            {categoryOptions.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+
+          <select
+            aria-label="Filter by date"
+            value={filters.dateRange}
+            onChange={(e) => {
+              setFilters((prev) => ({ ...prev, dateRange: e.target.value as SearchDateRange }))
+              setActiveIndex(0)
+            }}
+            style={filterSelectStyle}
+          >
+            <option value="any">Any time</option>
+            <option value="day">Last 24 hours</option>
+            <option value="week">Last week</option>
+            <option value="month">Last month</option>
+          </select>
+
+          <span style={{ flex: 1 }} />
+
+          <select
+            aria-label="Sort results"
+            value={sort}
+            onChange={(e) => {
+              setSort(e.target.value as SearchSort)
+              setActiveIndex(0)
+            }}
+            style={filterSelectStyle}
+          >
+            <option value="relevance">Relevance</option>
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="az">A–Z</option>
+          </select>
         </div>
 
         {/* Results */}

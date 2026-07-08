@@ -6,14 +6,6 @@ Items verified as complete were moved to `tasks_completed.md` (see its "Re-audit
 
 ---
 
-## Search
-
-- [ ] **Filter chips** — spec §8.3: filter by workspace, category, date range, type (tab / group / category); no filter UI in SearchOverlay
-- [ ] **Sort options in search** — spec §8.3: Relevance, Newest, Oldest, A-Z; no sort controls
-- [ ] **Active filter persistence for the session** — spec §8.3; n/a until filters exist
-
----
-
 ## Active Tabs Panel
 
 - [ ] **"Save Selected" with multi-select checkboxes** — spec §4.2: checkbox multi-select then bulk save; no checkbox or multi-select logic in WindowSection

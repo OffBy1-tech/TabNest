@@ -387,3 +387,8 @@ Confirmed by direct code evidence on the `componentRefactor` branch.
 - [x] **Interactive checkboxes** — toggle from preview without entering edit mode (`toggleCheckbox` edits the source text)
 - [x] **Clear checked items** — button appears when any box is checked (`clearCheckedItems`)
 - [x] **Standalone notes** — Category.notes (schema v5 + migration), NoteCard rendered alongside groups, "+ New Note" button in category view, storage CRUD (createCategoryNote/saveCategoryNote/deleteCategoryNote)
+
+### Search (spec §8.3)
+- [x] **Filter chips** — type toggle chips (Tabs/Groups/Categories) + workspace/category/date-range selects in SearchOverlay; `filterRecords` in lib/search.ts
+- [x] **Sort options** — Relevance / Newest / Oldest / A–Z select; `sortRecords`; records carry a `timestamp` (tab saved_at, group created_at)
+- [x] **Session filter persistence** — filter/sort state lives outside the isOpen reset, surviving close/reopen
