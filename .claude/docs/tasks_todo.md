@@ -28,13 +28,6 @@ Items verified as complete were moved to `tasks_completed.md` (see its "Re-audit
 
 ---
 
-## Workspace Management
-
-- [ ] **Delete workspace with trash behavior** — spec §10: confirmation + move contents to Trash. `deleteWorkspace` in storage.ts still hard-deletes, and there is no delete option in WorkspaceDropdown at all
-- [ ] **Create workspace from template** — spec §10: optionally copy categories from an existing workspace; create flow only accepts a name
-
----
-
 ## Toolbar Popup
 
 - [ ] **"Add note" field on saved tab** — spec §12: optional note attached to the saved tab; PopupApp has no note input

@@ -16,7 +16,7 @@ import type { Category, TabGroup, UserSettings, Workspace } from '@/lib/schema'
 import type { ActiveTabDragPayload } from '@/components/GroupCard/dragTypes'
 import type { SearchRecord } from '@/lib/search'
 import { DEFAULT_SETTINGS, DEFAULT_LOCAL_SETTINGS, DEFAULT_SYNC_META, SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_DEFAULT } from '@/lib/schema'
-import { patchSettings, patchLocalSettings, restoreFromTrash, deleteFromTrash, emptyTrash, createWorkspace, renameWorkspace, createCategory, renameGroup, removeTabFromGroup, renameCategory, deleteCategory, setCategoryCollapsed, moveTabBetweenGroups, addTabToGroup, addTabsToGroup, reorderCategories, saveTabGroup, saveTabNote, saveGroupNote, moveGroupToCategory, duplicateGroup, archiveGroup, reorderTabInGroup, createCategoryNote, saveCategoryNote, deleteCategoryNote, patchCategory, setAllCategoriesCollapsed } from '@/lib/storage'
+import { patchSettings, patchLocalSettings, restoreFromTrash, deleteFromTrash, emptyTrash, createWorkspace, renameWorkspace, deleteWorkspace, createCategory, renameGroup, removeTabFromGroup, renameCategory, deleteCategory, setCategoryCollapsed, moveTabBetweenGroups, addTabToGroup, addTabsToGroup, reorderCategories, saveTabGroup, saveTabNote, saveGroupNote, moveGroupToCategory, duplicateGroup, archiveGroup, reorderTabInGroup, createCategoryNote, saveCategoryNote, deleteCategoryNote, patchCategory, setAllCategoriesCollapsed } from '@/lib/storage'
 
 // ---------------------------------------------------------------------------
 // Layout shell styles
@@ -749,13 +749,27 @@ export function App(): React.JSX.Element {
     }
   }, [activeWorkspace?.id, handleSelectWorkspace])
 
-  const handleCreateWorkspace = useCallback((name: string): void => {
-    createWorkspace(name)
+  const handleCreateWorkspace = useCallback((name: string, templateWorkspaceId?: string): void => {
+    createWorkspace(name, templateWorkspaceId)
       .then((id) => patchSettings({ default_workspace_id: id }))
       .catch(() => {
         showToast('Failed to create workspace. Please try again.', 'error')
       })
   }, [showToast])
+
+  const handleDeleteWorkspace = useCallback((id: string): void => {
+    deleteWorkspace(id)
+      .then(() => {
+        // If the active workspace was deleted, fall back to the first remaining one
+        if (activeWorkspace?.id === id) {
+          const next = workspaces.find((w) => w.id !== id)
+          return patchSettings({ default_workspace_id: next?.id ?? null })
+        }
+        return undefined
+      })
+      .then(() => showToast('Workspace moved to trash.', 'success'))
+      .catch(() => showToast('Failed to delete workspace. Please try again.', 'error'))
+  }, [activeWorkspace?.id, workspaces, showToast])
 
   const handleRenameWorkspace = useCallback((id: string, name: string): void => {
     renameWorkspace(id, name).catch(() => {
@@ -875,6 +889,7 @@ export function App(): React.JSX.Element {
             onSelectWorkspace={handleSelectWorkspace}
             onCreateWorkspace={handleCreateWorkspace}
             onRenameWorkspace={handleRenameWorkspace}
+            onDeleteWorkspace={handleDeleteWorkspace}
             onDropActiveTab={handleDropActiveTabOnCategory}
             onChangeCategoryColor={handleChangeCategoryColor}
             onChangeCategoryEmoji={handleChangeCategoryEmoji}

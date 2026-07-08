@@ -14,6 +14,7 @@
 import {
   StorageSchemaZod,
   TabGroupSchema,
+  WorkspaceSchema,
   DEFAULT_SETTINGS,
   DEFAULT_LOCAL_SETTINGS,
   DEFAULT_SYNC_META,
@@ -256,10 +257,30 @@ export async function saveWorkspace(workspace: Workspace): Promise<void> {
   await writeStorage({ workspaces: updated })
 }
 
-export async function deleteWorkspace(id: string): Promise<void> {
+/**
+ * Delete a workspace, moving it (and all contained data) to Trash so the
+ * deletion is recoverable (spec §10). Returns the TrashItem for undo flows.
+ */
+export async function deleteWorkspace(id: string): Promise<TrashItem> {
   const data = await readStorage()
-  const updated = data.workspaces.filter((w) => w.id !== id)
-  await writeStorage({ workspaces: updated })
+  const workspace = data.workspaces.find((w) => w.id === id)
+  if (workspace == null) {
+    throw new Error(`Workspace ${id} not found`)
+  }
+
+  const trashItem: TrashItem = {
+    id: crypto.randomUUID(),
+    type: 'workspace',
+    data: workspace,
+    original_location: { workspace_id: id },
+    deleted_at: Date.now(),
+  }
+
+  await writeStorage({
+    workspaces: data.workspaces.filter((w) => w.id !== id),
+    trash: [...data.trash, trashItem],
+  })
+  return trashItem
 }
 
 // ---------------------------------------------------------------------------
@@ -587,8 +608,22 @@ export async function restoreFromTrash(itemId: string): Promise<void> {
     return
   }
 
-  // For other types (tab, category, workspace) the restoration logic is
-  // symmetric — write back trash removal now and extend the switch later.
+  if (item.type === 'workspace') {
+    const wsParsed = WorkspaceSchema.safeParse(item.data)
+    if (!wsParsed.success) {
+      throw new Error(`Cannot restore workspace ${itemId}: stored data failed schema validation`)
+    }
+    const workspace = wsParsed.data
+    // Idempotency guard — don't duplicate if already restored
+    const workspaces = data.workspaces.some((w) => w.id === workspace.id)
+      ? data.workspaces
+      : [...data.workspaces, workspace]
+    await writeStorage({ workspaces, trash })
+    return
+  }
+
+  // For other types (tab, category) the restoration logic is symmetric —
+  // write back trash removal now and extend the switch later.
   await writeStorage({ trash })
 }
 
@@ -629,11 +664,27 @@ export async function createCategory(workspaceId: string, name: string): Promise
 
 /**
  * Create a new workspace with the given name and append it to the workspace list.
+ * When `templateWorkspaceId` is given, the template's category structure
+ * (names, colors, emojis — not their groups or notes) is copied (spec §10).
  * Returns the new workspace's id.
  */
-export async function createWorkspace(name: string): Promise<string> {
+export async function createWorkspace(name: string, templateWorkspaceId?: string): Promise<string> {
   const data = await readStorage()
   const workspace: Workspace = { ...DEFAULT_WORKSPACE(), name: name.trim() || 'New Workspace' }
+
+  const template = templateWorkspaceId
+    ? data.workspaces.find((w) => w.id === templateWorkspaceId)
+    : undefined
+  if (template) {
+    workspace.categories = template.categories.map((cat, i) => ({
+      ...cat,
+      id: crypto.randomUUID(),
+      order: i,
+      groups: [],
+      notes: [],
+    }))
+  }
+
   await writeStorage({ workspaces: [...data.workspaces, workspace] })
   return workspace.id
 }

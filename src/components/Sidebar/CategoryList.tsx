@@ -29,8 +29,9 @@ export interface CategoryListProps {
   workspaces: Workspace[]
   activeWorkspaceId: string | undefined
   onSelectWorkspace: (id: string) => void
-  onCreateWorkspace: (name: string) => void
+  onCreateWorkspace: (name: string, templateWorkspaceId?: string) => void
   onRenameWorkspace: (id: string, name: string) => void
+  onDeleteWorkspace?: ((id: string) => void) | undefined
   /** A tab dragged from the Active Tabs panel was dropped on a category (spec §5.1). */
   onDropActiveTab?: ((categoryId: string, payload: ActiveTabDragPayload) => void) | undefined
   /** Category context-menu extras (spec §3.3). */
@@ -63,6 +64,7 @@ export function CategoryList({
   onSelectWorkspace,
   onCreateWorkspace,
   onRenameWorkspace,
+  onDeleteWorkspace,
   onDropActiveTab,
   onChangeCategoryColor,
   onChangeCategoryEmoji,
@@ -269,8 +271,9 @@ export function CategoryList({
             workspaces={workspaces}
             activeWorkspaceId={activeWorkspaceId}
             onSelectWorkspace={(id) => { onSelectWorkspace(id); setWsDropdownOpen(false) }}
-            onCreateWorkspace={(name) => { onCreateWorkspace(name); setWsDropdownOpen(false) }}
+            onCreateWorkspace={(name, templateId) => { onCreateWorkspace(name, templateId); setWsDropdownOpen(false) }}
             onRenameWorkspace={onRenameWorkspace}
+            onDeleteWorkspace={onDeleteWorkspace}
           />
         </div>
       )}

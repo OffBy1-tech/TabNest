@@ -308,6 +308,63 @@ describe('moveTabBetweenGroups', () => {
   })
 })
 
+describe('deleteWorkspace', () => {
+  it('moves the workspace to trash instead of hard-deleting', async () => {
+    const doomed = makeWorkspace('Doomed')
+    const keeper = makeWorkspace('Keeper')
+    seed([doomed, keeper])
+
+    const item = await storage.deleteWorkspace(doomed.id)
+
+    expect(stored().workspaces.map((w) => w.name)).toEqual(['Keeper'])
+    expect(stored().trash).toHaveLength(1)
+    expect(item.type).toBe('workspace')
+    expect(item.data).toEqual(doomed)
+  })
+
+  it('throws for an unknown workspace id', async () => {
+    seed()
+    await expect(storage.deleteWorkspace(crypto.randomUUID())).rejects.toThrow(/not found/)
+  })
+
+  it('restoreFromTrash brings a deleted workspace back', async () => {
+    const doomed = makeWorkspace('Doomed')
+    const keeper = makeWorkspace('Keeper')
+    seed([doomed, keeper])
+
+    const item = await storage.deleteWorkspace(doomed.id)
+    await storage.restoreFromTrash(item.id)
+
+    expect(stored().workspaces.map((w) => w.name)).toEqual(['Keeper', 'Doomed'])
+    expect(stored().trash).toHaveLength(0)
+  })
+})
+
+describe('createWorkspace from template', () => {
+  it('copies category structure without groups or notes', async () => {
+    const template = makeWorkspace('Template', [
+      makeCategory('Work', [makeGroup('G', [makeTab()])]),
+      makeCategory('Play'),
+    ])
+    seed([template])
+
+    const newId = await storage.createWorkspace('Copy', template.id)
+
+    const created = stored().workspaces.find((w) => w.id === newId)!
+    expect(created.categories.map((c) => c.name)).toEqual(['Work', 'Play'])
+    expect(created.categories[0]!.groups).toEqual([])
+    expect(created.categories[0]!.id).not.toBe(template.categories[0]!.id)
+  })
+
+  it('falls back to the default single category without a template', async () => {
+    seed()
+    const newId = await storage.createWorkspace('Plain')
+    const created = stored().workspaces.find((w) => w.id === newId)!
+    expect(created.categories).toHaveLength(1)
+    expect(created.categories[0]!.name).toBe('General')
+  })
+})
+
 describe('patchCategory / setAllCategoriesCollapsed', () => {
   it('updates color and emoji in place', async () => {
     const cat = makeCategory()

@@ -402,3 +402,7 @@ Confirmed by direct code evidence on the `componentRefactor` branch.
 - [x] **Category color picker** — "Change color…" in the context menu with an 8-swatch palette (`CATEGORY_COLORS`); category color now shown as a dot beside the name; `patchCategory` in storage
 - [x] **Category emoji picker** — "Change emoji…" with a 16-emoji grid (`CATEGORY_EMOJIS`)
 - [x] **Collapse all groups** — context-menu action collapsing every category (`setAllCategoriesCollapsed`)
+
+### Workspace Management (spec §10)
+- [x] **Delete workspace with trash behavior** — trash icon per row in WorkspaceDropdown (hidden for the last workspace), ConfirmDialog, `deleteWorkspace` now moves the workspace to Trash and `restoreFromTrash` handles the 'workspace' type; App falls back to the first remaining workspace if the active one is deleted
+- [x] **Create workspace from template** — "Copy categories from …" select in the create form; `createWorkspace(name, templateId)` copies category structure (names/colors/emojis) without groups or notes
