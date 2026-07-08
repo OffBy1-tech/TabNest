@@ -10,7 +10,7 @@ import { useTabs } from '@/hooks/useTabs'
 import { useToast } from '@/components/Toast/ToastProvider'
 import { LoadingPlaceholder } from './LoadingPlaceholder'
 import { GroupGrid } from './GroupGrid'
-import { openTab } from './openTab'
+import { openTab, openAllTabs } from './openTab'
 import type { Category, TabGroup, UserSettings, Workspace } from '@/lib/schema'
 import type { SearchRecord } from '@/lib/search'
 import { DEFAULT_SETTINGS, DEFAULT_LOCAL_SETTINGS, DEFAULT_SYNC_META, SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_DEFAULT } from '@/lib/schema'
@@ -248,21 +248,7 @@ export function App(): React.JSX.Element {
   // Issue 2: handleOpenAll uses open_tab_behavior setting
   const handleOpenAll = useCallback(
     (group: TabGroup): void => {
-      const behavior = data?.settings.open_tab_behavior
-      if (behavior === 'new_window' && group.tabs.length > 0) {
-        // Open the whole group together in a single new window rather than
-        // one window per tab.
-        const urls = group.tabs.map((tab) => tab.url)
-        try {
-          chrome.windows.create({ url: urls })
-          return
-        } catch {
-          // Non-extension context — fall through to per-tab fallback below.
-        }
-      }
-      for (const tab of group.tabs) {
-        openTab(tab.url, behavior)
-      }
+      openAllTabs(group.tabs.map((tab) => tab.url), data?.settings.open_tab_behavior)
     },
     [data?.settings.open_tab_behavior],
   )

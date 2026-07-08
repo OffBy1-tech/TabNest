@@ -42,6 +42,20 @@ const STORAGE_KEY = 'tabnest_data'
 
 let writeQueue: Promise<void> = Promise.resolve()
 
+/**
+ * Enqueue a write behind all previously queued writes.
+ * The returned promise reflects this write's own outcome, but the queue
+ * itself always settles — a failed write must not poison later writes.
+ */
+function enqueueWrite(work: () => Promise<void>): Promise<void> {
+  const run = writeQueue.then(work, work)
+  writeQueue = run.then(
+    () => undefined,
+    () => undefined,
+  )
+  return run
+}
+
 // ---------------------------------------------------------------------------
 // Migration table
 // Each key is the schema_version the data is currently AT, the function
@@ -189,7 +203,7 @@ export async function readStorage(): Promise<StorageSchema> {
  * freshest data.
  */
 export function writeStorage(patch: Partial<StorageSchema>): Promise<void> {
-  writeQueue = writeQueue.then(async () => {
+  return enqueueWrite(async () => {
     const current = await readStorage()
     const merged: StorageSchema = { ...current, ...patch }
 
@@ -203,7 +217,6 @@ export function writeStorage(patch: Partial<StorageSchema>): Promise<void> {
 
     await chromeSet(merged)
   })
-  return writeQueue
 }
 
 // ---------------------------------------------------------------------------
@@ -440,15 +453,14 @@ export async function patchSettings(patch: Partial<UserSettings>): Promise<void>
  * Never bumps last_modified_at — these fields are not synced to Drive.
  */
 export async function patchLocalSettings(patch: Partial<LocalSettings>): Promise<void> {
-  const data = await readStorage()
-  const local_settings: LocalSettings = { ...data.local_settings, ...patch }
-  // Write via writeStorage but local_settings is excluded from touchesUserData check,
-  // so last_modified_at is not bumped.
-  writeQueue = writeQueue.then(async () => {
+  // Merge inside the queued work (read-before-write at execution time) so a
+  // concurrent local_settings write isn't clobbered by a stale merge. Bypasses
+  // writeStorage's touchesUserData check, so last_modified_at is not bumped.
+  return enqueueWrite(async () => {
     const current = await readStorage()
+    const local_settings: LocalSettings = { ...current.local_settings, ...patch }
     await chromeSet({ ...current, local_settings })
   })
-  return writeQueue
 }
 
 // ---------------------------------------------------------------------------
