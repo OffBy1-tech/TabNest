@@ -13,9 +13,6 @@ Items verified as complete were moved to `tasks_completed.md` (see its "Re-audit
 > "TabNest Backups" folder and the `drive.file` scope are intentionally not being
 > implemented — the spec should be updated to match.
 
-- [ ] **Drive revision history / restore from backup** — spec §9.2 / §11.3: show last 10 versions in Settings > Restore; no restore-from-revision UI in SyncAndDataTab
-- [ ] **Multi-device pull on load** — spec §9.2: opening TabNest on a second device pulls latest Drive data on load; `chrome.runtime.onStartup` only rebuilds context menus, sync is still alarm/manual only
-- [ ] **Offline change queue visible feedback** — spec §9.2: `pending_sync` flag is set but SyncStatusDot only knows idle/syncing/error — no "changes pending sync" indicator
 
 ---
 

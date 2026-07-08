@@ -73,8 +73,11 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 
 // Rebuild context menus on browser startup — MV3 service workers are non-persistent
 // so menus registered at install time are gone after a browser restart.
+// Also pull the latest Drive data on load (spec §9.2 multi-device) — runSync
+// no-ops when sync is disabled.
 chrome.runtime.onStartup.addListener(() => {
   buildContextMenus().catch((err) => console.error('[tabNest] buildContextMenus failed:', err))
+  runSync().catch((err) => console.error('[tabNest] startup sync failed:', err))
 })
 
 // ---------------------------------------------------------------------------
@@ -245,6 +248,12 @@ async function handleMessage(message: ExtensionMessage): Promise<unknown> {
       await patchSyncMeta({ drive_file_id: null, sync_state: 'idle', error_message: null })
       await patchLocalSettings({ sync_enabled: false })
       return { ok: true }
+
+    case 'GET_DRIVE_REVISIONS':
+      return listDriveRevisions()
+
+    case 'RESTORE_DRIVE_REVISION':
+      return restoreDriveRevision(message.payload.revision_id)
 
     case 'SAVE_TABS': {
       const { tabs, group_name, category_id, workspace_id } = message.payload
@@ -448,6 +457,60 @@ async function connectDrive(): Promise<{ connected: boolean }> {
   chrome.alarms.create(ALARM_SYNC, { delayInMinutes: 0, periodInMinutes: syncIntervalMinutes })
 
   return { connected: true }
+}
+
+// ---------------------------------------------------------------------------
+// Drive revision history (spec §9.2/§11.3): list the last revisions of the
+// sync file and restore one. appDataFolder files keep Drive revisions.
+// ---------------------------------------------------------------------------
+
+async function listDriveRevisions(): Promise<Array<{ id: string; modifiedTime: string }>> {
+  const data = await readStorage()
+  const fileId = data.sync_meta.drive_file_id
+  if (!fileId) throw new Error('Drive is not connected')
+  const token = await acquireToken(false)
+  if (!token) throw new Error('Not authorized — reconnect Google Drive')
+
+  const res = await driveFetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}/revisions?fields=revisions(id,modifiedTime)&pageSize=100`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  )
+  if (!res.ok) throw new Error(`Failed to list revisions (HTTP ${res.status})`)
+  const body = (await res.json()) as { revisions?: Array<{ id: string; modifiedTime: string }> }
+  // Newest first, capped at 10 (spec §9.2)
+  return (body.revisions ?? [])
+    .sort((a, b) => b.modifiedTime.localeCompare(a.modifiedTime))
+    .slice(0, 10)
+}
+
+async function restoreDriveRevision(revisionId: string): Promise<{ restored: boolean }> {
+  const data = await readStorage()
+  const fileId = data.sync_meta.drive_file_id
+  if (!fileId) throw new Error('Drive is not connected')
+  const token = await acquireToken(false)
+  if (!token) throw new Error('Not authorized — reconnect Google Drive')
+
+  const res = await driveFetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}/revisions/${revisionId}?alt=media`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  )
+  if (!res.ok) throw new Error(`Failed to download revision (HTTP ${res.status})`)
+  const raw: unknown = await res.json()
+
+  // Same safety contract as a remote sync read — never apply unvalidated data
+  const parsed = StorageSchemaZod.safeParse(raw)
+  if (!parsed.success) throw new Error('Backup file failed validation — not restored')
+  const revision = parsed.data
+
+  // Keep a local backup of the current workspaces so the restore is reversible
+  const current = await readStorage()
+  await writeStorage({ backup_local: current.workspaces })
+  await writeStorage({
+    workspaces: revision.workspaces,
+    settings: revision.settings,
+    trash: revision.trash,
+  })
+  return { restored: true }
 }
 
 // ---------------------------------------------------------------------------

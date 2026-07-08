@@ -201,7 +201,18 @@ export const ExtensionMessageSchema = z.discriminatedUnion('type', [
     type: z.literal('RESTORE_FROM_TRASH'),
     payload: z.object({ item_id: z.string().uuid() }),
   }),
+  z.object({ type: z.literal('GET_DRIVE_REVISIONS') }),
+  z.object({
+    type: z.literal('RESTORE_DRIVE_REVISION'),
+    payload: z.object({ revision_id: z.string() }),
+  }),
 ])
+
+/** A Drive revision entry shown in Settings > Restore (spec §9.2/§11.3). */
+export interface DriveRevision {
+  id: string
+  modifiedTime: string
+}
 
 // ---------------------------------------------------------------------------
 // TypeScript types inferred from Zod schemas

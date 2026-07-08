@@ -3,10 +3,12 @@ import React from 'react'
 export interface SyncStatusDotProps {
   syncState: 'idle' | 'syncing' | 'error'
   lastSyncAt: number
+  /** Offline changes waiting to sync (spec §9.2) — shown as an amber dot. */
+  pendingSync?: boolean
 }
 
 /** A small colored status dot conveying the current Drive sync state. */
-export function SyncStatusDot({ syncState, lastSyncAt }: SyncStatusDotProps): React.JSX.Element {
+export function SyncStatusDot({ syncState, lastSyncAt, pendingSync = false }: SyncStatusDotProps): React.JSX.Element {
   let color: string
   let label: string
 
@@ -16,6 +18,9 @@ export function SyncStatusDot({ syncState, lastSyncAt }: SyncStatusDotProps): Re
   } else if (syncState === 'syncing') {
     color = 'var(--color-warning)'
     label = 'Syncing…'
+  } else if (pendingSync) {
+    color = 'var(--color-warning)'
+    label = 'Changes pending sync'
   } else if (lastSyncAt > 0) {
     color = 'var(--color-success)'
     const date = new Date(lastSyncAt)

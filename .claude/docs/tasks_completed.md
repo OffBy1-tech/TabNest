@@ -418,3 +418,8 @@ Confirmed by direct code evidence on the `componentRefactor` branch.
 ### Trash & First Run (spec §13/§15)
 - [x] **Original location in trash UI** — TrashTab resolves original_location ids to "Workspace > Category" names, with "(deleted …)" fallbacks
 - [x] **Getting Started category + welcome group** — buildDefaultStorage (fresh installs only) adds a "Getting Started" category with a welcome group: 2 example tabs (help/readme + keyboard shortcuts) and a checklist note
+
+### Drive sync UX (spec §9.2/§11.3)
+- [x] **Restore from backup** — GET_DRIVE_REVISIONS / RESTORE_DRIVE_REVISION messages; Settings > Sync lists the last 10 Drive revisions with confirm-to-restore; revision content is Zod-validated and current workspaces are kept as backup_local before applying
+- [x] **Multi-device pull on load** — runSync on chrome.runtime.onStartup, plus the newtab page triggers a sync once per load when enabled and >1 min stale
+- [x] **Pending-sync indicator** — SyncStatusDot shows an amber "Changes pending sync" dot from sync_meta.pending_sync

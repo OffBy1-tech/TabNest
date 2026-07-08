@@ -15,6 +15,7 @@ export interface TopBarProps {
   activeTabsOpen: boolean
   syncState: 'idle' | 'syncing' | 'error'
   lastSyncAt: number
+  pendingSync?: boolean
   onSettingsClick: () => void
   showClock?: boolean
 }
@@ -25,6 +26,7 @@ export function TopBar({
   activeTabsOpen,
   syncState,
   lastSyncAt,
+  pendingSync = false,
   onSettingsClick,
   showClock = false,
 }: TopBarProps): React.JSX.Element {
@@ -152,7 +154,7 @@ export function TopBar({
         </button>
 
         {/* Sync status dot */}
-        <SyncStatusDot syncState={syncState} lastSyncAt={lastSyncAt} />
+        <SyncStatusDot syncState={syncState} lastSyncAt={lastSyncAt} pendingSync={pendingSync} />
 
         {/* Theme toggle */}
         <ThemeToggle />

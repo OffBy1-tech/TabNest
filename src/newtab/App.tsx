@@ -175,6 +175,23 @@ export function App(): React.JSX.Element {
   // Sync meta for TopBar
   const syncState = data?.sync_meta.sync_state ?? 'idle'
   const lastSyncAt = data?.sync_meta.last_sync_at ?? 0
+  const pendingSync = data?.sync_meta.pending_sync ?? false
+
+  // Spec §9.2 multi-device: pull the latest Drive data when the page loads,
+  // at most once per page and only when the last sync is stale (>1 min).
+  const pulledOnLoad = useRef(false)
+  useEffect(() => {
+    if (!data || pulledOnLoad.current) return
+    pulledOnLoad.current = true
+    const stale = Date.now() - (data.sync_meta.last_sync_at ?? 0) > 60_000
+    if (data.local_settings.sync_enabled && stale) {
+      try {
+        chrome.runtime.sendMessage({ type: 'TRIGGER_SYNC' })
+      } catch {
+        // Non-extension context
+      }
+    }
+  }, [data])
 
   // Show onboarding on first install (onboarding_completed stored outside tabnest_data)
   useEffect(() => {
@@ -873,6 +890,7 @@ export function App(): React.JSX.Element {
             activeTabsOpen={activeTabsOpen}
             syncState={syncState}
             lastSyncAt={lastSyncAt}
+            pendingSync={pendingSync}
             onSettingsClick={() => setSettingsOpen(true)}
             showClock={data?.settings.show_clock ?? false}
           />
