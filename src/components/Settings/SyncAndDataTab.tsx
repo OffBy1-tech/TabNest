@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useId, useState } from 'react'
 import type { LocalSettings, SyncMeta, Workspace, StorageSchema, DriveRevision } from '../../lib/schema'
 import { StorageSchemaZod } from '../../lib/schema'
+import { readStorage, writeStorage } from '../../lib/storage'
 import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog'
 import { ToggleSwitch } from './ToggleSwitch'
 import { SettingRow } from './SettingRow'
@@ -145,7 +146,16 @@ export function SyncAndDataTab({
         if (hasExistingData) {
           setPendingImport(parsed)
         } else {
-          chrome.storage.local.set({ tabnest_data: parsed })
+          // Import only user content — never the file's sync_meta / local_settings.
+          // Accepting a crafted last_modified_at would let an imported "backup"
+          // win every last-write-wins sync and wipe the user's other devices.
+          // writeStorage preserves the local device's sync_meta/local_settings,
+          // uses the serial write queue, and bumps last_modified_at correctly.
+          void writeStorage({
+            workspaces: parsed.workspaces,
+            settings: parsed.settings,
+            trash: parsed.trash,
+          })
         }
       } catch {
         setImportError('Import failed — the file is not a valid Tab Nest export.')
@@ -157,17 +167,25 @@ export function SyncAndDataTab({
 
   const handleImportOverwrite = () => {
     if (!pendingImport) return
-    chrome.storage.local.set({ tabnest_data: pendingImport })
+    // Overwrite user content only; keep this device's sync_meta / local_settings.
+    void writeStorage({
+      workspaces: pendingImport.workspaces,
+      settings: pendingImport.settings,
+      trash: pendingImport.trash,
+    })
     setPendingImport(null)
   }
 
   const handleImportAppend = () => {
     if (!pendingImport) return
-    chrome.storage.local.get('tabnest_data', (result) => {
-      const current = result['tabnest_data'] as StorageSchema | undefined
-      const merged = current ? mergeImportedData(current, pendingImport) : pendingImport
-      chrome.storage.local.set({ tabnest_data: merged })
-    })
+    // Read-merge-write through the storage layer so a concurrent background
+    // write (context-menu save, sync apply) can't be lost between get and set.
+    // mergeImportedData only touches workspaces, so that's all we write back.
+    void (async () => {
+      const current = await readStorage()
+      const merged = mergeImportedData(current, pendingImport)
+      await writeStorage({ workspaces: merged.workspaces })
+    })()
     setPendingImport(null)
   }
 
