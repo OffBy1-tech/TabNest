@@ -71,7 +71,7 @@ export function TabRow({
           <GripVertical size={12} />
         </span>
         {showFavicons && (
-          <FaviconImage url={tab.favicon ?? ''} title={tab.title} size={16} />
+          <FaviconImage url={tab.favicon ?? ''} title={tab.title} pageUrl={tab.url} size={16} />
         )}
         <button
           type="button"

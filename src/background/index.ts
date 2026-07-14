@@ -25,13 +25,10 @@ import {
   type ExtensionMessage,
   type MessageResponse,
   type SavedTab,
-  type Workspace,
-  type Category,
-  type TabGroup,
-  type TrashItem,
   ExtensionMessageSchema,
 } from '../lib/schema'
 import { tabTitleOrHostname } from '../lib/tabTitle'
+import { mergeWorkspaces, mergeTrash } from '../lib/merge'
 
 // ---------------------------------------------------------------------------
 // Alarm names
@@ -245,7 +242,11 @@ async function handleMessage(message: ExtensionMessage): Promise<unknown> {
       return connectDrive()
 
     case 'DISCONNECT_DRIVE':
-      await patchSyncMeta({ drive_file_id: null, sync_state: 'idle', error_message: null })
+      // Reset last_sync_at to 0 so a later reconnect re-enters the safe
+      // union-merge path (runSync gates first-connect on last_sync_at === 0).
+      // Without this, edits made while disconnected reconcile via plain
+      // last-write-wins on reconnect and one side can be wholesale overwritten.
+      await patchSyncMeta({ drive_file_id: null, sync_state: 'idle', error_message: null, last_sync_at: 0 })
       await patchLocalSettings({ sync_enabled: false })
       return { ok: true }
 
@@ -332,7 +333,26 @@ chrome.storage.onChanged.addListener((changes, area) => {
 // Sync state machine
 // ---------------------------------------------------------------------------
 
+// runSync is triggered from four places (periodic alarm, retry alarm, onStartup,
+// TRIGGER_SYNC message) and does a non-atomic read → fetch-remote → decide-winner
+// → write sequence. writeStorage's queue only serializes individual storage
+// writes, not this whole sequence, so two overlapping runs could interleave and
+// push stale local data over newer remote (clobbering another device). The SW is
+// single-threaded, so a simple in-flight flag closes the window: a second trigger
+// while one is running is dropped (the running sync already covers the latest state).
+let syncInFlight = false
+
 async function runSync(): Promise<void> {
+  if (syncInFlight) return
+  syncInFlight = true
+  try {
+    await runSyncInner()
+  } finally {
+    syncInFlight = false
+  }
+}
+
+async function runSyncInner(): Promise<void> {
   const data = await readStorage()
   const meta = data.sync_meta
   // sync_enabled is per-device — lives in local_settings, never synced to Drive
@@ -628,56 +648,4 @@ async function writeDriveFile(
   }
 }
 
-// ---------------------------------------------------------------------------
-// First-connect merge helpers
-//
-// Union local and remote by entity ID at each level of the hierarchy.
-// Entities that exist on only one side are kept as-is. Entities that exist
-// on both sides are merged: workspaces and categories recurse downward;
-// groups take the copy with the higher updated_at. Order fields are
-// renumbered after merging so there are no gaps or duplicates.
-// ---------------------------------------------------------------------------
-
-function mergeWorkspaces(local: Workspace[], remote: Workspace[]): Workspace[] {
-  const localById = new Map(local.map((ws) => [ws.id, ws]))
-  const remoteById = new Map(remote.map((ws) => [ws.id, ws]))
-  const allIds = new Set([...localById.keys(), ...remoteById.keys()])
-  return [...allIds].map((id) => {
-    const l = localById.get(id)
-    const r = remoteById.get(id)
-    if (l && r) return { ...r, categories: mergeCategories(l.categories, r.categories) }
-    return (l ?? r)!
-  })
-}
-
-function mergeCategories(local: Category[], remote: Category[]): Category[] {
-  const localById = new Map(local.map((c) => [c.id, c]))
-  const remoteById = new Map(remote.map((c) => [c.id, c]))
-  const allIds = new Set([...localById.keys(), ...remoteById.keys()])
-  const merged = [...allIds].map((id) => {
-    const l = localById.get(id)
-    const r = remoteById.get(id)
-    if (l && r) return { ...r, groups: mergeGroups(l.groups, r.groups) }
-    return (l ?? r)!
-  })
-  return merged.sort((a, b) => a.order - b.order).map((c, i) => ({ ...c, order: i }))
-}
-
-function mergeGroups(local: TabGroup[], remote: TabGroup[]): TabGroup[] {
-  const localById = new Map(local.map((g) => [g.id, g]))
-  const remoteById = new Map(remote.map((g) => [g.id, g]))
-  const allIds = new Set([...localById.keys(), ...remoteById.keys()])
-  const merged = [...allIds].map((id) => {
-    const l = localById.get(id)
-    const r = remoteById.get(id)
-    // Group exists on both sides — keep the more recently updated copy
-    if (l && r) return l.updated_at >= r.updated_at ? l : r
-    return (l ?? r)!
-  })
-  return merged.sort((a, b) => a.order - b.order).map((g, i) => ({ ...g, order: i }))
-}
-
-function mergeTrash(local: TrashItem[], remote: TrashItem[]): TrashItem[] {
-  const localIds = new Set(local.map((t) => t.id))
-  return [...local, ...remote.filter((t) => !localIds.has(t.id))]
-}
+// First-connect merge helpers live in ../lib/merge (pure, unit-tested there).

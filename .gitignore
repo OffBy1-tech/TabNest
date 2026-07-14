@@ -10,6 +10,19 @@ dist/
 !.env.example
 *.local
 
+# Local data backups / dev scratch data (may contain real saved tabs / PII)
+backedUpData.json
+*backup*.json
+backedUp*.json
+
+# Store screenshots & promo/marketing images (not part of the extension build)
+Screenshot_*.png
+tabNest_*.png
+
+# Tooling / local editor state
+.nexus/
+.claude/settings.json
+
 # macOS
 .DS_Store
 

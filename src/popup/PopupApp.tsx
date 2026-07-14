@@ -429,6 +429,7 @@ export function PopupApp(): React.JSX.Element {
                 <FaviconImage
                   url={currentTab.favIconUrl ?? ''}
                   title={currentTab.title}
+                  pageUrl={currentTab.url}
                   size={18}
                 />
               </div>

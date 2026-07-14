@@ -1,3 +1,11 @@
+import { isHttpUrl } from '../lib/safeUrl'
+
+// Saved-tab URLs are semi-untrusted (Drive sync / JSON import) and only http(s)
+// is safe to navigate to — `data:`/`file:`/`javascript:` would surface phishing
+// or local-file pages. Gate every open path on `isHttpUrl`. (The context-menu
+// save path in the background worker rejects `chrome://` for the same reason.)
+const isSafeUrl = isHttpUrl
+
 /**
  * Open a saved tab's URL according to the user's `open_tab_behavior` setting.
  *
@@ -8,6 +16,7 @@
  * - `new_tab`   → a new tab (default)
  */
 export function openTab(url: string, behavior: string | undefined): void {
+  if (!isSafeUrl(url)) return
   if (behavior === 'current') {
     window.location.href = url
   } else if (behavior === 'new_window') {
@@ -33,6 +42,7 @@ export function openTab(url: string, behavior: string | undefined): void {
  * - `new_tab`    → one new tab per URL (default)
  */
 export function openAllTabs(urls: string[], behavior: string | undefined): void {
+  urls = urls.filter(isSafeUrl)
   if (urls.length === 0) return
 
   if (behavior === 'new_window') {
@@ -63,6 +73,7 @@ export function openAllTabs(urls: string[], behavior: string | undefined): void 
  * Chrome window without stealing focus from the current window.
  */
 export function openAllTabsInBackground(urls: string[]): void {
+  urls = urls.filter(isSafeUrl)
   if (urls.length === 0) return
   try {
     chrome.windows.create({ url: urls, focused: false })

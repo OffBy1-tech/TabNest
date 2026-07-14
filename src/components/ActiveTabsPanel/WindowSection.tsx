@@ -361,6 +361,7 @@ export function WindowSection({
                   <FaviconImage
                     url={tab.favIconUrl ?? ''}
                     title={tab.title ?? 'Tab'}
+                    pageUrl={tab.url}
                     size={16}
                   />
                 )}
