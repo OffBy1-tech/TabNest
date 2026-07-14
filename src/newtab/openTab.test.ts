@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { openTab, openAllTabs } from './openTab'
+import { openTab, openAllTabs, openAllTabsInBackground } from './openTab'
 
 describe('openTab', () => {
   afterEach(() => {
@@ -74,5 +74,34 @@ describe('openAllTabs', () => {
     const open = vi.spyOn(window, 'open').mockReturnValue(null)
     openAllTabs([], 'new_tab')
     expect(open).not.toHaveBeenCalled()
+  })
+})
+
+describe('openAllTabsInBackground', () => {
+  const urls = ['https://a.example/', 'https://b.example/']
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    delete (globalThis as { chrome?: unknown }).chrome
+  })
+
+  it('opens one unfocused window containing all tabs', () => {
+    const create = vi.fn()
+    ;(globalThis as { chrome?: unknown }).chrome = { windows: { create } }
+    openAllTabsInBackground(urls)
+    expect(create).toHaveBeenCalledWith({ url: urls, focused: false })
+  })
+
+  it('falls back to window.open outside an extension context', () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    openAllTabsInBackground(urls)
+    expect(open).toHaveBeenCalledTimes(2)
+  })
+
+  it('does nothing for an empty URL list', () => {
+    const create = vi.fn()
+    ;(globalThis as { chrome?: unknown }).chrome = { windows: { create } }
+    openAllTabsInBackground([])
+    expect(create).not.toHaveBeenCalled()
   })
 })

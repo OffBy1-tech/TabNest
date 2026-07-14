@@ -25,6 +25,7 @@ export function makeWorkspaces(): Workspace[] {
           color: '',
           emoji: '📚',
           collapsed: false,
+          notes: [],
           order: 0,
           groups: [
             { id: 'grp-1', name: 'Articles', created_at: 0, updated_at: 0, order: 0, tabs: [], notes: [] },

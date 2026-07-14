@@ -107,4 +107,85 @@ describe('GroupCard', () => {
     fireEvent.drop(article, { dataTransfer })
     expect(props.onMoveTab).not.toHaveBeenCalled()
   })
+
+  it('asks for confirmation before opening a large group', () => {
+    const props = renderCard({ group: makeGroup(25) })
+    fireEvent.click(screen.getByRole('button', { name: 'Open all tabs' }))
+    expect(props.onOpenAll).not.toHaveBeenCalled()
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText(/25 tabs at once/)).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Open 25 tabs' }))
+    expect(props.onOpenAll).toHaveBeenCalledOnce()
+  })
+
+  it('shows optional kebab actions and fires their callbacks', () => {
+    const props = renderCard({
+      onOpenAllInBackground: vi.fn(),
+      onDuplicate: vi.fn(),
+      onArchive: vi.fn(),
+      onExport: vi.fn(),
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Group options' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Open All in Background' }))
+    expect(props.onOpenAllInBackground).toHaveBeenCalledOnce()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Group options' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Duplicate' }))
+    expect(props.onDuplicate).toHaveBeenCalledWith('group-1')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Group options' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Archive' }))
+    expect(props.onArchive).toHaveBeenCalledWith('group-1')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Group options' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Copy as URL list' }))
+    expect(props.onExport).toHaveBeenCalledOnce()
+  })
+
+  it('moves the group via the Move to category submenu', () => {
+    const props = renderCard({
+      categories: [
+        { id: 'cat-a', name: 'Work', emoji: '💼' },
+        { id: 'cat-b', name: 'Play', emoji: '🎮' },
+      ],
+      currentCategoryId: 'cat-a',
+      onMoveToCategory: vi.fn(),
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Group options' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Move to category…' }))
+    // Current category is filtered out of the target list
+    expect(screen.queryByRole('menuitem', { name: /Work/ })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('menuitem', { name: /Play/ }))
+    expect(props.onMoveToCategory).toHaveBeenCalledWith('group-1', 'cat-b')
+  })
+
+  it('reorders a tab dropped on another row of the same group', () => {
+    const props = renderCard({ group: makeGroup(3), onReorderTab: vi.fn() })
+    const rows = screen.getAllByRole('listitem')
+    const payload: DragPayload = { tabId: 'tab-2', fromGroupId: 'group-1' }
+    const data: Record<string, string> = { [DRAG_TYPE]: JSON.stringify(payload) }
+    const dataTransfer = {
+      types: [DRAG_TYPE],
+      dropEffect: '',
+      getData: (type: string) => data[type] ?? '',
+    }
+    fireEvent.drop(rows[0]!, { dataTransfer })
+    expect(props.onReorderTab).toHaveBeenCalledWith('group-1', 'tab-2', 0)
+  })
+
+  it('shows a note preview line when a note exists', () => {
+    const group = makeGroup(1)
+    group.notes = [{ id: 'n1', content: 'First line\nSecond line', created_at: 1, updated_at: 1 }]
+    renderCard({ group })
+    const preview = screen.getByRole('button', { name: 'Note preview: First line' })
+    expect(preview).toHaveTextContent('First line')
+    expect(preview).not.toHaveTextContent('Second line')
+  })
+
+  it('shows the creation date', () => {
+    const group = makeGroup(1)
+    group.created_at = new Date('2026-03-15T12:00:00Z').getTime()
+    renderCard({ group })
+    expect(screen.getByText(/^Created /)).toBeInTheDocument()
+  })
 })

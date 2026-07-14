@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { TopBar } from '@/components/TopBar/TopBar'
 import { CategoryList } from '@/components/Sidebar/CategoryList'
 import { SearchOverlay } from '@/components/Search/SearchOverlay'
@@ -10,11 +10,13 @@ import { useTabs } from '@/hooks/useTabs'
 import { useToast } from '@/components/Toast/ToastProvider'
 import { LoadingPlaceholder } from './LoadingPlaceholder'
 import { GroupGrid } from './GroupGrid'
-import { openTab, openAllTabs } from './openTab'
+import { openTab, openAllTabs, openAllTabsInBackground } from './openTab'
+import { tabTitleOrHostname } from '@/lib/tabTitle'
 import type { Category, TabGroup, UserSettings, Workspace } from '@/lib/schema'
+import type { ActiveTabDragPayload } from '@/components/GroupCard/dragTypes'
 import type { SearchRecord } from '@/lib/search'
-import { DEFAULT_SETTINGS, DEFAULT_LOCAL_SETTINGS, DEFAULT_SYNC_META, SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_DEFAULT } from '@/lib/schema'
-import { patchSettings, patchLocalSettings, restoreFromTrash, deleteFromTrash, emptyTrash, createWorkspace, renameWorkspace, createCategory, renameGroup, removeTabFromGroup, renameCategory, deleteCategory, setCategoryCollapsed, moveTabBetweenGroups, addTabToGroup, addTabsToGroup, reorderCategories, saveTabGroup, saveTabNote, saveGroupNote } from '@/lib/storage'
+import { DEFAULT_SETTINGS, DEFAULT_LOCAL_SETTINGS, DEFAULT_SYNC_META, SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_DEFAULT, BACKGROUND_PRESETS } from '@/lib/schema'
+import { patchSettings, patchLocalSettings, restoreFromTrash, deleteFromTrash, emptyTrash, createWorkspace, renameWorkspace, deleteWorkspace, createCategory, renameGroup, removeTabFromGroup, renameCategory, deleteCategory, setCategoryCollapsed, moveTabBetweenGroups, addTabToGroup, addTabsToGroup, reorderCategories, saveTabGroup, saveTabNote, saveGroupNote, moveGroupToCategory, duplicateGroup, archiveGroup, reorderTabInGroup, createCategoryNote, saveCategoryNote, deleteCategoryNote, patchCategory, setAllCategoriesCollapsed } from '@/lib/storage'
 
 // ---------------------------------------------------------------------------
 // Layout shell styles
@@ -33,6 +35,14 @@ const shellStyle: React.CSSProperties = {
 
 function clampSidebarWidth(width: number): number {
   return Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, Math.round(width)))
+}
+
+/** Spec §16: surface storage-quota failures with a specific message. */
+function saveErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message.startsWith('QuotaExceededError')) {
+    return 'Storage is full — delete some groups or empty the trash to free space.'
+  }
+  return fallback
 }
 
 const sidebarStyle: React.CSSProperties = {
@@ -150,23 +160,80 @@ export function App(): React.JSX.Element {
 
 
 
-  // Derive active workspace — use default_workspace_id from settings, or first
-  const workspaces: Workspace[] = data?.workspaces ?? []
-  const activeWorkspace: Workspace | undefined =
-    workspaces.find((w) => w.id === data?.settings.default_workspace_id) ??
-    workspaces[0]
+  // Derive active workspace — use default_workspace_id from settings, or first.
+  // Memoized so hook dependency arrays get stable references between renders.
+  const workspaces: Workspace[] = useMemo(() => data?.workspaces ?? [], [data?.workspaces])
+  const activeWorkspace: Workspace | undefined = useMemo(
+    () => workspaces.find((w) => w.id === data?.settings.default_workspace_id) ?? workspaces[0],
+    [workspaces, data?.settings.default_workspace_id],
+  )
 
   // Derive categories from active workspace
-  const categories: Category[] = activeWorkspace?.categories ?? []
+  const categories: Category[] = useMemo(
+    () => activeWorkspace?.categories ?? [],
+    [activeWorkspace?.categories],
+  )
 
   // Derive groups for selected category (or all non-collapsed groups)
-  const groups: TabGroup[] = selectedCategoryId
-    ? (categories.find((c) => c.id === selectedCategoryId)?.groups ?? [])
-    : categories.filter((c) => !c.collapsed).flatMap((c) => c.groups)
+  const groups: TabGroup[] = useMemo(
+    () =>
+      selectedCategoryId
+        ? (categories.find((c) => c.id === selectedCategoryId)?.groups ?? [])
+        : categories.filter((c) => !c.collapsed).flatMap((c) => c.groups),
+    [categories, selectedCategoryId],
+  )
+
+  // Standalone notes mirror the group derivation (spec §7.1). `?? []` guards
+  // pre-migration data read before onInstalled has run.
+  const standaloneNotes = useMemo(
+    () =>
+      selectedCategoryId
+        ? (categories.find((c) => c.id === selectedCategoryId)?.notes ?? [])
+        : categories.filter((c) => !c.collapsed).flatMap((c) => c.notes ?? []),
+    [categories, selectedCategoryId],
+  )
 
   // Sync meta for TopBar
   const syncState = data?.sync_meta.sync_state ?? 'idle'
   const lastSyncAt = data?.sync_meta.last_sync_at ?? 0
+  const pendingSync = data?.sync_meta.pending_sync ?? false
+
+  // Spec §17: surface sync failures as a toast with a Retry action.
+  // Fires only on the idle/syncing → error transition, not on every render.
+  const prevSyncStateRef = useRef<string | null>(null)
+  useEffect(() => {
+    const prev = prevSyncStateRef.current
+    prevSyncStateRef.current = syncState
+    if (syncState === 'error' && prev !== null && prev !== 'error') {
+      const message = data?.sync_meta.error_message ?? 'Drive sync failed.'
+      showToast(message, 'error', 8000, {
+        label: 'Retry',
+        onClick: () => {
+          try {
+            chrome.runtime.sendMessage({ type: 'TRIGGER_SYNC' })
+          } catch {
+            // Non-extension context
+          }
+        },
+      })
+    }
+  }, [syncState, data?.sync_meta.error_message, showToast])
+
+  // Spec §9.2 multi-device: pull the latest Drive data when the page loads,
+  // at most once per page and only when the last sync is stale (>1 min).
+  const pulledOnLoad = useRef(false)
+  useEffect(() => {
+    if (!data || pulledOnLoad.current) return
+    pulledOnLoad.current = true
+    const stale = Date.now() - (data.sync_meta.last_sync_at ?? 0) > 60_000
+    if (data.local_settings.sync_enabled && stale) {
+      try {
+        chrome.runtime.sendMessage({ type: 'TRIGGER_SYNC' })
+      } catch {
+        // Non-extension context
+      }
+    }
+  }, [data])
 
   // Show onboarding on first install (onboarding_completed stored outside tabnest_data)
   useEffect(() => {
@@ -245,12 +312,59 @@ export function App(): React.JSX.Element {
     [tabs, activeWorkspace, selectedCategoryId, categories, showToast],
   )
 
+  // Spec §6.3: opening a group can optionally move it to trash afterwards
+  const deleteGroupAfterOpen = useCallback(
+    (group: TabGroup): void => {
+      if (data?.settings.delete_group_on_open !== true) return
+      if (!activeWorkspace) return
+      const catId = categories.find((c) => c.groups.some((g) => g.id === group.id))?.id
+      if (!catId) return
+      tabs.delete(group.id, catId, activeWorkspace.id).catch(() => {
+        showToast('Opened tabs, but failed to move the group to trash.', 'error')
+      })
+    },
+    [data?.settings.delete_group_on_open, activeWorkspace, categories, tabs, showToast],
+  )
+
   // Issue 2: handleOpenAll uses open_tab_behavior setting
   const handleOpenAll = useCallback(
     (group: TabGroup): void => {
       openAllTabs(group.tabs.map((tab) => tab.url), data?.settings.open_tab_behavior)
+      deleteGroupAfterOpen(group)
     },
-    [data?.settings.open_tab_behavior],
+    [data?.settings.open_tab_behavior, deleteGroupAfterOpen],
+  )
+
+  const handleOpenAllInBackground = useCallback(
+    (group: TabGroup): void => {
+      openAllTabsInBackground(group.tabs.map((tab) => tab.url))
+      deleteGroupAfterOpen(group)
+    },
+    [deleteGroupAfterOpen],
+  )
+
+  // Spec §6.2: add a manually entered URL to a group (with duplicate warning, spec §17)
+  const handleAddTabByUrl = useCallback(
+    (groupId: string, url: string): void => {
+      if (!activeWorkspace) return
+      const cat = categories.find((c) => c.groups.some((g) => g.id === groupId))
+      const group = cat?.groups.find((g) => g.id === groupId)
+      if (!cat || !group) return
+      if (group.tabs.some((t) => t.url === url)) {
+        showToast('That URL is already in this group.', 'error')
+        return
+      }
+      const savedTab = {
+        id: crypto.randomUUID(),
+        title: tabTitleOrHostname(undefined, url),
+        url,
+        saved_at: Date.now(),
+      }
+      addTabToGroup(activeWorkspace.id, cat.id, groupId, savedTab).catch((err: unknown) => {
+        showToast(saveErrorMessage(err, 'Failed to add tab. Please try again.'), 'error')
+      })
+    },
+    [activeWorkspace, categories, showToast],
   )
 
   const handleRemoveTab = useCallback(
@@ -275,6 +389,112 @@ export function App(): React.JSX.Element {
       })
     },
     [activeWorkspace, showToast],
+  )
+
+  const handleMoveGroupToCategory = useCallback(
+    (groupId: string, toCategoryId: string): void => {
+      if (!activeWorkspace) return
+      moveGroupToCategory(activeWorkspace.id, groupId, toCategoryId).catch(() => {
+        showToast('Failed to move group. Please try again.', 'error')
+      })
+    },
+    [activeWorkspace, showToast],
+  )
+
+  const handleDuplicateGroup = useCallback(
+    (groupId: string): void => {
+      if (!activeWorkspace) return
+      const catId = categories.find((c) => c.groups.some((g) => g.id === groupId))?.id
+      if (!catId) return
+      duplicateGroup(activeWorkspace.id, catId, groupId).catch(() => {
+        showToast('Failed to duplicate group. Please try again.', 'error')
+      })
+    },
+    [activeWorkspace, categories, showToast],
+  )
+
+  const handleArchiveGroup = useCallback(
+    (groupId: string): void => {
+      if (!activeWorkspace) return
+      const catId = categories.find((c) => c.groups.some((g) => g.id === groupId))?.id
+      if (!catId) return
+      archiveGroup(activeWorkspace.id, catId, groupId)
+        .then(() => showToast('Group archived.', 'success'))
+        .catch(() => showToast('Failed to archive group. Please try again.', 'error'))
+    },
+    [activeWorkspace, categories, showToast],
+  )
+
+  // Spec §11.5: copy the group as "url | title" lines (round-trips with OneTab import)
+  const handleExportGroup = useCallback(
+    (group: TabGroup): void => {
+      const text = group.tabs.map((t) => `${t.url} | ${t.title}`).join('\n')
+      navigator.clipboard
+        .writeText(text)
+        .then(() => showToast(`Copied ${group.tabs.length} URL${group.tabs.length === 1 ? '' : 's'} to clipboard.`, 'success'))
+        .catch(() => showToast('Failed to copy to clipboard.', 'error'))
+    },
+    [showToast],
+  )
+
+  const handleReorderTab = useCallback(
+    (groupId: string, tabId: string, toIndex: number): void => {
+      if (!activeWorkspace) return
+      reorderTabInGroup(activeWorkspace.id, groupId, tabId, toIndex).catch(() => {
+        showToast('Failed to reorder tab. Please try again.', 'error')
+      })
+    },
+    [activeWorkspace, showToast],
+  )
+
+  // Spec §4.2: tab dragged from the Active Tabs panel onto a group card
+  const handleDropActiveTabOnGroup = useCallback(
+    (groupId: string, payload: ActiveTabDragPayload): void => {
+      if (!activeWorkspace || !payload.url) return
+      const cat = categories.find((c) => c.groups.some((g) => g.id === groupId))
+      const group = cat?.groups.find((g) => g.id === groupId)
+      if (!cat || !group) return
+      if (group.tabs.some((t) => t.url === payload.url)) {
+        showToast('That tab is already saved in this group.', 'error')
+        return
+      }
+      const savedTab = {
+        id: crypto.randomUUID(),
+        title: tabTitleOrHostname(payload.title, payload.url),
+        url: payload.url,
+        favicon: payload.favIconUrl,
+        saved_at: Date.now(),
+      }
+      addTabToGroup(activeWorkspace.id, cat.id, groupId, savedTab)
+        .then(() => showToast('Tab saved.', 'success'))
+        .catch(() => showToast('Failed to save tab. Please try again.', 'error'))
+    },
+    [activeWorkspace, categories, showToast],
+  )
+
+  // Spec §5.1: tab dragged from the Active Tabs panel onto a sidebar category
+  const handleDropActiveTabOnCategory = useCallback(
+    (categoryId: string, payload: ActiveTabDragPayload): void => {
+      if (!activeWorkspace || !payload.url) return
+      const url = payload.url
+      let groupName = url
+      try { groupName = new URL(url).hostname } catch { /* keep raw url */ }
+      tabs.save({
+        tabs: [{
+          id: crypto.randomUUID(),
+          title: tabTitleOrHostname(payload.title, url),
+          url,
+          favicon: payload.favIconUrl,
+          saved_at: Date.now(),
+        }],
+        group_name: groupName,
+        category_id: categoryId,
+        workspace_id: activeWorkspace.id,
+      })
+        .then(() => showToast('Tab saved to category.', 'success'))
+        .catch(() => showToast('Failed to save tab. Please try again.', 'error'))
+    },
+    [activeWorkspace, tabs, showToast],
   )
 
   const handleSaveGroupNote = useCallback(
@@ -309,10 +529,23 @@ export function App(): React.JSX.Element {
       workspaceId: string,
       groupId: string | null,
     ): void => {
-      if (!tab.id || !tab.url || !tab.title) return
+      if (!tab.id || !tab.url) return
+
+      // Spec §17: warn when the URL already exists in the target group
+      if (groupId !== null) {
+        const targetGroup = workspaces
+          .find((w) => w.id === workspaceId)
+          ?.categories.find((c) => c.id === categoryId)
+          ?.groups.find((g) => g.id === groupId)
+        if (targetGroup?.tabs.some((t) => t.url === tab.url)) {
+          showToast('That tab is already saved in this group.', 'error')
+          return
+        }
+      }
+
       const savedTab = {
         id: crypto.randomUUID(),
-        title: tab.title,
+        title: tabTitleOrHostname(tab.title, tab.url),
         url: tab.url,
         favicon: tab.favIconUrl,
         saved_at: Date.now(),
@@ -332,8 +565,8 @@ export function App(): React.JSX.Element {
           }
         }
       }
-      const onError = (): void => {
-        showToast('Failed to save tab. Please try again.', 'error')
+      const onError = (err: unknown): void => {
+        showToast(saveErrorMessage(err, 'Failed to save tab. Please try again.'), 'error')
       }
 
       if (groupId !== null) {
@@ -351,7 +584,7 @@ export function App(): React.JSX.Element {
         }).then(onSuccess).catch(onError)
       }
     },
-    [tabs, showToast, data?.settings.save_and_close],
+    [tabs, showToast, data?.settings.save_and_close, workspaces],
   )
 
   const handleSaveWindowTabs = useCallback(
@@ -362,22 +595,41 @@ export function App(): React.JSX.Element {
       workspaceId: string,
       groupId: string | null,
     ): void => {
-      const savedTabs = chromeTabs
-        .filter((t) => t.url && t.title)
+      let savedTabs = chromeTabs
+        .filter((t) => t.url)
         .map((t) => ({
           id: crypto.randomUUID(),
-          title: t.title!,
+          title: tabTitleOrHostname(t.title, t.url!),
           url: t.url!,
           favicon: t.favIconUrl,
           saved_at: Date.now(),
         }))
       if (savedTabs.length === 0) return
 
-      const onError = (): void => {
-        showToast('Failed to save tabs. Please try again.', 'error')
+      const onError = (err: unknown): void => {
+        showToast(saveErrorMessage(err, 'Failed to save tabs. Please try again.'), 'error')
       }
 
       if (groupId !== null) {
+        // Spec §17: don't add URLs that already exist in the target group
+        const targetGroup = workspaces
+          .find((w) => w.id === workspaceId)
+          ?.categories.find((c) => c.id === categoryId)
+          ?.groups.find((g) => g.id === groupId)
+        if (targetGroup) {
+          const existing = new Set(targetGroup.tabs.map((t) => t.url))
+          const skipped = savedTabs.filter((t) => existing.has(t.url)).length
+          if (skipped > 0) {
+            savedTabs = savedTabs.filter((t) => !existing.has(t.url))
+            showToast(
+              savedTabs.length === 0
+                ? 'All of those tabs are already in this group.'
+                : `Skipped ${skipped} tab${skipped === 1 ? '' : 's'} already in this group.`,
+              'error',
+            )
+            if (savedTabs.length === 0) return
+          }
+        }
         addTabsToGroup(workspaceId, categoryId, groupId, savedTabs).catch(onError)
       } else {
         tabs.save({
@@ -388,7 +640,7 @@ export function App(): React.JSX.Element {
         }).catch(onError)
       }
     },
-    [tabs, showToast],
+    [tabs, showToast, workspaces],
   )
 
   const handleCloseActiveTab = useCallback((tabId: number): void => {
@@ -427,6 +679,37 @@ export function App(): React.JSX.Element {
       showToast('Failed to create group. Please try again.', 'error')
     })
   }, [activeWorkspace, selectedCategoryId, showToast])
+
+  const handleCreateNote = useCallback((): void => {
+    if (!activeWorkspace || !selectedCategoryId) return
+    createCategoryNote(activeWorkspace.id, selectedCategoryId).catch(() => {
+      showToast('Failed to create note. Please try again.', 'error')
+    })
+  }, [activeWorkspace, selectedCategoryId, showToast])
+
+  const handleSaveStandaloneNote = useCallback(
+    (noteId: string, content: string): void => {
+      if (!activeWorkspace) return
+      const cat = categories.find((c) => (c.notes ?? []).some((n) => n.id === noteId))
+      if (!cat) return
+      saveCategoryNote(activeWorkspace.id, cat.id, noteId, content).catch(() => {
+        showToast('Failed to save note. Please try again.', 'error')
+      })
+    },
+    [activeWorkspace, categories, showToast],
+  )
+
+  const handleDeleteStandaloneNote = useCallback(
+    (noteId: string): void => {
+      if (!activeWorkspace) return
+      const cat = categories.find((c) => (c.notes ?? []).some((n) => n.id === noteId))
+      if (!cat) return
+      deleteCategoryNote(activeWorkspace.id, cat.id, noteId).catch(() => {
+        showToast('Failed to delete note. Please try again.', 'error')
+      })
+    },
+    [activeWorkspace, categories, showToast],
+  )
 
   const handleCreateCategory = useCallback((name: string): void => {
     if (!activeWorkspace) return
@@ -467,6 +750,33 @@ export function App(): React.JSX.Element {
     [activeWorkspace, selectedCategoryId, showToast],
   )
 
+  const handleChangeCategoryColor = useCallback(
+    (id: string, color: string): void => {
+      if (!activeWorkspace) return
+      patchCategory(activeWorkspace.id, id, { color }).catch(() => {
+        showToast('Failed to update category color.', 'error')
+      })
+    },
+    [activeWorkspace, showToast],
+  )
+
+  const handleChangeCategoryEmoji = useCallback(
+    (id: string, emoji: string): void => {
+      if (!activeWorkspace) return
+      patchCategory(activeWorkspace.id, id, { emoji }).catch(() => {
+        showToast('Failed to update category emoji.', 'error')
+      })
+    },
+    [activeWorkspace, showToast],
+  )
+
+  const handleCollapseAll = useCallback((): void => {
+    if (!activeWorkspace) return
+    setAllCategoriesCollapsed(activeWorkspace.id, true).catch(() => {
+      showToast('Failed to collapse categories.', 'error')
+    })
+  }, [activeWorkspace, showToast])
+
   const handleToggleCollapse = useCallback(
     (categoryId: string): void => {
       if (!activeWorkspace) return
@@ -498,13 +808,27 @@ export function App(): React.JSX.Element {
     }
   }, [activeWorkspace?.id, handleSelectWorkspace])
 
-  const handleCreateWorkspace = useCallback((name: string): void => {
-    createWorkspace(name)
+  const handleCreateWorkspace = useCallback((name: string, templateWorkspaceId?: string): void => {
+    createWorkspace(name, templateWorkspaceId)
       .then((id) => patchSettings({ default_workspace_id: id }))
       .catch(() => {
         showToast('Failed to create workspace. Please try again.', 'error')
       })
   }, [showToast])
+
+  const handleDeleteWorkspace = useCallback((id: string): void => {
+    deleteWorkspace(id)
+      .then(() => {
+        // If the active workspace was deleted, fall back to the first remaining one
+        if (activeWorkspace?.id === id) {
+          const next = workspaces.find((w) => w.id !== id)
+          return patchSettings({ default_workspace_id: next?.id ?? null })
+        }
+        return undefined
+      })
+      .then(() => showToast('Workspace moved to trash.', 'success'))
+      .catch(() => showToast('Failed to delete workspace. Please try again.', 'error'))
+  }, [activeWorkspace?.id, workspaces, showToast])
 
   const handleRenameWorkspace = useCallback((id: string, name: string): void => {
     renameWorkspace(id, name).catch(() => {
@@ -585,6 +909,10 @@ export function App(): React.JSX.Element {
 
   const showFavicons = data?.settings.show_favicons ?? true
 
+  // Spec §11.2: background preset (color or gradient) for the new tab page
+  const backgroundCss =
+    BACKGROUND_PRESETS.find((p) => p.id === (data?.settings.background ?? ''))?.css ?? ''
+
   return (
     <>
       <div
@@ -592,6 +920,7 @@ export function App(): React.JSX.Element {
         style={{
           ...shellStyle,
           ...(resizingSidebar ? { userSelect: 'none', cursor: 'col-resize' } : {}),
+          ...(backgroundCss ? { background: backgroundCss } : {}),
           ['--sidebar-width' as string]: `${sidebarWidth}px`,
         }}
       >
@@ -603,6 +932,7 @@ export function App(): React.JSX.Element {
             activeTabsOpen={activeTabsOpen}
             syncState={syncState}
             lastSyncAt={lastSyncAt}
+            pendingSync={pendingSync}
             onSettingsClick={() => setSettingsOpen(true)}
             showClock={data?.settings.show_clock ?? false}
           />
@@ -624,6 +954,11 @@ export function App(): React.JSX.Element {
             onSelectWorkspace={handleSelectWorkspace}
             onCreateWorkspace={handleCreateWorkspace}
             onRenameWorkspace={handleRenameWorkspace}
+            onDeleteWorkspace={handleDeleteWorkspace}
+            onDropActiveTab={handleDropActiveTabOnCategory}
+            onChangeCategoryColor={handleChangeCategoryColor}
+            onChangeCategoryEmoji={handleChangeCategoryEmoji}
+            onCollapseAll={handleCollapseAll}
           />
         </div>
 
@@ -672,6 +1007,16 @@ export function App(): React.JSX.Element {
               onRenameGroup={handleRenameGroup}
               onDeleteGroup={handleDeleteGroup}
               onOpenAll={handleOpenAll}
+              onOpenAllInBackground={handleOpenAllInBackground}
+              onAddTab={handleAddTabByUrl}
+              categories={categories.map((c) => ({ id: c.id, name: c.name, emoji: c.emoji }))}
+              categoryIdOf={(groupId) => categories.find((c) => c.groups.some((g) => g.id === groupId))?.id}
+              onMoveToCategory={handleMoveGroupToCategory}
+              onDuplicate={handleDuplicateGroup}
+              onArchive={handleArchiveGroup}
+              onExport={handleExportGroup}
+              onReorderTab={handleReorderTab}
+              onDropActiveTab={handleDropActiveTabOnGroup}
               onRemoveTab={handleRemoveTab}
               onMoveTab={handleMoveTab}
               onOpenTab={handleOpenTab}
@@ -681,6 +1026,10 @@ export function App(): React.JSX.Element {
               onCreateGroup={selectedCategoryId ? handleCreateEmptyGroup : undefined}
               creatingGroup={creatingGroup}
               onCreatingGroupChange={(v) => setCreatingGroup(v)}
+              notes={standaloneNotes}
+              onSaveNote={handleSaveStandaloneNote}
+              onDeleteNote={handleDeleteStandaloneNote}
+              onCreateNote={selectedCategoryId ? handleCreateNote : undefined}
             />
           )}
 

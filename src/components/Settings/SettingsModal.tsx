@@ -206,6 +206,7 @@ export function SettingsModal({
             onRestore={onRestoreTrashItem ?? (() => undefined)}
             onDeletePermanently={onDeleteTrashItem ?? (() => undefined)}
             onEmptyTrash={onEmptyTrash ?? (() => undefined)}
+            workspaces={workspaces}
           />
         )
       case 'help':

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useId, useState } from 'react'
-import type { LocalSettings, SyncMeta, Workspace, StorageSchema } from '../../lib/schema'
+import type { LocalSettings, SyncMeta, Workspace, StorageSchema, DriveRevision } from '../../lib/schema'
 import { StorageSchemaZod } from '../../lib/schema'
+import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog'
 import { ToggleSwitch } from './ToggleSwitch'
 import { SettingRow } from './SettingRow'
 import { mergeImportedData } from './mergeImportedData'
@@ -77,6 +78,42 @@ export function SyncAndDataTab({
   const handleSyncNow = useCallback(async () => {
     setSyncing(true)
     await sendMessage({ type: 'TRIGGER_SYNC' })
+  }, [])
+
+  // Restore from Drive revision history (spec §9.2/§11.3)
+  const [revisions, setRevisions] = useState<DriveRevision[] | null>(null)
+  const [revisionsLoading, setRevisionsLoading] = useState(false)
+  const [revisionsError, setRevisionsError] = useState<string | null>(null)
+  const [confirmRevisionId, setConfirmRevisionId] = useState<string | null>(null)
+  const [restoredRevision, setRestoredRevision] = useState(false)
+
+  const handleLoadRevisions = useCallback(async () => {
+    setRevisionsLoading(true)
+    setRevisionsError(null)
+    setRestoredRevision(false)
+    const res = await sendMessage({ type: 'GET_DRIVE_REVISIONS' })
+    setRevisionsLoading(false)
+    if (!res.ok) {
+      setRevisionsError(res.error ?? 'Failed to load backups.')
+      return
+    }
+    setRevisions((res.data as DriveRevision[] | undefined) ?? [])
+  }, [])
+
+  const handleRestoreRevision = useCallback(async (revisionId: string) => {
+    setRevisionsLoading(true)
+    setRevisionsError(null)
+    const res = await sendMessage({
+      type: 'RESTORE_DRIVE_REVISION',
+      payload: { revision_id: revisionId },
+    })
+    setRevisionsLoading(false)
+    if (!res.ok) {
+      setRevisionsError(res.error ?? 'Restore failed.')
+      return
+    }
+    setRestoredRevision(true)
+    setRevisions(null)
   }, [])
 
   const handleExportJSON = async () => {
@@ -270,7 +307,7 @@ export function SyncAndDataTab({
         <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>{lastSyncText}</span>
       </SettingRow>
 
-      <SettingRow label="Sync now" last>
+      <SettingRow label="Sync now">
         <button
           onClick={() => { void handleSyncNow() }}
           disabled={!isConnected || !localSettings.sync_enabled || syncing}
@@ -286,6 +323,70 @@ export function SyncAndDataTab({
           {syncing ? 'Syncing…' : 'Sync Now'}
         </button>
       </SettingRow>
+
+      {/* Restore from Drive revision history (spec §9.2/§11.3) */}
+      {isConnected && (
+        <SettingRow label="Restore from backup" last>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', width: '100%' }}>
+            <div>
+              <button
+                onClick={() => void handleLoadRevisions()}
+                disabled={revisionsLoading}
+                style={{ ...ghostBtnStyle, opacity: revisionsLoading ? 0.5 : 1 }}
+                aria-label="Show Drive backup versions"
+                aria-busy={revisionsLoading}
+              >
+                {revisionsLoading ? 'Loading…' : 'Show backups'}
+              </button>
+            </div>
+
+            {revisionsError && (
+              <div role="alert" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-danger)' }}>
+                {revisionsError}
+              </div>
+            )}
+            {restoredRevision && (
+              <div role="status" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-success)' }}>
+                Backup restored. Your previous data was kept as a local backup.
+              </div>
+            )}
+
+            {revisions !== null && revisions.length === 0 && (
+              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>No backups found.</span>
+            )}
+            {revisions !== null && revisions.length > 0 && (
+              <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }} aria-label="Drive backups">
+                {revisions.map((rev) => (
+                  <li key={rev.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                    <span style={{ flex: 1, fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
+                      {new Date(rev.modifiedTime).toLocaleString()}
+                    </span>
+                    <button
+                      onClick={() => setConfirmRevisionId(rev.id)}
+                      style={{ ...ghostBtnStyle, padding: '2px var(--space-2)', fontSize: 'var(--text-xs)' }}
+                      aria-label={`Restore backup from ${new Date(rev.modifiedTime).toLocaleString()}`}
+                    >
+                      Restore
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </SettingRow>
+      )}
+
+      <ConfirmDialog
+        isOpen={confirmRevisionId !== null}
+        title="Restore backup"
+        message="Replace your current data with this backup? Your current workspaces are kept as a local backup."
+        confirmLabel="Restore"
+        onConfirm={() => {
+          if (confirmRevisionId) void handleRestoreRevision(confirmRevisionId)
+          setConfirmRevisionId(null)
+        }}
+        onCancel={() => setConfirmRevisionId(null)}
+      />
 
       {/* ── Divider ── */}
       <div style={{ borderTop: '1px solid var(--border-default)', margin: 'var(--space-6) 0' }} />

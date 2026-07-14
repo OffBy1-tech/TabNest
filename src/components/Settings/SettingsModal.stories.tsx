@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import type { UserSettings, LocalSettings, SyncMeta, Workspace, TrashItem } from '../../lib/schema';
+import { DEFAULT_SETTINGS, type UserSettings, type LocalSettings, type SyncMeta, type Workspace, type TrashItem } from '../../lib/schema';
 import { SettingsModal } from './SettingsModal';
 
 const meta = {
@@ -20,15 +20,10 @@ type Story = StoryObj<typeof meta>;
 const NOW = Date.now();
 
 const defaultSettings: UserSettings = {
+  ...DEFAULT_SETTINGS,
   theme: 'light',
-  default_view: 'grid',
-  open_tab_behavior: 'new_tab',
-  save_and_close: false,
-  show_favicons: true,
-  compact_mode: false,
   active_tabs_on_load: true,
   default_workspace_id: 'ws-1',
-  show_clock: true,
 };
 
 const defaultLocalSettings: LocalSettings = {
@@ -73,6 +68,7 @@ const mockWorkspaces: Workspace[] = [
         color: '#1A56DB',
         emoji: '💼',
         collapsed: false,
+        notes: [],
         order: 0,
         groups: [
           {

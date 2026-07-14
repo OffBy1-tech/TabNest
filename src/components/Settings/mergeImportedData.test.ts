@@ -24,7 +24,7 @@ function group(name: string, urls: string[] = []): TabGroup {
 }
 
 function category(name: string, groups: TabGroup[]): Category {
-  return { id: crypto.randomUUID(), name, color: '', emoji: '', collapsed: false, order: 0, groups }
+  return { id: crypto.randomUUID(), name, color: '', emoji: '', collapsed: false, order: 0, groups, notes: [] }
 }
 
 function workspace(name: string, categories: Category[]): Workspace {

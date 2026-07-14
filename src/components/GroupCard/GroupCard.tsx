@@ -5,12 +5,13 @@ import React, {
 } from 'react'
 import { MoreHorizontal, StickyNote } from 'lucide-react'
 import type { TabGroup, SavedTab } from '../../lib/schema'
+import { normalizeUrlInput } from '../../lib/tabTitle'
 import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog'
 import { InlineNameEditor } from './InlineNameEditor'
-import { KebabMenu } from './KebabMenu'
-import { NoteEditor } from './NoteEditor'
+import { KebabMenu, type KebabMenuItem } from './KebabMenu'
+import { MarkdownNote } from '../Notes/MarkdownNote'
 import { TabRow } from './TabRow'
-import { DRAG_TYPE, type DragPayload } from './dragTypes'
+import { DRAG_TYPE, ACTIVE_TAB_DRAG_TYPE, type DragPayload, type ActiveTabDragPayload } from './dragTypes'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -28,6 +29,23 @@ export interface GroupCardProps {
   onSaveGroupNote: (groupId: string, content: string) => void
   onSaveTabNote: (groupId: string, tabId: string, note: string) => void
   showFavicons?: boolean
+  /** Opens the whole group in an unfocused new window (spec §6.3). */
+  onOpenAllInBackground?: (() => void) | undefined
+  /** Adds a manually entered URL to this group (spec §6.2). */
+  onAddTab?: ((groupId: string, url: string) => void) | undefined
+  /** Categories available as "Move to category" targets (excluding checks done here). */
+  categories?: Array<{ id: string; name: string; emoji: string }> | undefined
+  onMoveToCategory?: ((groupId: string, toCategoryId: string) => void) | undefined
+  onDuplicate?: ((groupId: string) => void) | undefined
+  onArchive?: ((groupId: string) => void) | undefined
+  /** Export the group as a shareable text list of URLs (spec §11.5). */
+  onExport?: ((group: TabGroup) => void) | undefined
+  /** Reorder a tab within this group (spec §6.2). */
+  onReorderTab?: ((groupId: string, tabId: string, toIndex: number) => void) | undefined
+  /** The category this group currently belongs to (filtered out of move targets). */
+  currentCategoryId?: string | undefined
+  /** A tab dragged from the Active Tabs panel was dropped on this card (spec §4.2). */
+  onDropActiveTab?: ((groupId: string, payload: ActiveTabDragPayload) => void) | undefined
 }
 
 // ---------------------------------------------------------------------------
@@ -35,6 +53,9 @@ export interface GroupCardProps {
 // ---------------------------------------------------------------------------
 
 const MAX_VISIBLE_TABS = 5
+
+/** Opening more tabs than this at once asks for confirmation first (spec §17). */
+export const LARGE_OPEN_THRESHOLD = 20
 
 export function GroupCard({
   group,
@@ -48,23 +69,117 @@ export function GroupCard({
   onSaveGroupNote,
   onSaveTabNote,
   showFavicons = true,
+  onOpenAllInBackground,
+  onAddTab,
+  categories,
+  onMoveToCategory,
+  onDuplicate,
+  onArchive,
+  onExport,
+  onReorderTab,
+  currentCategoryId,
+  onDropActiveTab,
 }: GroupCardProps): React.JSX.Element {
   const [isEditing, setIsEditing] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [menuMode, setMenuMode] = useState<'main' | 'move'>('main')
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const [expanded, setExpanded] = useState(false)
   const [noteOpen, setNoteOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
+  // Holds the open action awaiting large-group confirmation, or null
+  const [confirmOpenAction, setConfirmOpenAction] = useState<(() => void) | null>(null)
+  const [addingTab, setAddingTab] = useState(false)
+  const [addTabUrl, setAddTabUrl] = useState('')
+  const [addTabError, setAddTabError] = useState(false)
   const cardRef = useRef<HTMLElement>(null)
   const kebabRef = useRef<HTMLButtonElement>(null)
 
   const groupNote = group.notes[0]?.content ?? ''
   const hasGroupNote = Boolean(groupNote)
 
+  /** Run an open action directly, or ask first when the group is large. */
+  const requestOpen = useCallback(
+    (action: () => void): void => {
+      if (group.tabs.length > LARGE_OPEN_THRESHOLD) {
+        setConfirmOpenAction(() => action)
+      } else {
+        action()
+      }
+    },
+    [group.tabs.length],
+  )
+
+  function handleAddTabSubmit(): void {
+    const normalized = normalizeUrlInput(addTabUrl)
+    if (!normalized) {
+      setAddTabError(true)
+      return
+    }
+    onAddTab?.(group.id, normalized)
+    setAddTabUrl('')
+    setAddTabError(false)
+    setAddingTab(false)
+  }
+
+  const closeMenu = useCallback((): void => {
+    setMenuOpen(false)
+    setMenuMode('main')
+  }, [])
+
+  const moveTargets = (categories ?? []).filter((c) => c.id !== currentCategoryId)
+
+  const mainMenuItems: KebabMenuItem[] = [
+    {
+      label: 'Open All',
+      onClick: () => { closeMenu(); requestOpen(onOpenAll) },
+    },
+    ...(onOpenAllInBackground
+      ? [{ label: 'Open All in Background', onClick: () => { closeMenu(); requestOpen(onOpenAllInBackground) } }]
+      : []),
+    ...(onAddTab
+      ? [{ label: 'Add tab by URL', onClick: () => { closeMenu(); setAddingTab(true) } }]
+      : []),
+    { label: 'Rename', onClick: () => { closeMenu(); setIsEditing(true) } },
+    ...(onMoveToCategory && moveTargets.length > 0
+      ? [{ label: 'Move to category…', dividerBefore: true, onClick: () => setMenuMode('move') }]
+      : []),
+    ...(onDuplicate
+      ? [{ label: 'Duplicate', onClick: () => { closeMenu(); onDuplicate(group.id) } }]
+      : []),
+    ...(onArchive
+      ? [{ label: 'Archive', onClick: () => { closeMenu(); onArchive(group.id) } }]
+      : []),
+    ...(onExport
+      ? [{ label: 'Copy as URL list', onClick: () => { closeMenu(); onExport(group) } }]
+      : []),
+    {
+      label: 'Delete',
+      danger: true,
+      dividerBefore: true,
+      onClick: () => { closeMenu(); setConfirmDelete(true) },
+    },
+  ]
+
+  const moveMenuItems: KebabMenuItem[] = [
+    { label: '← Back', onClick: () => setMenuMode('main') },
+    ...moveTargets.map((cat) => ({
+      label: `${cat.emoji} ${cat.name}`,
+      dividerBefore: cat.id === moveTargets[0]?.id,
+      onClick: () => {
+        closeMenu()
+        onMoveToCategory?.(group.id, cat.id)
+      },
+    })),
+  ]
+
   function handleDragOver(e: React.DragEvent<HTMLElement>): void {
-    if (!e.dataTransfer.types.includes(DRAG_TYPE)) return
+    const isSavedTab = e.dataTransfer.types.includes(DRAG_TYPE)
+    const isActiveTab = onDropActiveTab != null && e.dataTransfer.types.includes(ACTIVE_TAB_DRAG_TYPE)
+    if (!isSavedTab && !isActiveTab) return
     e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
+    e.dataTransfer.dropEffect = isActiveTab ? 'copy' : 'move'
     setIsDragOver(true)
   }
 
@@ -78,6 +193,18 @@ export function GroupCard({
   function handleDrop(e: React.DragEvent<HTMLElement>): void {
     e.preventDefault()
     setIsDragOver(false)
+
+    // A tab dragged from the Active Tabs panel — save it into this group
+    const activeRaw = e.dataTransfer.getData(ACTIVE_TAB_DRAG_TYPE)
+    if (activeRaw && onDropActiveTab) {
+      try {
+        onDropActiveTab(group.id, JSON.parse(activeRaw) as ActiveTabDragPayload)
+      } catch {
+        // Malformed payload — ignore
+      }
+      return
+    }
+
     const raw = e.dataTransfer.getData(DRAG_TYPE)
     if (!raw) return
     try {
@@ -106,7 +233,7 @@ export function GroupCard({
       setConfirmDelete(true)
     } else if (e.key === 'Enter') {
       e.preventDefault()
-      onOpenAll()
+      requestOpen(onOpenAll)
     }
   }
 
@@ -143,6 +270,10 @@ export function GroupCard({
         gap: 'var(--space-2)',
         outline: 'none',
         transition: 'box-shadow var(--duration-fast) var(--ease-default), border-color var(--duration-fast) var(--ease-default)',
+        // Spec §16: skip rendering work for offscreen cards in large collections.
+        // containIntrinsicSize reserves approximate space so scrollbars stay stable.
+        contentVisibility: 'auto',
+        containIntrinsicSize: 'auto 240px',
       }}
       onFocus={(e) => {
         if (e.target === cardRef.current) {
@@ -228,7 +359,7 @@ export function GroupCard({
         <button
           type="button"
           aria-label="Open all tabs"
-          onClick={onOpenAll}
+          onClick={() => requestOpen(onOpenAll)}
           style={{
             fontSize: 'var(--text-xs)',
             color: 'var(--color-brand-500)',
@@ -332,19 +463,8 @@ export function GroupCard({
         {menuOpen && (
           <KebabMenu
             anchorRef={kebabRef}
-            onClose={() => setMenuOpen(false)}
-            onRename={() => {
-              setMenuOpen(false)
-              setIsEditing(true)
-            }}
-            onDelete={() => {
-              setMenuOpen(false)
-              setConfirmDelete(true)
-            }}
-            onOpenAll={() => {
-              setMenuOpen(false)
-              onOpenAll()
-            }}
+            onClose={closeMenu}
+            items={menuMode === 'move' ? moveMenuItems : mainMenuItems}
           />
         )}
       </div>
@@ -355,8 +475,44 @@ export function GroupCard({
         aria-label={`Tabs in ${group.name}`}
         style={{ display: 'flex', flexDirection: 'column', gap: 0 }}
       >
-        {visibleTabs.map((tab) => (
-          <div key={tab.id} role="listitem">
+        {visibleTabs.map((tab, idx) => (
+          <div
+            key={tab.id}
+            role="listitem"
+            onDragOver={(e) => {
+              if (!onReorderTab || !e.dataTransfer.types.includes(DRAG_TYPE)) return
+              e.preventDefault()
+              e.stopPropagation()
+              setDragOverIndex(idx)
+            }}
+            onDragLeave={() => {
+              setDragOverIndex((cur) => (cur === idx ? null : cur))
+            }}
+            onDrop={(e) => {
+              if (!onReorderTab) return
+              const raw = e.dataTransfer.getData(DRAG_TYPE)
+              if (!raw) return
+              e.preventDefault()
+              e.stopPropagation()
+              setDragOverIndex(null)
+              setIsDragOver(false)
+              try {
+                const { tabId, fromGroupId } = JSON.parse(raw) as DragPayload
+                if (fromGroupId === group.id) {
+                  if (tabId !== tab.id) onReorderTab(group.id, tabId, idx)
+                } else {
+                  onMoveTab(fromGroupId, group.id, tabId)
+                }
+              } catch {
+                // Malformed payload — ignore
+              }
+            }}
+            style={
+              dragOverIndex === idx
+                ? { boxShadow: 'inset 0 2px 0 var(--color-brand-500)' }
+                : undefined
+            }
+          >
             <TabRow
               tab={tab}
               groupId={group.id}
@@ -400,16 +556,116 @@ export function GroupCard({
         </button>
       )}
 
+      {/* Add tab by URL */}
+      {addingTab && onAddTab && (
+        <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+          <input
+            type="text"
+            autoFocus
+            value={addTabUrl}
+            placeholder="Paste or type a URL…"
+            aria-label="URL of tab to add"
+            aria-invalid={addTabError}
+            onChange={(e) => {
+              setAddTabUrl(e.target.value)
+              setAddTabError(false)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); handleAddTabSubmit() }
+              if (e.key === 'Escape') { e.preventDefault(); setAddingTab(false); setAddTabUrl(''); setAddTabError(false) }
+            }}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              padding: 'var(--space-1) var(--space-2)',
+              fontSize: 'var(--text-sm)',
+              fontFamily: 'var(--font-sans)',
+              color: 'var(--text-primary)',
+              backgroundColor: 'var(--bg-base)',
+              border: `1px solid ${addTabError ? 'var(--color-danger)' : 'var(--border-default)'}`,
+              borderRadius: 'var(--radius-sm)',
+              outline: 'none',
+            }}
+          />
+          <button
+            type="button"
+            onClick={handleAddTabSubmit}
+            aria-label="Add tab to group"
+            style={{
+              fontSize: 'var(--text-xs)',
+              color: 'var(--text-inverse)',
+              backgroundColor: 'var(--color-brand-500)',
+              border: 'none',
+              borderRadius: 'var(--radius-sm)',
+              padding: '4px var(--space-2)',
+              cursor: 'pointer',
+              fontWeight: 500,
+              flexShrink: 0,
+            }}
+          >
+            Add
+          </button>
+        </div>
+      )}
+      {addingTab && addTabError && (
+        <span role="alert" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-danger)' }}>
+          Enter a valid web address (http/https).
+        </span>
+      )}
+
+      {/* Note preview (spec §3.4) — first line, click to edit */}
+      {hasGroupNote && !noteOpen && (
+        <button
+          type="button"
+          onClick={() => setNoteOpen(true)}
+          aria-label={`Note preview: ${groupNote.split('\n')[0]}`}
+          title={groupNote}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-1)',
+            border: 'none',
+            backgroundColor: 'transparent',
+            color: 'var(--text-muted)',
+            fontSize: 'var(--text-xs)',
+            cursor: 'pointer',
+            textAlign: 'left',
+            padding: 'var(--space-1) 0 0',
+            overflow: 'hidden',
+            whiteSpace: 'nowrap',
+            textOverflow: 'ellipsis',
+            fontStyle: 'italic',
+          }}
+        >
+          <StickyNote size={11} aria-hidden="true" style={{ flexShrink: 0 }} />
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {groupNote.split('\n')[0]}
+          </span>
+        </button>
+      )}
+
       {/* Group note panel */}
       {noteOpen && (
         <div style={{ padding: 'var(--space-2) var(--space-3) var(--space-3)' }}>
-          <NoteEditor
-            initialValue={groupNote}
-            placeholder="Add a note for this group…"
-            onSave={(value) => onSaveGroupNote(group.id, value)}
+          <MarkdownNote
+            content={groupNote}
+            placeholder="Add a note for this group… (Markdown supported)"
+            autoEdit={!hasGroupNote}
+            onChange={(value) => onSaveGroupNote(group.id, value)}
           />
         </div>
       )}
+
+      {/* Creation date (spec §3.4) */}
+      <div
+        style={{
+          fontSize: 'var(--text-xs)',
+          color: 'var(--text-muted)',
+          paddingTop: 'var(--space-1)',
+        }}
+      >
+        Created {new Date(group.created_at).toLocaleDateString()}
+      </div>
 
       {/* Delete confirmation */}
       <ConfirmDialog
@@ -420,6 +676,19 @@ export function GroupCard({
         destructive
         onConfirm={handleConfirmDelete}
         onCancel={() => setConfirmDelete(false)}
+      />
+
+      {/* Large-group open confirmation (spec §17) */}
+      <ConfirmDialog
+        isOpen={confirmOpenAction !== null}
+        title="Open many tabs"
+        message={`This will open ${group.tabs.length} tabs at once. Continue?`}
+        confirmLabel={`Open ${group.tabs.length} tabs`}
+        onConfirm={() => {
+          confirmOpenAction?.()
+          setConfirmOpenAction(null)
+        }}
+        onCancel={() => setConfirmOpenAction(null)}
       />
     </article>
   )

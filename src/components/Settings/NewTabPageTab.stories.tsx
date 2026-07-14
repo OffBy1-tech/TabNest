@@ -1,17 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import type { UserSettings, Workspace } from '../../lib/schema';
+import { DEFAULT_SETTINGS, type UserSettings, type Workspace } from '../../lib/schema';
 import { NewTabPageTab } from './NewTabPageTab';
 
 const settings: UserSettings = {
+  ...DEFAULT_SETTINGS,
   theme: 'light',
-  default_view: 'grid',
-  open_tab_behavior: 'new_tab',
-  save_and_close: false,
-  show_favicons: true,
-  compact_mode: false,
   active_tabs_on_load: true,
   default_workspace_id: 'ws-1',
-  show_clock: true,
 };
 
 const workspaces: Workspace[] = [

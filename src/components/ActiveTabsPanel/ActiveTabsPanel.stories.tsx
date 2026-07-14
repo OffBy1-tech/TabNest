@@ -32,6 +32,7 @@ const mockWorkspaces: Workspace[] = [
         color: '#1A56DB',
         emoji: '💼',
         collapsed: false,
+        notes: [],
         order: 0,
         groups: [
           {
@@ -60,6 +61,7 @@ const mockWorkspaces: Workspace[] = [
         color: '#16a34a',
         emoji: '🏠',
         collapsed: false,
+        notes: [],
         order: 1,
         groups: [],
       },

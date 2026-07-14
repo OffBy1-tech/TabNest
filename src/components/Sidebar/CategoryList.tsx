@@ -6,6 +6,7 @@ import React, {
 } from 'react'
 import { GripVertical, Plus, ChevronDown, Eye, EyeOff } from 'lucide-react'
 import type { Category, Workspace } from '../../lib/schema'
+import { ACTIVE_TAB_DRAG_TYPE, type ActiveTabDragPayload } from '../GroupCard/dragTypes'
 import { WorkspaceDropdown } from './WorkspaceDropdown'
 import { RenameInput } from './RenameInput'
 import { ContextMenu } from './ContextMenu'
@@ -28,8 +29,15 @@ export interface CategoryListProps {
   workspaces: Workspace[]
   activeWorkspaceId: string | undefined
   onSelectWorkspace: (id: string) => void
-  onCreateWorkspace: (name: string) => void
+  onCreateWorkspace: (name: string, templateWorkspaceId?: string) => void
   onRenameWorkspace: (id: string, name: string) => void
+  onDeleteWorkspace?: ((id: string) => void) | undefined
+  /** A tab dragged from the Active Tabs panel was dropped on a category (spec §5.1). */
+  onDropActiveTab?: ((categoryId: string, payload: ActiveTabDragPayload) => void) | undefined
+  /** Category context-menu extras (spec §3.3). */
+  onChangeCategoryColor?: ((id: string, color: string) => void) | undefined
+  onChangeCategoryEmoji?: ((id: string, emoji: string) => void) | undefined
+  onCollapseAll?: (() => void) | undefined
 }
 
 interface ContextMenuState {
@@ -56,7 +64,13 @@ export function CategoryList({
   onSelectWorkspace,
   onCreateWorkspace,
   onRenameWorkspace,
+  onDeleteWorkspace,
+  onDropActiveTab,
+  onChangeCategoryColor,
+  onChangeCategoryEmoji,
+  onCollapseAll,
 }: CategoryListProps): React.JSX.Element {
+  const [dragOverCategoryId, setDragOverCategoryId] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [focusedIndex, setFocusedIndex] = useState<number>(-1)
@@ -257,8 +271,9 @@ export function CategoryList({
             workspaces={workspaces}
             activeWorkspaceId={activeWorkspaceId}
             onSelectWorkspace={(id) => { onSelectWorkspace(id); setWsDropdownOpen(false) }}
-            onCreateWorkspace={(name) => { onCreateWorkspace(name); setWsDropdownOpen(false) }}
+            onCreateWorkspace={(name, templateId) => { onCreateWorkspace(name, templateId); setWsDropdownOpen(false) }}
             onRenameWorkspace={onRenameWorkspace}
+            onDeleteWorkspace={onDeleteWorkspace}
           />
         </div>
       )}
@@ -378,10 +393,40 @@ export function CategoryList({
             <li
               draggable
               onDragStart={(e) => handleDragStart(e, category.id)}
-              onDragOver={(e) => handleDragOver(e, idx)}
-              onDrop={handleDrop}
+              onDragOver={(e) => {
+                // Active-panel tab hovering this row — highlight as a save target
+                if (onDropActiveTab && e.dataTransfer.types.includes(ACTIVE_TAB_DRAG_TYPE)) {
+                  e.preventDefault()
+                  e.dataTransfer.dropEffect = 'copy'
+                  setDragOverCategoryId(category.id)
+                  return
+                }
+                handleDragOver(e, idx)
+              }}
+              onDragLeave={() => {
+                setDragOverCategoryId((cur) => (cur === category.id ? null : cur))
+              }}
+              onDrop={(e) => {
+                const activeRaw = e.dataTransfer.getData(ACTIVE_TAB_DRAG_TYPE)
+                if (activeRaw && onDropActiveTab) {
+                  e.preventDefault()
+                  setDragOverCategoryId(null)
+                  try {
+                    onDropActiveTab(category.id, JSON.parse(activeRaw) as ActiveTabDragPayload)
+                  } catch {
+                    // Malformed payload — ignore
+                  }
+                  return
+                }
+                handleDrop(e)
+              }}
               onDragEnd={clearDrag}
-              style={{ opacity: isDragged ? 0.4 : 1 }}
+              style={{
+                opacity: isDragged ? 0.4 : 1,
+                ...(dragOverCategoryId === category.id
+                  ? { boxShadow: 'inset 0 0 0 2px var(--color-brand-500)', borderRadius: 'var(--radius-md)' }
+                  : {}),
+              }}
             >
               {/* Row wrapper — owns hover, selection background, and left accent border */}
               <div
@@ -457,6 +502,20 @@ export function CategoryList({
                   >
                     {category.emoji}
                   </span>
+
+                  {/* Category color dot (spec §3.3) */}
+                  {category.color && (
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: 'var(--radius-full)',
+                        backgroundColor: category.color,
+                        flexShrink: 0,
+                      }}
+                    />
+                  )}
 
                   {renaming ? (
                     <RenameInput
@@ -603,6 +662,32 @@ export function CategoryList({
             closeContextMenu()
           }}
           onClose={closeContextMenu}
+          currentColor={categories.find((c) => c.id === contextMenu.categoryId)?.color}
+          currentEmoji={categories.find((c) => c.id === contextMenu.categoryId)?.emoji}
+          onChangeColor={
+            onChangeCategoryColor
+              ? (color) => {
+                  onChangeCategoryColor(contextMenu.categoryId, color)
+                  closeContextMenu()
+                }
+              : undefined
+          }
+          onChangeEmoji={
+            onChangeCategoryEmoji
+              ? (emoji) => {
+                  onChangeCategoryEmoji(contextMenu.categoryId, emoji)
+                  closeContextMenu()
+                }
+              : undefined
+          }
+          onCollapseAll={
+            onCollapseAll
+              ? () => {
+                  onCollapseAll()
+                  closeContextMenu()
+                }
+              : undefined
+          }
         />
       )}
     </nav>

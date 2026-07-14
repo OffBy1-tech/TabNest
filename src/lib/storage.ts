@@ -14,6 +14,7 @@
 import {
   StorageSchemaZod,
   TabGroupSchema,
+  WorkspaceSchema,
   DEFAULT_SETTINGS,
   DEFAULT_LOCAL_SETTINGS,
   DEFAULT_SYNC_META,
@@ -107,14 +108,76 @@ const MIGRATIONS: Record<number, (data: any) => any> = {
     const { accent_color: _removed, ...rest } = data.settings ?? {}
     return { ...data, schema_version: 4, settings: rest }
   },
+
+  /**
+   * v4 → v5: Categories gain a standalone `notes` array (spec §7.1).
+   */
+  4: (data) => ({
+    ...data,
+    schema_version: 5,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    workspaces: (data.workspaces ?? []).map((ws: any) => ({
+      ...ws,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      categories: (ws.categories ?? []).map((cat: any) => ({ ...cat, notes: cat.notes ?? [] })),
+    })),
+  }),
 }
 
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * First-run content (spec §15): a "Getting Started" category with a welcome
+ * group of example tabs. Only added by buildDefaultStorage (fresh installs) —
+ * new workspaces created later start with just the default category.
+ */
+function buildGettingStartedCategory(): Category {
+  const now = Date.now()
+  return {
+    id: crypto.randomUUID(),
+    name: 'Getting Started',
+    color: '#10b981',
+    emoji: '👋',
+    collapsed: false,
+    order: 1,
+    notes: [],
+    groups: [
+      {
+        id: crypto.randomUUID(),
+        name: 'Welcome to Tab Nest',
+        created_at: now,
+        updated_at: now,
+        order: 0,
+        notes: [{
+          id: crypto.randomUUID(),
+          content: 'Tips:\n- [ ] Save a tab from the **Active Tabs** panel\n- [ ] Press `/` to search\n- [ ] Press `N` to create a group',
+          created_at: now,
+          updated_at: now,
+        }],
+        tabs: [
+          {
+            id: crypto.randomUUID(),
+            title: 'Tab Nest — Help & Documentation',
+            url: 'https://github.com/OffBy1-tech/TabNest#readme',
+            saved_at: now,
+          },
+          {
+            id: crypto.randomUUID(),
+            title: 'Keyboard shortcuts',
+            url: 'https://github.com/OffBy1-tech/TabNest#keyboard-shortcuts',
+            saved_at: now,
+          },
+        ],
+      },
+    ],
+  }
+}
+
 function buildDefaultStorage(): StorageSchema {
   const workspace = DEFAULT_WORKSPACE()
+  workspace.categories = [...workspace.categories, buildGettingStartedCategory()]
   return {
     schema_version: SCHEMA_VERSION,
     workspaces: [workspace],
@@ -242,10 +305,30 @@ export async function saveWorkspace(workspace: Workspace): Promise<void> {
   await writeStorage({ workspaces: updated })
 }
 
-export async function deleteWorkspace(id: string): Promise<void> {
+/**
+ * Delete a workspace, moving it (and all contained data) to Trash so the
+ * deletion is recoverable (spec §10). Returns the TrashItem for undo flows.
+ */
+export async function deleteWorkspace(id: string): Promise<TrashItem> {
   const data = await readStorage()
-  const updated = data.workspaces.filter((w) => w.id !== id)
-  await writeStorage({ workspaces: updated })
+  const workspace = data.workspaces.find((w) => w.id === id)
+  if (workspace == null) {
+    throw new Error(`Workspace ${id} not found`)
+  }
+
+  const trashItem: TrashItem = {
+    id: crypto.randomUUID(),
+    type: 'workspace',
+    data: workspace,
+    original_location: { workspace_id: id },
+    deleted_at: Date.now(),
+  }
+
+  await writeStorage({
+    workspaces: data.workspaces.filter((w) => w.id !== id),
+    trash: [...data.trash, trashItem],
+  })
+  return trashItem
 }
 
 // ---------------------------------------------------------------------------
@@ -394,6 +477,43 @@ export async function renameCategory(
   await writeStorage({ workspaces })
 }
 
+/**
+ * Patch presentational fields of a category (color, emoji) in place.
+ */
+export async function patchCategory(
+  workspaceId: string,
+  categoryId: string,
+  patch: Partial<Pick<Category, 'color' | 'emoji'>>,
+): Promise<void> {
+  const data = await readStorage()
+  const workspaces = data.workspaces.map((ws) => {
+    if (ws.id !== workspaceId) return ws
+    return {
+      ...ws,
+      categories: ws.categories.map((cat) =>
+        cat.id === categoryId ? { ...cat, ...patch } : cat,
+      ),
+    }
+  })
+  await writeStorage({ workspaces })
+}
+
+/**
+ * Collapse (or expand) every category in a workspace at once (spec §3.3
+ * "Collapse all groups").
+ */
+export async function setAllCategoriesCollapsed(
+  workspaceId: string,
+  collapsed: boolean,
+): Promise<void> {
+  const data = await readStorage()
+  const workspaces = data.workspaces.map((ws) => {
+    if (ws.id !== workspaceId) return ws
+    return { ...ws, categories: ws.categories.map((cat) => ({ ...cat, collapsed })) }
+  })
+  await writeStorage({ workspaces })
+}
+
 export async function setCategoryCollapsed(
   workspaceId: string,
   categoryId: string,
@@ -536,8 +656,22 @@ export async function restoreFromTrash(itemId: string): Promise<void> {
     return
   }
 
-  // For other types (tab, category, workspace) the restoration logic is
-  // symmetric — write back trash removal now and extend the switch later.
+  if (item.type === 'workspace') {
+    const wsParsed = WorkspaceSchema.safeParse(item.data)
+    if (!wsParsed.success) {
+      throw new Error(`Cannot restore workspace ${itemId}: stored data failed schema validation`)
+    }
+    const workspace = wsParsed.data
+    // Idempotency guard — don't duplicate if already restored
+    const workspaces = data.workspaces.some((w) => w.id === workspace.id)
+      ? data.workspaces
+      : [...data.workspaces, workspace]
+    await writeStorage({ workspaces, trash })
+    return
+  }
+
+  // For other types (tab, category) the restoration logic is symmetric —
+  // write back trash removal now and extend the switch later.
   await writeStorage({ trash })
 }
 
@@ -564,6 +698,7 @@ export async function createCategory(workspaceId: string, name: string): Promise
     color: '#6366f1',
     emoji: '📁',
     collapsed: false,
+    notes: [],
     order: data.workspaces.find((w) => w.id === workspaceId)?.categories.length ?? 0,
     groups: [],
   }
@@ -577,11 +712,27 @@ export async function createCategory(workspaceId: string, name: string): Promise
 
 /**
  * Create a new workspace with the given name and append it to the workspace list.
+ * When `templateWorkspaceId` is given, the template's category structure
+ * (names, colors, emojis — not their groups or notes) is copied (spec §10).
  * Returns the new workspace's id.
  */
-export async function createWorkspace(name: string): Promise<string> {
+export async function createWorkspace(name: string, templateWorkspaceId?: string): Promise<string> {
   const data = await readStorage()
   const workspace: Workspace = { ...DEFAULT_WORKSPACE(), name: name.trim() || 'New Workspace' }
+
+  const template = templateWorkspaceId
+    ? data.workspaces.find((w) => w.id === templateWorkspaceId)
+    : undefined
+  if (template) {
+    workspace.categories = template.categories.map((cat, i) => ({
+      ...cat,
+      id: crypto.randomUUID(),
+      order: i,
+      groups: [],
+      notes: [],
+    }))
+  }
+
   await writeStorage({ workspaces: [...data.workspaces, workspace] })
   return workspace.id
 }
@@ -726,6 +877,274 @@ export async function saveGroupNote(
           }),
         }
       }),
+    }
+  })
+  await writeStorage({ workspaces })
+}
+
+// ---------------------------------------------------------------------------
+// Standalone category notes (spec §7.1)
+// ---------------------------------------------------------------------------
+
+/**
+ * Create a standalone note in a category. Returns the new note's id.
+ */
+export async function createCategoryNote(
+  workspaceId: string,
+  categoryId: string,
+  content = '',
+): Promise<string> {
+  const data = await readStorage()
+  const now = Date.now()
+  const noteId = crypto.randomUUID()
+  const workspaces = data.workspaces.map((ws) => {
+    if (ws.id !== workspaceId) return ws
+    return {
+      ...ws,
+      categories: ws.categories.map((cat) =>
+        cat.id === categoryId
+          ? { ...cat, notes: [...(cat.notes ?? []), { id: noteId, content, created_at: now, updated_at: now }] }
+          : cat,
+      ),
+    }
+  })
+  await writeStorage({ workspaces })
+  return noteId
+}
+
+/**
+ * Update a standalone note's content in place.
+ */
+export async function saveCategoryNote(
+  workspaceId: string,
+  categoryId: string,
+  noteId: string,
+  content: string,
+): Promise<void> {
+  const data = await readStorage()
+  const now = Date.now()
+  const workspaces = data.workspaces.map((ws) => {
+    if (ws.id !== workspaceId) return ws
+    return {
+      ...ws,
+      categories: ws.categories.map((cat) =>
+        cat.id === categoryId
+          ? {
+              ...cat,
+              notes: (cat.notes ?? []).map((n) =>
+                n.id === noteId ? { ...n, content, updated_at: now } : n,
+              ),
+            }
+          : cat,
+      ),
+    }
+  })
+  await writeStorage({ workspaces })
+}
+
+/**
+ * Permanently delete a standalone note from a category.
+ */
+export async function deleteCategoryNote(
+  workspaceId: string,
+  categoryId: string,
+  noteId: string,
+): Promise<void> {
+  const data = await readStorage()
+  const workspaces = data.workspaces.map((ws) => {
+    if (ws.id !== workspaceId) return ws
+    return {
+      ...ws,
+      categories: ws.categories.map((cat) =>
+        cat.id === categoryId
+          ? { ...cat, notes: (cat.notes ?? []).filter((n) => n.id !== noteId) }
+          : cat,
+      ),
+    }
+  })
+  await writeStorage({ workspaces })
+}
+
+/**
+ * Move a group to a different category within the same workspace.
+ * No-ops if the group is already in the target category.
+ */
+export async function moveGroupToCategory(
+  workspaceId: string,
+  groupId: string,
+  toCategoryId: string,
+): Promise<void> {
+  const data = await readStorage()
+  let moved: TabGroup | undefined
+
+  const afterRemove = data.workspaces.map((ws) => {
+    if (ws.id !== workspaceId) return ws
+    return {
+      ...ws,
+      categories: ws.categories.map((cat) => {
+        if (cat.id === toCategoryId) return cat
+        const found = cat.groups.find((g) => g.id === groupId)
+        if (found == null) return cat
+        moved = found
+        return { ...cat, groups: cat.groups.filter((g) => g.id !== groupId) }
+      }),
+    }
+  })
+
+  if (moved == null) return // already in the target category (or not found)
+  const group = moved
+
+  const workspaces = afterRemove.map((ws) => {
+    if (ws.id !== workspaceId) return ws
+    return {
+      ...ws,
+      categories: ws.categories.map((cat) => {
+        if (cat.id !== toCategoryId) return cat
+        return { ...cat, groups: [...cat.groups, { ...group, order: cat.groups.length, updated_at: Date.now() }] }
+      }),
+    }
+  })
+
+  await writeStorage({ workspaces })
+}
+
+/**
+ * Duplicate a group in place (same category). All ids are regenerated; the
+ * copy is appended after the original with " (copy)" suffixed to its name.
+ * Returns the new group's id.
+ */
+export async function duplicateGroup(
+  workspaceId: string,
+  categoryId: string,
+  groupId: string,
+): Promise<string> {
+  const data = await readStorage()
+  const now = Date.now()
+  const newId = crypto.randomUUID()
+  let found = false
+
+  const workspaces = data.workspaces.map((ws) => {
+    if (ws.id !== workspaceId) return ws
+    return {
+      ...ws,
+      categories: ws.categories.map((cat) => {
+        if (cat.id !== categoryId) return cat
+        const original = cat.groups.find((g) => g.id === groupId)
+        if (original == null) return cat
+        found = true
+        const copy: TabGroup = {
+          ...original,
+          id: newId,
+          name: `${original.name} (copy)`,
+          created_at: now,
+          updated_at: now,
+          order: cat.groups.length,
+          tabs: original.tabs.map((t) => ({ ...t, id: crypto.randomUUID() })),
+          notes: original.notes.map((n) => ({ ...n, id: crypto.randomUUID() })),
+        }
+        return { ...cat, groups: [...cat.groups, copy] }
+      }),
+    }
+  })
+
+  if (!found) {
+    throw new Error(`Group ${groupId} not found in category ${categoryId}`)
+  }
+
+  await writeStorage({ workspaces })
+  return newId
+}
+
+/** Name of the special category that archived groups are moved into. */
+export const ARCHIVE_CATEGORY_NAME = 'Archive'
+
+/**
+ * Archive a group (spec §6.2): moves it into a special collapsed "Archive"
+ * category (created on demand) and sets its archived flag. A collapsed
+ * category is hidden from the "All" view but stays reachable from the
+ * sidebar and search.
+ */
+export async function archiveGroup(
+  workspaceId: string,
+  categoryId: string,
+  groupId: string,
+): Promise<void> {
+  const data = await readStorage()
+  let archived: TabGroup | undefined
+
+  const afterRemove = data.workspaces.map((ws) => {
+    if (ws.id !== workspaceId) return ws
+    return {
+      ...ws,
+      categories: ws.categories.map((cat) => {
+        if (cat.id !== categoryId) return cat
+        archived = cat.groups.find((g) => g.id === groupId)
+        return { ...cat, groups: cat.groups.filter((g) => g.id !== groupId) }
+      }),
+    }
+  })
+
+  if (archived == null) {
+    throw new Error(`Group ${groupId} not found in category ${categoryId}`)
+  }
+  const group: TabGroup = { ...archived, archived: true, updated_at: Date.now() }
+
+  const workspaces = afterRemove.map((ws) => {
+    if (ws.id !== workspaceId) return ws
+    let archiveCat = ws.categories.find((c) => c.name === ARCHIVE_CATEGORY_NAME)
+    let categories: Category[]
+    if (archiveCat == null) {
+      archiveCat = {
+        id: crypto.randomUUID(),
+        name: ARCHIVE_CATEGORY_NAME,
+        color: '#64748b',
+        emoji: '🗄️',
+        collapsed: true,
+        notes: [],
+        order: ws.categories.length,
+        groups: [group],
+      }
+      categories = [...ws.categories, archiveCat]
+    } else {
+      categories = ws.categories.map((cat) =>
+        cat.id === archiveCat!.id
+          ? { ...cat, groups: [...cat.groups, { ...group, order: cat.groups.length }] }
+          : cat,
+      )
+    }
+    return { ...ws, categories }
+  })
+
+  await writeStorage({ workspaces })
+}
+
+/**
+ * Move a tab to a new position within its group.
+ */
+export async function reorderTabInGroup(
+  workspaceId: string,
+  groupId: string,
+  tabId: string,
+  toIndex: number,
+): Promise<void> {
+  const data = await readStorage()
+  const workspaces = data.workspaces.map((ws) => {
+    if (ws.id !== workspaceId) return ws
+    return {
+      ...ws,
+      categories: ws.categories.map((cat) => ({
+        ...cat,
+        groups: cat.groups.map((g) => {
+          if (g.id !== groupId) return g
+          const fromIndex = g.tabs.findIndex((t) => t.id === tabId)
+          if (fromIndex === -1) return g
+          const tabs = [...g.tabs]
+          const [tab] = tabs.splice(fromIndex, 1)
+          const clamped = Math.max(0, Math.min(toIndex, tabs.length))
+          tabs.splice(clamped, 0, tab!)
+          return { ...g, tabs, updated_at: Date.now() }
+        }),
+      })),
     }
   })
   await writeStorage({ workspaces })

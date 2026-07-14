@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { GroupCard } from '@/components/GroupCard/GroupCard'
-import type { TabGroup } from '@/lib/schema'
+import { NoteCard } from '@/components/Notes/NoteCard'
+import type { ActiveTabDragPayload } from '@/components/GroupCard/dragTypes'
+import type { Note, TabGroup } from '@/lib/schema'
 
 export interface GroupGridProps {
   groups: TabGroup[]
@@ -8,6 +10,18 @@ export interface GroupGridProps {
   onRenameGroup: (id: string, name: string) => void
   onDeleteGroup: (id: string) => void
   onOpenAll: (group: TabGroup) => void
+  onOpenAllInBackground?: ((group: TabGroup) => void) | undefined
+  onAddTab?: ((groupId: string, url: string) => void) | undefined
+  /** Move-to-category targets shown in the kebab menu. */
+  categories?: Array<{ id: string; name: string; emoji: string }> | undefined
+  /** Resolves which category a group currently lives in (for filtering move targets). */
+  categoryIdOf?: ((groupId: string) => string | undefined) | undefined
+  onMoveToCategory?: ((groupId: string, toCategoryId: string) => void) | undefined
+  onDuplicate?: ((groupId: string) => void) | undefined
+  onArchive?: ((groupId: string) => void) | undefined
+  onExport?: ((group: TabGroup) => void) | undefined
+  onReorderTab?: ((groupId: string, tabId: string, toIndex: number) => void) | undefined
+  onDropActiveTab?: ((groupId: string, payload: ActiveTabDragPayload) => void) | undefined
   onRemoveTab: (groupId: string, tabId: string) => void
   onMoveTab: (fromGroupId: string, toGroupId: string, tabId: string) => void
   onOpenTab: (url: string) => void
@@ -19,6 +33,12 @@ export interface GroupGridProps {
   /** Controlled by App so the N keyboard shortcut can trigger it. */
   creatingGroup?: boolean
   onCreatingGroupChange?: (v: boolean) => void
+  /** Standalone notes to render as cards after the groups (spec §7.1). */
+  notes?: Note[] | undefined
+  onSaveNote?: ((noteId: string, content: string) => void) | undefined
+  onDeleteNote?: ((noteId: string) => void) | undefined
+  /** When defined, shows a New Note button next to New Group. */
+  onCreateNote?: (() => void) | undefined
 }
 
 /** The main content area: the grid/list of GroupCards plus inline group creation. */
@@ -28,6 +48,16 @@ export function GroupGrid({
   onRenameGroup,
   onDeleteGroup,
   onOpenAll,
+  onOpenAllInBackground,
+  onAddTab,
+  categories,
+  categoryIdOf,
+  onMoveToCategory,
+  onDuplicate,
+  onArchive,
+  onExport,
+  onReorderTab,
+  onDropActiveTab,
   onRemoveTab,
   onMoveTab,
   onOpenTab,
@@ -37,9 +67,29 @@ export function GroupGrid({
   onCreateGroup,
   creatingGroup = false,
   onCreatingGroupChange,
+  notes,
+  onSaveNote,
+  onDeleteNote,
+  onCreateNote,
 }: GroupGridProps): React.JSX.Element {
   const inputRef = useRef<HTMLInputElement>(null)
+  const cardsRef = useRef<HTMLDivElement>(null)
   const [newGroupName, setNewGroupName] = useState('')
+
+  // Spec §11.4: arrow keys move focus between group cards. Only reacts when a
+  // card itself has focus, so inputs and buttons inside cards keep their keys.
+  function handleCardsKeyDown(e: React.KeyboardEvent<HTMLDivElement>): void {
+    if (!['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].includes(e.key)) return
+    const target = e.target as HTMLElement
+    if (target.tagName.toLowerCase() !== 'article') return
+    const cards = Array.from(cardsRef.current?.querySelectorAll<HTMLElement>('article') ?? [])
+    const idx = cards.indexOf(target)
+    if (idx === -1) return
+    e.preventDefault()
+    const delta = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : -1
+    const next = cards[Math.max(0, Math.min(cards.length - 1, idx + delta))]
+    next?.focus()
+  }
 
   useEffect(() => {
     if (creatingGroup) {
@@ -68,9 +118,40 @@ export function GroupGrid({
           flexDirection: 'column',
         }}
       >
-        {/* Header row: New Group button */}
+        {/* Header row: New Group / New Note buttons */}
         {canCreate && !creatingGroup && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-4)', flexShrink: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)', marginBottom: 'var(--space-4)', flexShrink: 0 }}>
+            {onCreateNote && (
+              <button
+                type="button"
+                onClick={onCreateNote}
+                aria-label="Create new note"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 'var(--space-1)',
+                  padding: 'var(--space-2) var(--space-3)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-default)',
+                  backgroundColor: 'transparent',
+                  color: 'var(--text-secondary)',
+                  fontSize: 'var(--text-sm)',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-sans)',
+                  transition: 'border-color var(--duration-fast) var(--ease-default), color var(--duration-fast) var(--ease-default)',
+                }}
+                onMouseEnter={(e) => {
+                  ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-warning, #f59e0b)'
+                  ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--color-warning, #f59e0b)'
+                }}
+                onMouseLeave={(e) => {
+                  ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-default)'
+                  ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)'
+                }}
+              >
+                + New Note
+              </button>
+            )}
             <button
               type="button"
               onClick={() => onCreatingGroupChange?.(true)}
@@ -180,7 +261,7 @@ export function GroupGrid({
         )}
 
         {/* Empty state */}
-        {groups.length === 0 && !creatingGroup ? (
+        {groups.length === 0 && (notes?.length ?? 0) === 0 && !creatingGroup ? (
           <div
             style={{
               flex: 1,
@@ -203,6 +284,8 @@ export function GroupGrid({
           </div>
         ) : (
           <div
+            ref={cardsRef}
+            onKeyDown={handleCardsKeyDown}
             style={{
               display: 'flex',
               flexDirection: viewMode === 'grid' ? 'row' : 'column',
@@ -219,6 +302,16 @@ export function GroupGrid({
                 onRename={onRenameGroup}
                 onDelete={() => onDeleteGroup(group.id)}
                 onOpenAll={() => onOpenAll(group)}
+                onOpenAllInBackground={onOpenAllInBackground ? () => onOpenAllInBackground(group) : undefined}
+                onAddTab={onAddTab}
+                categories={categories}
+                currentCategoryId={categoryIdOf?.(group.id)}
+                onMoveToCategory={onMoveToCategory}
+                onDuplicate={onDuplicate}
+                onArchive={onArchive}
+                onExport={onExport}
+                onReorderTab={onReorderTab}
+                onDropActiveTab={onDropActiveTab}
                 onOpenTab={onOpenTab}
                 onRemoveTab={onRemoveTab}
                 onMoveTab={onMoveTab}
@@ -227,6 +320,16 @@ export function GroupGrid({
                 showFavicons={showFavicons}
               />
             ))}
+            {onSaveNote && onDeleteNote &&
+              (notes ?? []).map((note) => (
+                <NoteCard
+                  key={note.id}
+                  note={note}
+                  viewMode={viewMode}
+                  onChange={onSaveNote}
+                  onDelete={onDeleteNote}
+                />
+              ))}
           </div>
         )}
       </div>

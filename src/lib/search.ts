@@ -28,6 +28,80 @@ export interface SearchRecord {
   workspace_id: string
   category_id?: string
   group_id?: string
+  /** Epoch ms used for date filtering/sorting: tab saved_at or group created_at. */
+  timestamp?: number
+}
+
+// ---------------------------------------------------------------------------
+// Filters & sorting (spec §8.3)
+// ---------------------------------------------------------------------------
+
+export type SearchDateRange = 'any' | 'day' | 'week' | 'month'
+export type SearchSort = 'relevance' | 'newest' | 'oldest' | 'az'
+
+export interface SearchFilters {
+  /** Restrict to a single workspace ('' = all). */
+  workspaceId: string
+  /** Restrict to a single category ('' = all). */
+  categoryId: string
+  /** Record types to include (empty set = all types). */
+  types: ReadonlySet<SearchRecord['type']>
+  dateRange: SearchDateRange
+}
+
+export const DEFAULT_SEARCH_FILTERS: SearchFilters = {
+  workspaceId: '',
+  categoryId: '',
+  types: new Set(),
+  dateRange: 'any',
+}
+
+const DATE_RANGE_MS: Record<Exclude<SearchDateRange, 'any'>, number> = {
+  day: 24 * 60 * 60 * 1000,
+  week: 7 * 24 * 60 * 60 * 1000,
+  month: 30 * 24 * 60 * 60 * 1000,
+}
+
+/**
+ * Apply chip filters to a result list. A date range only keeps records that
+ * carry a timestamp (tabs, groups) within the window.
+ */
+export function filterRecords(
+  records: SearchRecord[],
+  filters: SearchFilters,
+  now: number = Date.now(),
+): SearchRecord[] {
+  return records.filter((r) => {
+    if (filters.workspaceId && r.workspace_id !== filters.workspaceId) return false
+    if (filters.categoryId && r.category_id !== filters.categoryId) return false
+    if (filters.types.size > 0 && !filters.types.has(r.type)) return false
+    if (filters.dateRange !== 'any') {
+      if (r.timestamp == null) return false
+      if (now - r.timestamp > DATE_RANGE_MS[filters.dateRange]) return false
+    }
+    return true
+  })
+}
+
+/**
+ * Order results. 'relevance' preserves the engine's ranking; date sorts put
+ * records without a timestamp last; 'az' is a locale-aware title sort.
+ */
+export function sortRecords(records: SearchRecord[], sort: SearchSort): SearchRecord[] {
+  if (sort === 'relevance') return records
+  const sorted = [...records]
+  if (sort === 'az') {
+    sorted.sort((a, b) => a.title.localeCompare(b.title))
+  } else {
+    const dir = sort === 'newest' ? -1 : 1
+    sorted.sort((a, b) => {
+      if (a.timestamp == null && b.timestamp == null) return 0
+      if (a.timestamp == null) return 1
+      if (b.timestamp == null) return -1
+      return (a.timestamp - b.timestamp) * dir
+    })
+  }
+  return sorted
 }
 
 // ---------------------------------------------------------------------------
@@ -81,6 +155,7 @@ export function buildSearchIndex(workspaces: Workspace[]): SearchRecord[] {
           workspace_id: workspace.id,
           category_id: category.id,
           group_id: group.id,
+          timestamp: group.created_at,
         })
 
         // Tab-level records — note content intentionally omitted
@@ -97,6 +172,7 @@ export function buildSearchIndex(workspaces: Workspace[]): SearchRecord[] {
             workspace_id: workspace.id,
             category_id: category.id,
             group_id: group.id,
+            timestamp: tab.saved_at,
           })
         }
       }

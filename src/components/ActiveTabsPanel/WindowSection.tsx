@@ -5,12 +5,9 @@ import type { Workspace } from '../../lib/schema'
 import { SavePopover } from './SavePopover'
 import { WindowSavePopover } from './WindowSavePopover'
 
-export const ACTIVE_TAB_DRAG_TYPE = 'application/x-tabnest-active-tab'
-
-export interface ActiveTabDragPayload {
-  tabId: number
-  windowId: number
-}
+// Re-exported from the shared drag contract so existing imports keep working.
+export { ACTIVE_TAB_DRAG_TYPE, type ActiveTabDragPayload } from '../GroupCard/dragTypes'
+import { ACTIVE_TAB_DRAG_TYPE, type ActiveTabDragPayload } from '../GroupCard/dragTypes'
 
 export interface WindowSectionProps {
   tabs: chrome.tabs.Tab[]
@@ -23,6 +20,8 @@ export interface WindowSectionProps {
   showFavicons?: boolean
   defaultWorkspaceId?: string | undefined
   defaultCategoryId?: string | undefined
+  /** Drag-to-reorder only makes sense in browser order — off while sorted. */
+  allowReorder?: boolean
 }
 
 /** A collapsible section listing one browser window's tabs, with per-tab and
@@ -38,6 +37,7 @@ export function WindowSection({
   showFavicons = true,
   defaultWorkspaceId,
   defaultCategoryId,
+  allowReorder = true,
 }: WindowSectionProps): React.JSX.Element {
   const [collapsed, setCollapsed] = useState(false)
   const [savePopoverTabId, setSavePopoverTabId] = useState<number | null>(null)
@@ -58,15 +58,39 @@ export function WindowSection({
   const [saveAllOpen, setSaveAllOpen] = useState(false)
   const [draggedTabId, setDraggedTabId] = useState<number | null>(null)
   const [dropIndex, setDropIndex] = useState<number | null>(null)
+  // Multi-select for bulk save (spec §4.2)
+  const [selectedTabIds, setSelectedTabIds] = useState<ReadonlySet<number>>(new Set())
+  const [saveSelectedOpen, setSaveSelectedOpen] = useState(false)
 
-  function handleTabDragStart(e: React.DragEvent, tabId: number): void {
-    const payload: ActiveTabDragPayload = { tabId, windowId }
+  const selectedTabs = tabs.filter((t) => t.id != null && selectedTabIds.has(t.id))
+
+  function toggleSelected(tabId: number): void {
+    setSelectedTabIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(tabId)) next.delete(tabId)
+      else next.add(tabId)
+      return next
+    })
+  }
+
+  function handleTabDragStart(e: React.DragEvent, tab: chrome.tabs.Tab): void {
+    if (tab.id == null) return
+    // url/title/favicon ride along so drops outside the panel (group cards,
+    // sidebar categories) can save the tab without a tabs API lookup.
+    const payload: ActiveTabDragPayload = {
+      tabId: tab.id,
+      windowId,
+      url: tab.url,
+      title: tab.title,
+      favIconUrl: tab.favIconUrl,
+    }
     e.dataTransfer.setData(ACTIVE_TAB_DRAG_TYPE, JSON.stringify(payload))
     e.dataTransfer.effectAllowed = 'move'
-    setDraggedTabId(tabId)
+    setDraggedTabId(tab.id)
   }
 
   function handleTabDragOver(e: React.DragEvent, idx: number): void {
+    if (!allowReorder) return
     if (!e.dataTransfer.types.includes(ACTIVE_TAB_DRAG_TYPE)) return
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
@@ -163,6 +187,47 @@ export function WindowSection({
           {tabs.length}
         </span>
 
+        {/* Save Selected button — appears once any tab is checked */}
+        {selectedTabs.length > 0 && (
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <button
+              type="button"
+              aria-label={`Save ${selectedTabs.length} selected tabs to a group`}
+              aria-expanded={saveSelectedOpen}
+              onClick={(e) => {
+                e.stopPropagation()
+                setSaveSelectedOpen((prev) => !prev)
+              }}
+              style={{
+                fontSize: 'var(--text-xs)',
+                color: 'var(--text-inverse)',
+                backgroundColor: 'var(--color-brand-500)',
+                border: 'none',
+                borderRadius: 'var(--radius-sm)',
+                padding: '2px var(--space-2)',
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              Save {selectedTabs.length}
+            </button>
+
+            {saveSelectedOpen && (
+              <WindowSavePopover
+                tabCount={selectedTabs.length}
+                workspaces={workspaces}
+                onSave={(groupName, categoryId, workspaceId, groupId) => {
+                  onSaveWindowTabs(selectedTabs, groupName, categoryId, workspaceId, groupId)
+                  setSelectedTabIds(new Set())
+                }}
+                onClose={() => setSaveSelectedOpen(false)}
+                defaultWorkspaceId={defaultWorkspaceId}
+                defaultCategoryId={defaultCategoryId}
+              />
+            )}
+          </div>
+        )}
+
         {/* Save All icon button */}
         <div style={{ position: 'relative', flexShrink: 0 }}>
           <button
@@ -251,7 +316,7 @@ export function WindowSection({
                 )}
               <div
                 draggable
-                onDragStart={(e) => handleTabDragStart(e, tabId)}
+                onDragStart={(e) => handleTabDragStart(e, tab)}
                 onDragOver={(e) => handleTabDragOver(e, idx)}
                 onDrop={handleTabDrop}
                 onDragEnd={clearDrag}
@@ -267,6 +332,9 @@ export function WindowSection({
                   cursor: 'grab',
                   borderLeft: isActive ? '2px solid var(--color-brand-500)' : '2px solid transparent',
                   paddingLeft: 'calc(var(--space-2) - 2px)',
+                  // Spec §16: skip offscreen row rendering for windows with many tabs
+                  contentVisibility: 'auto',
+                  containIntrinsicSize: 'auto 40px',
                 }}
                 onMouseEnter={(e) => {
                   ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--bg-elevated)'
@@ -281,6 +349,14 @@ export function WindowSection({
                 >
                   <GripVertical size={12} />
                 </span>
+                <input
+                  type="checkbox"
+                  aria-label={`Select ${tab.title ?? 'tab'}`}
+                  checked={selectedTabIds.has(tabId)}
+                  onChange={() => toggleSelected(tabId)}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ flexShrink: 0, cursor: 'pointer', margin: 0 }}
+                />
                 {showFavicons && (
                   <FaviconImage
                     url={tab.favIconUrl ?? ''}

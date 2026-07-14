@@ -4,6 +4,7 @@ import {
   DEFAULT_LOCAL_SETTINGS,
   DEFAULT_SYNC_META,
   SCHEMA_VERSION,
+  StorageSchemaZod,
   type StorageSchema,
   type Workspace,
   type Category,
@@ -72,7 +73,7 @@ function makeGroup(name = 'Group', tabs: SavedTab[] = []): TabGroup {
 }
 
 function makeCategory(name = 'Category', groups: TabGroup[] = []): Category {
-  return { id: crypto.randomUUID(), name, color: '#6366f1', emoji: '📁', collapsed: false, order: 0, groups }
+  return { id: crypto.randomUUID(), name, color: '#6366f1', emoji: '📁', collapsed: false, order: 0, groups, notes: [] }
 }
 
 function makeWorkspace(name = 'Workspace', categories: Category[] = [makeCategory()]): Workspace {
@@ -109,6 +110,16 @@ describe('readStorage', () => {
     expect(data.trash).toEqual([])
     expect(data.settings.default_workspace_id).toBe(data.workspaces[0]!.id)
     expect(data.local_settings).toEqual(DEFAULT_LOCAL_SETTINGS)
+  })
+
+  it('fresh installs get a Getting Started category with a welcome group (spec §15)', async () => {
+    const data = await storage.readStorage()
+    const gettingStarted = data.workspaces[0]!.categories.find((c) => c.name === 'Getting Started')
+    expect(gettingStarted).toBeDefined()
+    expect(gettingStarted!.groups[0]!.name).toBe('Welcome to Tab Nest')
+    expect(gettingStarted!.groups[0]!.tabs.length).toBeGreaterThanOrEqual(2)
+    // The whole default document must be schema-valid
+    expect(StorageSchemaZod.safeParse(data).success).toBe(true)
   })
 
   it('returns the stored document as-is when present', async () => {
@@ -308,6 +319,223 @@ describe('moveTabBetweenGroups', () => {
   })
 })
 
+describe('deleteWorkspace', () => {
+  it('moves the workspace to trash instead of hard-deleting', async () => {
+    const doomed = makeWorkspace('Doomed')
+    const keeper = makeWorkspace('Keeper')
+    seed([doomed, keeper])
+
+    const item = await storage.deleteWorkspace(doomed.id)
+
+    expect(stored().workspaces.map((w) => w.name)).toEqual(['Keeper'])
+    expect(stored().trash).toHaveLength(1)
+    expect(item.type).toBe('workspace')
+    expect(item.data).toEqual(doomed)
+  })
+
+  it('throws for an unknown workspace id', async () => {
+    seed()
+    await expect(storage.deleteWorkspace(crypto.randomUUID())).rejects.toThrow(/not found/)
+  })
+
+  it('restoreFromTrash brings a deleted workspace back', async () => {
+    const doomed = makeWorkspace('Doomed')
+    const keeper = makeWorkspace('Keeper')
+    seed([doomed, keeper])
+
+    const item = await storage.deleteWorkspace(doomed.id)
+    await storage.restoreFromTrash(item.id)
+
+    expect(stored().workspaces.map((w) => w.name)).toEqual(['Keeper', 'Doomed'])
+    expect(stored().trash).toHaveLength(0)
+  })
+})
+
+describe('createWorkspace from template', () => {
+  it('copies category structure without groups or notes', async () => {
+    const template = makeWorkspace('Template', [
+      makeCategory('Work', [makeGroup('G', [makeTab()])]),
+      makeCategory('Play'),
+    ])
+    seed([template])
+
+    const newId = await storage.createWorkspace('Copy', template.id)
+
+    const created = stored().workspaces.find((w) => w.id === newId)!
+    expect(created.categories.map((c) => c.name)).toEqual(['Work', 'Play'])
+    expect(created.categories[0]!.groups).toEqual([])
+    expect(created.categories[0]!.id).not.toBe(template.categories[0]!.id)
+  })
+
+  it('falls back to the default single category without a template', async () => {
+    seed()
+    const newId = await storage.createWorkspace('Plain')
+    const created = stored().workspaces.find((w) => w.id === newId)!
+    expect(created.categories).toHaveLength(1)
+    expect(created.categories[0]!.name).toBe('General')
+  })
+})
+
+describe('patchCategory / setAllCategoriesCollapsed', () => {
+  it('updates color and emoji in place', async () => {
+    const cat = makeCategory()
+    const ws = makeWorkspace('WS', [cat])
+    seed([ws])
+
+    await storage.patchCategory(ws.id, cat.id, { color: '#ef4444', emoji: '🎮' })
+
+    const updated = stored().workspaces[0]!.categories[0]!
+    expect(updated.color).toBe('#ef4444')
+    expect(updated.emoji).toBe('🎮')
+    expect(updated.name).toBe(cat.name)
+  })
+
+  it('collapses every category in the workspace', async () => {
+    const ws = makeWorkspace('WS', [makeCategory('A'), makeCategory('B')])
+    seed([ws])
+
+    await storage.setAllCategoriesCollapsed(ws.id, true)
+
+    expect(stored().workspaces[0]!.categories.every((c) => c.collapsed)).toBe(true)
+  })
+})
+
+describe('standalone category notes', () => {
+  it('creates, updates, and deletes a note in a category', async () => {
+    const cat = makeCategory()
+    const ws = makeWorkspace('WS', [cat])
+    seed([ws])
+
+    const noteId = await storage.createCategoryNote(ws.id, cat.id, 'hello')
+    let notes = stored().workspaces[0]!.categories[0]!.notes
+    expect(notes).toHaveLength(1)
+    expect(notes[0]).toMatchObject({ id: noteId, content: 'hello' })
+
+    await storage.saveCategoryNote(ws.id, cat.id, noteId, 'updated')
+    notes = stored().workspaces[0]!.categories[0]!.notes
+    expect(notes[0]!.content).toBe('updated')
+    expect(notes[0]!.updated_at).toBeGreaterThanOrEqual(notes[0]!.created_at)
+
+    await storage.deleteCategoryNote(ws.id, cat.id, noteId)
+    expect(stored().workspaces[0]!.categories[0]!.notes).toHaveLength(0)
+  })
+})
+
+describe('moveGroupToCategory', () => {
+  it('moves a group between categories and reassigns its order', async () => {
+    const group = makeGroup('Mover')
+    const from = makeCategory('From', [group])
+    const to = makeCategory('To', [makeGroup('Existing')])
+    const ws = makeWorkspace('WS', [from, to])
+    seed([ws])
+
+    await storage.moveGroupToCategory(ws.id, group.id, to.id)
+
+    const cats = stored().workspaces[0]!.categories
+    expect(cats[0]!.groups).toHaveLength(0)
+    expect(cats[1]!.groups.map((g) => g.name)).toEqual(['Existing', 'Mover'])
+    expect(cats[1]!.groups[1]!.order).toBe(1)
+  })
+
+  it('no-ops when the group is already in the target category', async () => {
+    const group = makeGroup('Stay')
+    const cat = makeCategory('Cat', [group])
+    const ws = makeWorkspace('WS', [cat])
+    const seeded = seed([ws])
+
+    await storage.moveGroupToCategory(ws.id, group.id, cat.id)
+
+    expect(stored()).toEqual(seeded)
+  })
+})
+
+describe('duplicateGroup', () => {
+  it('appends a copy with fresh ids and a "(copy)" name', async () => {
+    const tab = makeTab('T')
+    const group = makeGroup('Original', [tab])
+    const cat = makeCategory('Cat', [group])
+    const ws = makeWorkspace('WS', [cat])
+    seed([ws])
+
+    const newId = await storage.duplicateGroup(ws.id, cat.id, group.id)
+
+    const groups = stored().workspaces[0]!.categories[0]!.groups
+    expect(groups).toHaveLength(2)
+    const copy = groups[1]!
+    expect(copy.id).toBe(newId)
+    expect(copy.name).toBe('Original (copy)')
+    expect(copy.tabs).toHaveLength(1)
+    expect(copy.tabs[0]!.id).not.toBe(tab.id)
+    expect(copy.tabs[0]!.url).toBe(tab.url)
+  })
+
+  it('throws when the group does not exist', async () => {
+    const cat = makeCategory()
+    const ws = makeWorkspace('WS', [cat])
+    seed([ws])
+    await expect(storage.duplicateGroup(ws.id, cat.id, crypto.randomUUID())).rejects.toThrow(/not found/)
+  })
+})
+
+describe('archiveGroup', () => {
+  it('creates a collapsed Archive category on first archive and moves the group there', async () => {
+    const group = makeGroup('Old stuff')
+    const cat = makeCategory('Cat', [group])
+    const ws = makeWorkspace('WS', [cat])
+    seed([ws])
+
+    await storage.archiveGroup(ws.id, cat.id, group.id)
+
+    const cats = stored().workspaces[0]!.categories
+    expect(cats[0]!.groups).toHaveLength(0)
+    const archive = cats.find((c) => c.name === storage.ARCHIVE_CATEGORY_NAME)
+    expect(archive).toBeDefined()
+    expect(archive!.collapsed).toBe(true)
+    expect(archive!.groups[0]!.name).toBe('Old stuff')
+    expect(archive!.groups[0]!.archived).toBe(true)
+  })
+
+  it('reuses an existing Archive category', async () => {
+    const group = makeGroup('Second')
+    const cat = makeCategory('Cat', [group])
+    const archive = makeCategory(storage.ARCHIVE_CATEGORY_NAME, [makeGroup('First')])
+    const ws = makeWorkspace('WS', [cat, archive])
+    seed([ws])
+
+    await storage.archiveGroup(ws.id, cat.id, group.id)
+
+    const cats = stored().workspaces[0]!.categories
+    expect(cats).toHaveLength(2)
+    expect(cats[1]!.groups.map((g) => g.name)).toEqual(['First', 'Second'])
+  })
+})
+
+describe('reorderTabInGroup', () => {
+  it('moves a tab to the requested index within its group', async () => {
+    const [a, b, c] = [makeTab('A'), makeTab('B'), makeTab('C')]
+    const group = makeGroup('G', [a, b, c])
+    const ws = makeWorkspace('WS', [makeCategory('Cat', [group])])
+    seed([ws])
+
+    await storage.reorderTabInGroup(ws.id, group.id, c.id, 0)
+
+    const tabs = stored().workspaces[0]!.categories[0]!.groups[0]!.tabs
+    expect(tabs.map((t) => t.title)).toEqual(['C', 'A', 'B'])
+  })
+
+  it('clamps out-of-range target indices', async () => {
+    const [a, b] = [makeTab('A'), makeTab('B')]
+    const group = makeGroup('G', [a, b])
+    const ws = makeWorkspace('WS', [makeCategory('Cat', [group])])
+    seed([ws])
+
+    await storage.reorderTabInGroup(ws.id, group.id, a.id, 99)
+
+    const tabs = stored().workspaces[0]!.categories[0]!.groups[0]!.tabs
+    expect(tabs.map((t) => t.title)).toEqual(['B', 'A'])
+  })
+})
+
 describe('reorderCategories', () => {
   it('applies the given order and appends categories missing from it', async () => {
     const [a, b, c] = [makeCategory('A'), makeCategory('B'), makeCategory('C')]
@@ -463,6 +691,32 @@ describe('migrateIfNeeded', () => {
     expect(data.settings).not.toHaveProperty('sync_interval_minutes')
     expect(data.settings).not.toHaveProperty('accent_color')
     expect(data.workspaces).toEqual([ws])
+  })
+
+  it('migrates v4 data: categories gain an empty notes array', async () => {
+    const ws = makeWorkspace()
+    // Simulate v4 data — categories have no notes field
+    const v4ws = {
+      ...ws,
+      categories: ws.categories.map((c) => {
+        const withoutNotes: Record<string, unknown> = { ...c }
+        delete withoutNotes['notes']
+        return withoutNotes
+      }),
+    }
+    store['tabnest_data'] = {
+      schema_version: 4,
+      workspaces: [v4ws],
+      settings: { ...DEFAULT_SETTINGS },
+      sync_meta: DEFAULT_SYNC_META(),
+      trash: [],
+    }
+
+    await storage.migrateIfNeeded()
+
+    const data = stored()
+    expect(data.schema_version).toBe(SCHEMA_VERSION)
+    expect(data.workspaces[0]!.categories[0]!.notes).toEqual([])
   })
 
   it('flags a sync error instead of persisting an invalid migrated document', async () => {

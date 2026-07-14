@@ -361,3 +361,74 @@ Confirmed by direct code evidence on the `componentRefactor` branch.
 - [x] **Write queue no longer poisoned by a failed write** — `enqueueWrite` in storage.ts chains new writes onto the previous write whether it settled or rejected, and keeps the queue itself always-settled; the caller's promise still reflects its own write's outcome. Regression test: "recovers after a failed write" in `storage.test.ts`
 - [x] **`patchLocalSettings` stale-merge fixed** — the local_settings merge now happens inside the queued work (read-before-write at execution time), so a concurrent local-settings write can't be clobbered
 - [x] **"Open in Current Window" for groups** (spec §6.3) — new `openAllTabs(urls, behavior)` helper in `openTab.ts`: `current` adds every tab to the current Chrome window via `chrome.tabs.create({ active: false })` (previously only the last tab survived), `new_window` opens one window with all tabs, `new_tab` opens one tab per URL; App.tsx `handleOpenAll` delegates to it. Covered in `openTab.test.ts`
+
+## workItems branch — 2026-07-08
+
+### Core Tab Management (spec §6.2/§6.3/§17)
+- [x] **Open All in Background** — `openAllTabsInBackground` (openTab.ts): one unfocused window with all tabs; kebab menu item
+- [x] **Large-group open confirmation** — GroupCard asks before opening >20 tabs (LARGE_OPEN_THRESHOLD)
+- [x] **Non-destructive restore toggle** — `delete_group_on_open` setting (General tab): moves group to trash after Open All
+- [x] **Duplicate URL warning on save** — single/bulk/manual saves warn and skip URLs already in the target group
+- [x] **Hostname fallback for untitled tabs** — `tabTitleOrHostname` (lib/tabTitle.ts), used by newtab saves and context-menu saves
+- [x] **Add tab manually via URL** — kebab item + inline input with normalization (`normalizeUrlInput`)
+
+### Group Card actions (spec §3.4/§6.2/§11.5)
+- [x] **Move to category** — kebab submenu listing other categories; `moveGroupToCategory` in storage
+- [x] **Duplicate group** — `duplicateGroup`: fresh ids, "(copy)" name, appended in place
+- [x] **Archive group** — `archiveGroup`: moves into a collapsed "Archive" category created on demand, sets `archived` flag (collapsed = hidden from All view, still searchable)
+- [x] **Creation date display** — card footer
+- [x] **Note preview** — first line shown italic under the tab list; click opens the editor
+- [x] **Within-group tab reorder** — drop a dragged tab on another row of the same group; `reorderTabInGroup`
+- [x] **Copy as URL list** — "url | title" lines to clipboard (round-trips with OneTab import)
+
+### Notes system (spec §7)
+- [x] **Markdown rendering** — dependency-free subset parser (lib/markdown.ts): #/##/### headers, bold, italic, inline code, lists, checkboxes; rendered by MarkdownNote (components/Notes/)
+- [x] **Click-to-edit with auto-save on blur** — MarkdownNote switches preview ↔ textarea; group notes use it (per-tab notes keep the plain NoteEditor)
+- [x] **Interactive checkboxes** — toggle from preview without entering edit mode (`toggleCheckbox` edits the source text)
+- [x] **Clear checked items** — button appears when any box is checked (`clearCheckedItems`)
+- [x] **Standalone notes** — Category.notes (schema v5 + migration), NoteCard rendered alongside groups, "+ New Note" button in category view, storage CRUD (createCategoryNote/saveCategoryNote/deleteCategoryNote)
+
+### Search (spec §8.3)
+- [x] **Filter chips** — type toggle chips (Tabs/Groups/Categories) + workspace/category/date-range selects in SearchOverlay; `filterRecords` in lib/search.ts
+- [x] **Sort options** — Relevance / Newest / Oldest / A–Z select; `sortRecords`; records carry a `timestamp` (tab saved_at, group created_at)
+- [x] **Session filter persistence** — filter/sort state lives outside the isOpen reset, surviving close/reopen
+
+### Active Tabs Panel (spec §4.2/§4.3/§5.1)
+- [x] **Multi-select + Save Selected** — checkbox per tab row; "Save N" button in the window header opens the save popover for just the selected tabs
+- [x] **Drag active tabs onto group cards and sidebar categories** — drag payload now carries url/title/favicon; GroupCard appends (with dup warning), CategoryList saves a new hostname-named group
+- [x] **Sort options** — Window order / By title / By domain select in the panel header; drag-to-reorder disabled while sorted (index math needs browser order)
+
+### Sidebar (spec §3.3)
+- [x] **Category color picker** — "Change color…" in the context menu with an 8-swatch palette (`CATEGORY_COLORS`); category color now shown as a dot beside the name; `patchCategory` in storage
+- [x] **Category emoji picker** — "Change emoji…" with a 16-emoji grid (`CATEGORY_EMOJIS`)
+- [x] **Collapse all groups** — context-menu action collapsing every category (`setAllCategoriesCollapsed`)
+
+### Workspace Management (spec §10)
+- [x] **Delete workspace with trash behavior** — trash icon per row in WorkspaceDropdown (hidden for the last workspace), ConfirmDialog, `deleteWorkspace` now moves the workspace to Trash and `restoreFromTrash` handles the 'workspace' type; App falls back to the first remaining workspace if the active one is deleted
+- [x] **Create workspace from template** — "Copy categories from …" select in the create form; `createWorkspace(name, templateId)` copies category structure (names/colors/emojis) without groups or notes
+
+### Settings, popup & keyboard (spec §11.2/§11.4/§12)
+- [x] **Background setting** — preset swatch picker (color/gradient) in New Tab Page tab; applied to the shell via BACKGROUND_PRESETS
+- [x] **Arrow-key navigation on the group list** — arrows move focus between cards when a card is focused (GroupGrid)
+- [x] **Popup Enter / Cmd/Ctrl+S** — both save-and-close from anywhere in the popup (buttons/selects keep native Enter)
+- [x] **Popup note field** — optional note stored on the SavedTab (spec §12)
+- [x] **Alt+T command** — `commands._execute_action` in manifest.json opens the popup
+- [x] **Popup untitled-tab fallback** — popup saves now use tabTitleOrHostname too
+
+### Trash & First Run (spec §13/§15)
+- [x] **Original location in trash UI** — TrashTab resolves original_location ids to "Workspace > Category" names, with "(deleted …)" fallbacks
+- [x] **Getting Started category + welcome group** — buildDefaultStorage (fresh installs only) adds a "Getting Started" category with a welcome group: 2 example tabs (help/readme + keyboard shortcuts) and a checklist note
+
+### Drive sync UX (spec §9.2/§11.3)
+- [x] **Restore from backup** — GET_DRIVE_REVISIONS / RESTORE_DRIVE_REVISION messages; Settings > Sync lists the last 10 Drive revisions with confirm-to-restore; revision content is Zod-validated and current workspaces are kept as backup_local before applying
+- [x] **Multi-device pull on load** — runSync on chrome.runtime.onStartup, plus the newtab page triggers a sync once per load when enabled and >1 min stale
+- [x] **Pending-sync indicator** — SyncStatusDot shows an amber "Changes pending sync" dot from sync_meta.pending_sync
+
+### Error handling (spec §16/§17)
+- [x] **Sync failure toast with Retry** — Toast supports an inline action button; App toasts on the → error transition with the sync error message and a Retry that re-triggers sync
+- [x] **Expired-token reauthentication** — runSync distinguishes never-authorized (idle) from was-connected (error: "authorization expired, reconnect in Settings → Sync"), surfaced by the same toast
+- [x] **Quota-specific save errors** — QuotaExceededError from writeStorage maps to a "storage is full" message in the main save paths
+
+### Performance & code health (spec §16)
+- [x] **Offscreen render skipping** — `content-visibility: auto` + `contain-intrinsic-size` on group cards, note cards, and active-tab rows (pragmatic §16 virtualization; true windowing deferred unless profiling demands it)
+- [x] **All react-hooks lint warnings fixed** — categories/groups/notes derivations memoized in App.tsx and PopupApp.tsx; Modal effect deps completed. `npm run lint` is fully clean

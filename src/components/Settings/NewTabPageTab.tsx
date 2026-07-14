@@ -1,5 +1,5 @@
 import React, { useId } from 'react'
-import type { UserSettings, Workspace } from '../../lib/schema'
+import { BACKGROUND_PRESETS, type UserSettings, type Workspace } from '../../lib/schema'
 import { ToggleSwitch } from './ToggleSwitch'
 import { SettingRow } from './SettingRow'
 import { sectionHeadingStyle, selectStyle } from './styles'
@@ -49,13 +49,54 @@ export function NewTabPageTab({
         </select>
       </SettingRow>
 
-      <SettingRow label="Show clock" last>
+      <SettingRow label="Show clock">
         <ToggleSwitch
           id="toggle-clock"
           label="Show clock on new tab page"
           checked={settings.show_clock}
           onChange={(v) => onChange({ show_clock: v })}
         />
+      </SettingRow>
+
+      <SettingRow label="Background" last>
+        <div
+          role="radiogroup"
+          aria-label="New tab background"
+          style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}
+        >
+          {BACKGROUND_PRESETS.map((preset) => {
+            const active = (settings.background ?? '') === preset.id
+            return (
+              <button
+                key={preset.id || 'default'}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                aria-label={`Background: ${preset.label}`}
+                title={preset.label}
+                onClick={() => onChange({ background: preset.id })}
+                style={{
+                  width: 44,
+                  height: 28,
+                  borderRadius: 'var(--radius-sm)',
+                  border: active
+                    ? '2px solid var(--color-brand-500)'
+                    : '1px solid var(--border-default)',
+                  background: preset.css || 'var(--bg-base)',
+                  cursor: 'pointer',
+                  padding: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 'var(--text-xs)',
+                  color: 'var(--text-muted)',
+                }}
+              >
+                {preset.id === '' ? 'Aa' : ''}
+              </button>
+            )
+          })}
+        </div>
       </SettingRow>
     </div>
   )

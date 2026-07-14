@@ -57,3 +57,19 @@ export function openAllTabs(urls: string[], behavior: string | undefined): void 
     window.open(url, '_blank', 'noopener,noreferrer')
   }
 }
+
+/**
+ * "Open All in Background" (spec §6.3): opens all URLs together in a new
+ * Chrome window without stealing focus from the current window.
+ */
+export function openAllTabsInBackground(urls: string[]): void {
+  if (urls.length === 0) return
+  try {
+    chrome.windows.create({ url: urls, focused: false })
+  } catch {
+    // Non-extension context — window.open can't open unfocused; best effort.
+    for (const url of urls) {
+      window.open(url, '_blank', 'noopener,noreferrer')
+    }
+  }
+}

@@ -7,11 +7,18 @@ import React, { useEffect, useRef, useState } from 'react'
 
 export type ToastType = 'success' | 'error' | 'info'
 
+/** Optional inline action (e.g. "Retry" on a sync failure, spec §17). */
+export interface ToastAction {
+  label: string
+  onClick: () => void
+}
+
 export interface ToastItem {
   id: string
   message: string
   type: ToastType
   duration: number
+  action?: ToastAction | undefined
 }
 
 interface ToastProps {
@@ -112,6 +119,30 @@ export function Toast({ toast, onDismiss }: ToastProps): React.JSX.Element {
       >
         {toast.message}
       </span>
+
+      {toast.action && (
+        <button
+          type="button"
+          onClick={() => {
+            toast.action?.onClick()
+            dismiss()
+          }}
+          style={{
+            flexShrink: 0,
+            background: 'none',
+            border: `1px solid ${accentColor}`,
+            borderRadius: 'var(--radius-sm)',
+            cursor: 'pointer',
+            padding: '2px var(--space-2)',
+            color: accentColor,
+            fontSize: 'var(--text-xs)',
+            fontWeight: 600,
+            fontFamily: 'var(--font-sans)',
+          }}
+        >
+          {toast.action.label}
+        </button>
+      )}
 
       <button
         type="button"
