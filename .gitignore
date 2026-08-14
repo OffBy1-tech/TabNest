@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+*.local
+
+# Store screenshots & promo/marketing images (not part of the extension build)
+assets/*.png
+
+# Tooling / local editor state
+.claude/settings.json
+.claude/settings.local.json
+
+# macOS
+.DS_Store
+
+# Test coverage
+coverage/
+
+# Keys and certificates
+*.pem
+
+# Editor directories and files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Logs
+*.log
+npm-debug.log*

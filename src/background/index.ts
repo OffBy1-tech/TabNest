@@ -1,0 +1,689 @@
+/**
+ * Tab Nest background service worker (Chrome MV3)
+ *
+ * Rules:
+ * - No eval(), no new Function(), no remote code loading
+ * - No setInterval / setTimeout for periodic work — use chrome.alarms
+ * - All state persisted in chrome.storage.local (worker is non-persistent)
+ */
+
+import {
+  migrateIfNeeded,
+  readStorage,
+  writeStorage,
+  patchSyncMeta,
+  patchLocalSettings,
+  getSyncMeta,
+  purgeTrashOlderThan,
+  saveTabsToGroup,
+  deleteTabGroup,
+  restoreFromTrash,
+  pushLocalBackup,
+  stripDeviceOnlyFields,
+} from '../lib/storage'
+import {
+  StorageSchemaZod,
+  type ExtensionMessage,
+  type MessageResponse,
+  type SavedTab,
+  type LocalSettings,
+  ExtensionMessageSchema,
+} from '../lib/schema'
+import { tabTitleOrHostname } from '../lib/tabTitle'
+import { mergeSyncedState, sameSyncedContent } from '../lib/merge'
+import { syncAlarmCreateInfo } from '../lib/syncAlarm'
+
+// ---------------------------------------------------------------------------
+// Alarm names
+// ---------------------------------------------------------------------------
+
+const ALARM_SYNC = 'sync'
+const ALARM_TRASH_PURGE = 'trash_purge'
+const ALARM_RETRY_SYNC = 'retry_sync'
+
+/**
+ * Create or clear the periodic sync alarm for the given interval.
+ * null ("Manual only") clears — never leave a stale periodic alarm (issue #11).
+ */
+function applySyncAlarm(interval: LocalSettings['sync_interval_minutes']): void {
+  const info = syncAlarmCreateInfo(interval)
+  if (info) {
+    chrome.alarms.create(ALARM_SYNC, info)
+  } else {
+    chrome.alarms.clear(ALARM_SYNC)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// onInstalled
+// ---------------------------------------------------------------------------
+
+chrome.runtime.onInstalled.addListener(async (details) => {
+  // 1. Migrate schema (also initializes storage on fresh install)
+  await migrateIfNeeded()
+
+  // 2. Ensure device_id is set
+  const meta = await getSyncMeta()
+  if (!meta.device_id) {
+    await patchSyncMeta({ device_id: crypto.randomUUID() })
+  }
+
+  // 3. Register periodic alarms — use per-device sync interval from local_settings
+  const installData = await readStorage()
+  applySyncAlarm(installData.local_settings.sync_interval_minutes)
+  chrome.alarms.create(ALARM_TRASH_PURGE, { periodInMinutes: 1440 }) // daily
+
+  // 4. Register context menus
+  await buildContextMenus()
+
+  if (details.reason === 'install') {
+    console.log('[tabNest] Installed successfully.')
+  } else if (details.reason === 'update') {
+    console.log(`[tabNest] Updated from ${details.previousVersion ?? 'unknown'}.`)
+  }
+})
+
+// Rebuild context menus on browser startup — MV3 service workers are non-persistent
+// so menus registered at install time are gone after a browser restart.
+// Also pull the latest Drive data on load (spec §9.2 multi-device) — runSync
+// no-ops when sync is disabled.
+chrome.runtime.onStartup.addListener(() => {
+  buildContextMenus().catch((err) => console.error('[tabNest] buildContextMenus failed:', err))
+  runSync().catch((err) => console.error('[tabNest] startup sync failed:', err))
+})
+
+// ---------------------------------------------------------------------------
+// Alarms
+// ---------------------------------------------------------------------------
+
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  switch (alarm.name) {
+    case ALARM_SYNC:
+    case ALARM_RETRY_SYNC:
+      await runSync()
+      break
+    case ALARM_TRASH_PURGE:
+      await purgeTrashOlderThan(30)
+      break
+    default:
+      break
+  }
+})
+
+// ---------------------------------------------------------------------------
+// Context menus
+// ---------------------------------------------------------------------------
+
+// Rebuild the full context menu tree from current storage. Called on install,
+// startup, and whenever the workspace structure changes.
+async function buildContextMenus(): Promise<void> {
+  const data = await readStorage()
+  await new Promise<void>((resolve) => chrome.contextMenus.removeAll(resolve))
+
+  chrome.contextMenus.create({ id: 'save-page', title: 'Save to Tab Nest', contexts: ['page'] })
+  chrome.contextMenus.create({ id: 'save-link', title: 'Save Link to Tab Nest', contexts: ['link'] })
+
+  const { workspaces } = data
+  const multiWs = workspaces.length > 1
+
+  for (const ws of workspaces) {
+    if (multiWs) {
+      chrome.contextMenus.create({ id: `p:ws:${ws.id}`, parentId: 'save-page', title: ws.name, contexts: ['page'] })
+      chrome.contextMenus.create({ id: `l:ws:${ws.id}`, parentId: 'save-link', title: ws.name, contexts: ['link'] })
+    }
+
+    for (const cat of ws.categories) {
+      const pageParent = multiWs ? `p:ws:${ws.id}` : 'save-page'
+      const linkParent = multiWs ? `l:ws:${ws.id}` : 'save-link'
+
+      chrome.contextMenus.create({ id: `p:cat:${ws.id}:${cat.id}`, parentId: pageParent, title: cat.name, contexts: ['page'] })
+      chrome.contextMenus.create({ id: `l:cat:${ws.id}:${cat.id}`, parentId: linkParent, title: cat.name, contexts: ['link'] })
+
+      for (const grp of cat.groups) {
+        chrome.contextMenus.create({ id: `p:grp:${ws.id}:${cat.id}:${grp.id}`, parentId: `p:cat:${ws.id}:${cat.id}`, title: grp.name, contexts: ['page'] })
+        chrome.contextMenus.create({ id: `l:grp:${ws.id}:${cat.id}:${grp.id}`, parentId: `l:cat:${ws.id}:${cat.id}`, title: grp.name, contexts: ['link'] })
+      }
+
+      if (cat.groups.length > 0) {
+        chrome.contextMenus.create({ id: `p:sep:${ws.id}:${cat.id}`, parentId: `p:cat:${ws.id}:${cat.id}`, type: 'separator', contexts: ['page'] })
+        chrome.contextMenus.create({ id: `l:sep:${ws.id}:${cat.id}`, parentId: `l:cat:${ws.id}:${cat.id}`, type: 'separator', contexts: ['link'] })
+      }
+
+      chrome.contextMenus.create({ id: `p:new:${ws.id}:${cat.id}`, parentId: `p:cat:${ws.id}:${cat.id}`, title: '+ New Group', contexts: ['page'] })
+      chrome.contextMenus.create({ id: `l:new:${ws.id}:${cat.id}`, parentId: `l:cat:${ws.id}:${cat.id}`, title: '+ New Group', contexts: ['link'] })
+    }
+  }
+}
+
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (tab == null) return
+
+  const menuId = String(info.menuItemId)
+  const isLink = menuId.startsWith('l:') || menuId === 'save-link'
+  const url = isLink ? (info.linkUrl ?? info.pageUrl ?? '') : (tab.url ?? '')
+
+  if (!url || url.startsWith('chrome://') || url.startsWith('chrome-extension://')) return
+
+  const savedTab: SavedTab = {
+    id: crypto.randomUUID(),
+    // Links have no title of their own; pages fall back to the hostname when
+    // the tab has no title (spec §17 — never show a raw URL as a title).
+    title: isLink ? tabTitleOrHostname(undefined, url) : tabTitleOrHostname(tab.title, url),
+    url,
+    favicon: tab.favIconUrl,
+    saved_at: Date.now(),
+  }
+
+  try {
+    // New groups created from the context menu are named after the hostname
+    const groupName = tabTitleOrHostname(undefined, url)
+
+    // Root items and workspace items → save to first category of that workspace
+    if (menuId === 'save-page' || menuId === 'save-link' || menuId.split(':')[1] === 'ws') {
+      const data = await readStorage()
+      const wsId = menuId.split(':')[2]
+      const workspace = (wsId ? data.workspaces.find((w) => w.id === wsId) : null) ?? data.workspaces[0]
+      const category = workspace?.categories[0]
+      if (!workspace || !category) return
+      await saveTabsToGroup({ workspaceId: workspace.id, categoryId: category.id, groupName, tabs: [savedTab] })
+      return
+    }
+
+    const [, type, wsId, catId, grpId] = menuId.split(':')
+
+    if (type === 'grp' && wsId && catId && grpId) {
+      // Add to the chosen group — falls back to a new group if the menu entry
+      // is stale (group deleted since the menus were built)
+      await saveTabsToGroup({ workspaceId: wsId, categoryId: catId, groupId: grpId, groupName, tabs: [savedTab] })
+    } else if ((type === 'new' || type === 'cat') && wsId && catId) {
+      // Create a new group in this category
+      await saveTabsToGroup({ workspaceId: wsId, categoryId: catId, groupName, tabs: [savedTab] })
+    }
+    // 'sep' and 'ws' items are navigational — no action needed
+  } catch (err) {
+    console.error('[tabNest] context menu save failed:', err)
+  }
+})
+
+// ---------------------------------------------------------------------------
+// Message passing — newtab / popup ↔ service worker
+// ---------------------------------------------------------------------------
+
+chrome.runtime.onMessage.addListener(
+  (rawMessage: unknown, _sender, sendResponse: (r: MessageResponse) => void) => {
+    const parsed = ExtensionMessageSchema.safeParse(rawMessage)
+    if (!parsed.success) {
+      sendResponse({ ok: false, error: 'Invalid message format' })
+      return true
+    }
+
+    const message = parsed.data as ExtensionMessage
+    handleMessage(message)
+      .then((data) => sendResponse({ ok: true, data }))
+      .catch((err: unknown) =>
+        sendResponse({ ok: false, error: err instanceof Error ? err.message : String(err) }),
+      )
+
+    // Return true to keep the message channel open for async response
+    return true
+  },
+)
+
+async function handleMessage(message: ExtensionMessage): Promise<unknown> {
+  switch (message.type) {
+    case 'GET_ALL_DATA':
+      return readStorage()
+
+    case 'GET_SYNC_STATUS':
+      return getSyncMeta()
+
+    case 'TRIGGER_SYNC':
+      await runSync()
+      return getSyncMeta()
+
+    case 'CONNECT_DRIVE':
+      return connectDrive()
+
+    case 'DISCONNECT_DRIVE':
+      // Reset last_sync_at to 0 so a later reconnect re-enters the safe
+      // union-merge path (runSync gates first-connect on last_sync_at === 0).
+      // Without this, edits made while disconnected reconcile via plain
+      // last-write-wins on reconnect and one side can be wholesale overwritten.
+      await patchSyncMeta({ drive_file_id: null, sync_state: 'idle', error_message: null, last_sync_at: 0 })
+      await patchLocalSettings({ sync_enabled: false })
+      return { ok: true }
+
+    case 'GET_DRIVE_REVISIONS':
+      return listDriveRevisions()
+
+    case 'RESTORE_DRIVE_REVISION':
+      return restoreDriveRevision(message.payload.revision_id)
+
+    case 'SAVE_TABS': {
+      const { tabs, group_name, category_id, workspace_id, group_id } = message.payload
+      // Appends to group_id when given (and still existing), otherwise creates
+      // a new group at the end of the category. The real group id goes back to
+      // the caller so the popup can track its "recent groups" correctly.
+      const groupId = await saveTabsToGroup({
+        workspaceId: workspace_id,
+        categoryId: category_id,
+        groupId: group_id ?? null,
+        groupName: group_name,
+        tabs,
+      })
+      return { saved: tabs.length, group_id: groupId }
+    }
+
+    case 'DELETE_GROUP': {
+      const { group_id, category_id, workspace_id } = message.payload
+      // Use the storage layer's deleteTabGroup which correctly moves to trash
+      const trashItem = await deleteTabGroup({
+        groupId: group_id,
+        categoryId: category_id,
+        workspaceId: workspace_id,
+      })
+      return { trashed: trashItem.id }
+    }
+
+    case 'RESTORE_FROM_TRASH':
+      await restoreFromTrash(message.payload.item_id)
+      return { restored: message.payload.item_id }
+
+    default:
+      throw new Error('Unhandled message type')
+  }
+}
+
+// ---------------------------------------------------------------------------
+// React to local_settings changes (e.g., sync interval updated via UI)
+// ---------------------------------------------------------------------------
+
+/**
+ * The context menus depend only on workspace/category/group ids and names —
+ * compare that projection instead of the full workspace trees, so a note
+ * autosave or collapse toggle doesn't stringify every saved tab and rebuild
+ * every menu item on each storage write.
+ */
+type MenuShape = Array<{
+  id?: string
+  name?: string
+  categories?: Array<{ id?: string; name?: string; groups?: Array<{ id?: string; name?: string }> }>
+}>
+
+function menuSignature(workspaces: unknown): string {
+  if (!Array.isArray(workspaces)) return ''
+  return JSON.stringify(
+    (workspaces as MenuShape).map((ws) => [
+      ws.id,
+      ws.name,
+      (ws.categories ?? []).map((c) => [c.id, c.name, (c.groups ?? []).map((g) => [g.id, g.name])]),
+    ]),
+  )
+}
+
+// Last signature seen this SW lifetime — saves recomputing the oldValue
+// projection on every change event. Null after an SW restart, where the
+// event's oldValue fills in.
+let lastMenuSignature: string | null = null
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local') return
+  const dataChange = changes['tabnest_data']
+  if (!dataChange?.newValue) return
+
+  type StorageData = {
+    local_settings?: { sync_interval_minutes?: LocalSettings['sync_interval_minutes'] }
+    workspaces?: unknown
+  }
+  const oldData = dataChange.oldValue as StorageData | undefined
+  const newData = dataChange.newValue as StorageData
+
+  const oldInterval = oldData?.local_settings?.sync_interval_minutes
+  const newInterval = newData.local_settings?.sync_interval_minutes
+
+  if (newInterval !== oldInterval && newInterval !== undefined) {
+    // chrome.alarms.create overwrites an existing alarm of the same name;
+    // applySyncAlarm clears it instead when the new interval is "Manual only".
+    applySyncAlarm(newInterval)
+  }
+
+  // Rebuild context menus only when the menu-relevant structure changed
+  // (workspaces/categories/groups added, removed, renamed, or reordered)
+  const oldSignature = lastMenuSignature ?? menuSignature(oldData?.workspaces)
+  const newSignature = menuSignature(newData.workspaces)
+  lastMenuSignature = newSignature
+  if (oldSignature !== newSignature) {
+    buildContextMenus().catch((err) => console.error('[tabNest] buildContextMenus failed:', err))
+  }
+})
+
+// ---------------------------------------------------------------------------
+// Sync state machine
+// ---------------------------------------------------------------------------
+
+// runSync is triggered from four places (periodic alarm, retry alarm, onStartup,
+// TRIGGER_SYNC message) and does a non-atomic read → fetch-remote → decide-winner
+// → write sequence. writeStorage's queue only serializes individual storage
+// writes, not this whole sequence, so two overlapping runs could interleave and
+// push stale local data over newer remote (clobbering another device). The SW is
+// single-threaded, so a simple in-flight flag closes the window: a second trigger
+// while one is running is dropped (the running sync already covers the latest state).
+let syncInFlight = false
+
+async function runSync(): Promise<void> {
+  if (syncInFlight) return
+  syncInFlight = true
+  try {
+    await runSyncInner()
+  } finally {
+    syncInFlight = false
+  }
+}
+
+async function runSyncInner(): Promise<void> {
+  const data = await readStorage()
+  const meta = data.sync_meta
+  // sync_enabled is per-device — lives in local_settings, never synced to Drive
+  if (!data.local_settings.sync_enabled) return
+
+  if (!navigator.onLine) {
+    await patchSyncMeta({ pending_sync: true })
+    return
+  }
+
+  await patchSyncMeta({ sync_state: 'syncing', error_message: null })
+
+  try {
+    const token = await acquireToken(false)
+    if (!token) {
+      if (meta.drive_file_id !== null) {
+        // Was connected before — the token expired or was revoked. Surface it
+        // so the UI can prompt re-authentication (spec §17). Data is untouched.
+        await patchSyncMeta({
+          sync_state: 'error',
+          error_message: 'Google Drive authorization expired. Reconnect in Settings → Sync.',
+        })
+      } else {
+        // Never authorized on this device — nothing to sync yet
+        await patchSyncMeta({ sync_state: 'idle' })
+      }
+      return
+    }
+
+    const local = await readStorage()
+    const fileId = await findOrCreateDriveFile(token, meta.drive_file_id)
+
+    // Compare timestamps to determine winner
+    const remote = await readDriveFile(token, fileId)
+
+    if (remote !== null && meta.last_sync_at === 0) {
+      // First connect on this device — Drive already has data from another
+      // device. Union both sides so neither device loses tabs; deletions
+      // recorded in either side's trash are honored via tombstones. Settings
+      // go to whichever side was more recently modified.
+      const merged = mergeSyncedState(local, remote)
+      const mergedSettings =
+        remote.sync_meta.last_modified_at > local.sync_meta.last_modified_at
+          ? remote.settings
+          : local.settings
+      const written = await writeStorage({ workspaces: merged.workspaces, settings: mergedSettings, trash: merged.trash })
+      await writeDriveFile(token, fileId, written)
+    } else if (remote !== null && remote.sync_meta.last_modified_at > local.sync_meta.last_modified_at) {
+      // Remote is newer — but never blind-replace local (issue #6): union-merge
+      // workspaces and trash exactly like first-connect, so data that never
+      // reached Drive (saved while sync was off, or between pushes) survives.
+      // Settings stay last-write-wins (remote is newer on this branch). The
+      // pre-merge local workspaces go into the generational backup (issue #5).
+      await pushLocalBackup(local.workspaces)
+      const merged = mergeSyncedState(local, remote)
+      const written = await writeStorage({ workspaces: merged.workspaces, settings: remote.settings, trash: merged.trash })
+      if (sameSyncedContent(merged, remote)) {
+        // Local contributed nothing — adopt remote's last_modified_at.
+        // writeStorage just bumped it, which would make local look newer than
+        // remote on the next cycle and ping-pong pushes between devices.
+        await patchSyncMeta({ last_modified_at: remote.sync_meta.last_modified_at })
+      } else {
+        // The merge preserved local-only data remote doesn't have — push it
+        // back so both sides converge instead of re-merging forever.
+        await writeDriveFile(token, fileId, written)
+      }
+    } else {
+      // Local wins — push to Drive
+      await writeDriveFile(token, fileId, local)
+    }
+
+    await patchSyncMeta({
+      sync_state: 'idle',
+      last_sync_at: Date.now(),
+      pending_sync: false,
+      retry_count: 0,
+      drive_file_id: fileId,
+      error_message: null,
+    })
+  } catch (err) {
+    const retryCount = meta.retry_count + 1
+    if (retryCount >= 3) {
+      await patchSyncMeta({
+        sync_state: 'error',
+        error_message: err instanceof Error ? err.message : String(err),
+        retry_count: retryCount,
+      })
+    } else {
+      await patchSyncMeta({
+        sync_state: 'error',
+        retry_count: retryCount,
+      })
+      const delayMinutes = (30 * Math.pow(2, retryCount - 1)) / 60
+      // Clear any existing retry alarm before creating a new one (prevents duplicates)
+      chrome.alarms.clear(ALARM_RETRY_SYNC, () => {
+        chrome.alarms.create(ALARM_RETRY_SYNC, { delayInMinutes: delayMinutes })
+      })
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Google Drive helpers (deferred — called only when user has connected)
+// ---------------------------------------------------------------------------
+
+async function acquireToken(interactive: boolean): Promise<string | null> {
+  return new Promise((resolve) => {
+    chrome.identity.getAuthToken({ interactive }, (result) => {
+      const token = typeof result === 'string' ? result : result?.token
+      if (chrome.runtime.lastError || !token) {
+        resolve(null)
+      } else {
+        resolve(token)
+      }
+    })
+  })
+}
+
+async function connectDrive(): Promise<{ connected: boolean }> {
+  // Clear any cached token so Chrome shows a fresh account picker / consent screen
+  await new Promise<void>((resolve) => chrome.identity.clearAllCachedAuthTokens(resolve))
+
+  const token = await acquireToken(true)
+  if (!token) return { connected: false }
+
+  // Find or create the Drive file and persist the stable file ID so the UI
+  // can show "Connected" immediately (isConnected = drive_file_id !== null).
+  const data = await readStorage()
+  const fileId = await findOrCreateDriveFile(token, data.sync_meta.drive_file_id)
+  await patchSyncMeta({ drive_file_id: fileId, sync_state: 'idle', error_message: null })
+
+  // Enable sync on this device
+  await patchLocalSettings({ sync_enabled: true })
+
+  // Kick off the first sync via alarm rather than awaiting it here — Drive API
+  // round-trips can outlive the message channel and cause the UI to spin forever.
+  // Spreading the periodic config preserves the schedule (creating an alarm with
+  // the same name replaces the old one); for "Manual only" (null interval) the
+  // spread is empty, so this is a one-shot: the first sync fires, then nothing.
+  chrome.alarms.create(ALARM_SYNC, {
+    delayInMinutes: 0,
+    ...(syncAlarmCreateInfo(data.local_settings.sync_interval_minutes) ?? {}),
+  })
+
+  return { connected: true }
+}
+
+// ---------------------------------------------------------------------------
+// Drive revision history (spec §9.2/§11.3): list the last revisions of the
+// sync file and restore one. appDataFolder files keep Drive revisions.
+// ---------------------------------------------------------------------------
+
+async function listDriveRevisions(): Promise<Array<{ id: string; modifiedTime: string }>> {
+  const data = await readStorage()
+  const fileId = data.sync_meta.drive_file_id
+  if (!fileId) throw new Error('Drive is not connected')
+  const token = await acquireToken(false)
+  if (!token) throw new Error('Not authorized — reconnect Google Drive')
+
+  const res = await driveFetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}/revisions?fields=revisions(id,modifiedTime)&pageSize=100`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  )
+  if (!res.ok) throw new Error(`Failed to list revisions (HTTP ${res.status})`)
+  const body = (await res.json()) as { revisions?: Array<{ id: string; modifiedTime: string }> }
+  // Newest first, capped at 10 (spec §9.2)
+  return (body.revisions ?? [])
+    .sort((a, b) => b.modifiedTime.localeCompare(a.modifiedTime))
+    .slice(0, 10)
+}
+
+async function restoreDriveRevision(revisionId: string): Promise<{ restored: boolean }> {
+  const data = await readStorage()
+  const fileId = data.sync_meta.drive_file_id
+  if (!fileId) throw new Error('Drive is not connected')
+  const token = await acquireToken(false)
+  if (!token) throw new Error('Not authorized — reconnect Google Drive')
+
+  const res = await driveFetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}/revisions/${revisionId}?alt=media`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  )
+  if (!res.ok) throw new Error(`Failed to download revision (HTTP ${res.status})`)
+  const raw: unknown = await res.json()
+
+  // Same safety contract as a remote sync read — never apply unvalidated data
+  const parsed = StorageSchemaZod.safeParse(raw)
+  if (!parsed.success) throw new Error('Backup file failed validation — not restored')
+  const revision = parsed.data
+
+  // Keep a local backup of the current workspaces so the restore is reversible
+  const current = await readStorage()
+  await pushLocalBackup(current.workspaces)
+  await writeStorage({
+    workspaces: revision.workspaces,
+    settings: revision.settings,
+    trash: revision.trash,
+  })
+  return { restored: true }
+}
+
+// ---------------------------------------------------------------------------
+// Drive fetch with timeout — prevents hung requests from killing the SW silently
+// ---------------------------------------------------------------------------
+
+async function driveFetch(url: string, options: RequestInit = {}, timeoutMs = 15_000): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(url, { ...options, signal: controller.signal })
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+async function findOrCreateDriveFile(
+  token: string,
+  existingFileId: string | null,
+): Promise<string> {
+  const DRIVE_API = 'https://www.googleapis.com/drive/v3'
+  const headers = { Authorization: `Bearer ${token}` }
+
+  if (existingFileId) {
+    // Verify it still exists
+    const check = await driveFetch(`${DRIVE_API}/files/${existingFileId}?fields=id`, { headers })
+    if (check.ok) return existingFileId
+  }
+
+  const search = await driveFetch(
+    `${DRIVE_API}/files?spaces=appDataFolder&q=name='tabnest_data.json' and trashed=false&fields=files(id)`,
+    { headers },
+  )
+  if (!search.ok) {
+    throw new Error(`Drive search failed: ${search.status} ${search.statusText}`)
+  }
+  const searchData = await search.json() as { files?: Array<{ id: string }> }
+  if (searchData.files && searchData.files.length > 0 && searchData.files[0]) {
+    return searchData.files[0].id
+  }
+
+  const create = await driveFetch(`${DRIVE_API}/files`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      name: 'tabnest_data.json',
+      mimeType: 'application/json',
+      parents: ['appDataFolder'],
+    }),
+  })
+  if (!create.ok) {
+    throw new Error(`Drive file create failed: ${create.status} ${create.statusText}`)
+  }
+  const file = await create.json() as { id: string }
+  return file.id
+}
+
+async function readDriveFile(token: string, fileId: string): Promise<import('../lib/schema').StorageSchema | null> {
+  try {
+    const res = await driveFetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    )
+    if (!res.ok) return null
+    const raw: unknown = await res.json()
+    // Validate with Zod before trusting remote data (BLOCKER fix)
+    const parsed = StorageSchemaZod.safeParse(raw)
+    if (!parsed.success) {
+      console.error('[tabNest] Drive file failed schema validation:', parsed.error.issues)
+      return null
+    }
+    return parsed.data
+  } catch {
+    return null
+  }
+}
+
+async function writeDriveFile(
+  token: string,
+  fileId: string,
+  data: Awaited<ReturnType<typeof readStorage>>,
+): Promise<void> {
+  // Strip device-local fields (per-device settings, backup snapshots) before
+  // writing to Drive — the list lives in one place in the storage layer.
+  const drivePayload = stripDeviceOnlyFields(data)
+
+  const res = await driveFetch(
+    `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
+    {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(drivePayload),
+    },
+  )
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`Drive write failed: ${res.status} ${res.statusText}${body ? ` — ${body.slice(0, 200)}` : ''}`)
+  }
+}
+
+// First-connect merge helpers live in ../lib/merge (pure, unit-tested there).

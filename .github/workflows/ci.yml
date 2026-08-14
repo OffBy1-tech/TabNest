@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Typecheck, lint, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      - run: npm run lint
+
+      # The `storybook` Vitest project renders stories in real Chromium.
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      # Vitest runs once (no watch) when CI is set.
+      - name: Test with coverage
+        run: npm run coverage
+
+      - name: Generate coverage badge
+        run: node scripts/coverage-badge.js
+
+      # Both secrets are optional: scripts/inject-oauth.js warns and continues
+      # when they are unset, so pull requests from forks still build.
+      - name: Build extension
+        run: npm run build
+        env:
+          TABNEST_OAUTH_CLIENT_ID: ${{ secrets.TABNEST_OAUTH_CLIENT_ID }}
+          GOOGLE_EXTENSION_KEY: ${{ secrets.GOOGLE_EXTENSION_KEY }}
+
+      - name: Upload coverage report
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: coverage
+
+  publish-coverage:
+    name: Publish coverage to Pages
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
