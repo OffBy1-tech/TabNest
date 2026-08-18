@@ -30,7 +30,7 @@ import {
   ExtensionMessageSchema,
 } from '../lib/schema'
 import { tabTitleOrHostname } from '../lib/tabTitle'
-import { mergeSyncedState, sameSyncedContent } from '../lib/merge'
+import { planSync } from '../lib/syncPlan'
 import { syncAlarmCreateInfo } from '../lib/syncAlarm'
 
 // ---------------------------------------------------------------------------
@@ -245,8 +245,9 @@ async function handleMessage(message: ExtensionMessage): Promise<unknown> {
       return connectDrive()
 
     case 'DISCONNECT_DRIVE':
-      // Reset last_sync_at to 0 so a later reconnect re-enters the safe
-      // union-merge path (runSync gates first-connect on last_sync_at === 0).
+      // Reset last_sync_at to 0 so the UI reads this device as never-synced.
+      // (Safety no longer depends on it: runSync union-merges on every cycle,
+      // so a later reconnect merges rather than overwrites regardless.)
       // Without this, edits made while disconnected reconcile via plain
       // last-write-wins on reconnect and one side can be wholesale overwritten.
       await patchSyncMeta({ drive_file_id: null, sync_state: 'idle', error_message: null, last_sync_at: 0 })
@@ -413,43 +414,24 @@ async function runSyncInner(): Promise<void> {
     const local = await readStorage()
     const fileId = await findOrCreateDriveFile(token, meta.drive_file_id)
 
-    // Compare timestamps to determine winner
+    // Union-merge with whatever Drive holds — planSync (src/lib/syncPlan.ts)
+    // decides what to write locally, whether to push, and whether to adopt
+    // remote's last_modified_at. There is deliberately no timestamp-based
+    // "local wins" fast path: it blind-pushed over concurrent remote changes
+    // and wiped deletion tombstones from Drive (smoke-test bug). The pre-merge
+    // local workspaces go into the generational backup whenever the merge is
+    // about to change them (issue #5).
     const remote = await readDriveFile(token, fileId)
-
-    if (remote !== null && meta.last_sync_at === 0) {
-      // First connect on this device — Drive already has data from another
-      // device. Union both sides so neither device loses tabs; deletions
-      // recorded in either side's trash are honored via tombstones. Settings
-      // go to whichever side was more recently modified.
-      const merged = mergeSyncedState(local, remote)
-      const mergedSettings =
-        remote.sync_meta.last_modified_at > local.sync_meta.last_modified_at
-          ? remote.settings
-          : local.settings
-      const written = await writeStorage({ workspaces: merged.workspaces, settings: mergedSettings, trash: merged.trash })
+    const plan = planSync(local, remote)
+    if (plan.backupFirst) await pushLocalBackup(local.workspaces)
+    const written = plan.write !== null ? await writeStorage(plan.write) : local
+    if (plan.push) {
       await writeDriveFile(token, fileId, written)
-    } else if (remote !== null && remote.sync_meta.last_modified_at > local.sync_meta.last_modified_at) {
-      // Remote is newer — but never blind-replace local (issue #6): union-merge
-      // workspaces and trash exactly like first-connect, so data that never
-      // reached Drive (saved while sync was off, or between pushes) survives.
-      // Settings stay last-write-wins (remote is newer on this branch). The
-      // pre-merge local workspaces go into the generational backup (issue #5).
-      await pushLocalBackup(local.workspaces)
-      const merged = mergeSyncedState(local, remote)
-      const written = await writeStorage({ workspaces: merged.workspaces, settings: remote.settings, trash: merged.trash })
-      if (sameSyncedContent(merged, remote)) {
-        // Local contributed nothing — adopt remote's last_modified_at.
-        // writeStorage just bumped it, which would make local look newer than
-        // remote on the next cycle and ping-pong pushes between devices.
-        await patchSyncMeta({ last_modified_at: remote.sync_meta.last_modified_at })
-      } else {
-        // The merge preserved local-only data remote doesn't have — push it
-        // back so both sides converge instead of re-merging forever.
-        await writeDriveFile(token, fileId, written)
-      }
-    } else {
-      // Local wins — push to Drive
-      await writeDriveFile(token, fileId, local)
+    } else if (plan.adoptRemoteModifiedAt !== null) {
+      // Local was rewritten purely from remote data — writeStorage just bumped
+      // last_modified_at, which would make local look newer than remote on the
+      // next cycle and ping-pong pushes between devices.
+      await patchSyncMeta({ last_modified_at: plan.adoptRemoteModifiedAt })
     }
 
     await patchSyncMeta({
