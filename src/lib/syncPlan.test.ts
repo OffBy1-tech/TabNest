@@ -1,21 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { UserSettingsSchema, type UserSettings } from './schema'
+import { DEFAULT_SETTINGS, type UserSettings } from './schema'
 import { workspace, category, group, trashItem } from './testFixtures'
 import { planSync } from './syncPlan'
 
-const settings = (o: Partial<UserSettings> = {}): UserSettings =>
-  UserSettingsSchema.parse({
-    theme: 'system',
-    default_view: 'grid',
-    open_tab_behavior: 'current',
-    save_and_close: false,
-    show_favicons: true,
-    compact_mode: false,
-    active_tabs_on_load: false,
-    default_workspace_id: null,
-    show_clock: false,
-    ...o,
-  })
+const settings = (o: Partial<UserSettings> = {}): UserSettings => ({ ...DEFAULT_SETTINGS, ...o })
 
 type Side = Parameters<typeof planSync>[0]
 

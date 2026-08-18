@@ -15,7 +15,7 @@
  * writes or Drive uploads when nothing changed).
  */
 
-import { mergeSyncedState, sameSyncedContent } from './merge'
+import { mergeSyncedState } from './merge'
 import type { TrashItem, UserSettings, Workspace } from './schema'
 
 export interface SyncSideState {
@@ -46,25 +46,41 @@ export function planSync(local: SyncSideState, remote: SyncSideState | null): Sy
     return { backupFirst: false, write: null, push: true, adoptRemoteModifiedAt: null }
   }
 
-  const merged = mergeSyncedState(
-    { workspaces: local.workspaces, trash: local.trash },
-    { workspaces: remote.workspaces, trash: remote.trash },
-  )
+  const merged = mergeSyncedState(local, remote)
   // Settings are last-write-wins by whole-document timestamp; ties go to local.
-  const settings =
-    remote.sync_meta.last_modified_at > local.sync_meta.last_modified_at
-      ? remote.settings
-      : local.settings
+  const remoteNewer = remote.sync_meta.last_modified_at > local.sync_meta.last_modified_at
 
-  const sameSettings = (other: UserSettings): boolean =>
-    JSON.stringify(settings) === JSON.stringify(other)
-  const matchesLocal = sameSyncedContent(merged, local) && sameSettings(local.settings)
-  const matchesRemote = sameSyncedContent(merged, remote) && sameSettings(remote.settings)
+  // Deliberately strict JSON equality: timestamp/order fields are load-bearing
+  // for tombstone resolution, so a "semantic" compare that ignored them could
+  // skip pushing a restore-after-delete. The only failure mode of strictness
+  // is a false negative from array/key ordering, costing one redundant Drive
+  // push that converges on the next cycle. Each distinct document is
+  // serialized exactly once — these are the extension's largest objects.
+  const mergedWs = JSON.stringify(merged.workspaces)
+  const mergedTrash = JSON.stringify(merged.trash)
+  const localWs = JSON.stringify(local.workspaces)
+  const localTrash = JSON.stringify(local.trash)
+  const remoteWs = JSON.stringify(remote.workspaces)
+  const remoteTrash = JSON.stringify(remote.trash)
+  const localSettings = JSON.stringify(local.settings)
+  const remoteSettings = JSON.stringify(remote.settings)
+  const settings = remoteNewer ? remoteSettings : localSettings
+
+  const matchesLocal = mergedWs === localWs && mergedTrash === localTrash && settings === localSettings
+  const matchesRemote = mergedWs === remoteWs && mergedTrash === remoteTrash && settings === remoteSettings
 
   return {
-    backupFirst: JSON.stringify(merged.workspaces) !== JSON.stringify(local.workspaces),
-    write: matchesLocal ? null : { workspaces: merged.workspaces, settings, trash: merged.trash },
+    backupFirst: mergedWs !== localWs,
+    write: matchesLocal
+      ? null
+      : {
+          workspaces: merged.workspaces,
+          settings: remoteNewer ? remote.settings : local.settings,
+          trash: merged.trash,
+        },
     push: !matchesRemote,
-    adoptRemoteModifiedAt: !matchesRemote || matchesLocal ? null : remote.sync_meta.last_modified_at,
+    // Merged result matches remote, but local had to be rewritten from it.
+    adoptRemoteModifiedAt:
+      matchesRemote && !matchesLocal ? remote.sync_meta.last_modified_at : null,
   }
 }
