@@ -64,6 +64,19 @@ describe('WorkspaceDropdown', () => {
     expect(props.onDeleteWorkspace).toHaveBeenCalledOnce()
   })
 
+  it('reveals both the rename and delete icons on row hover', () => {
+    renderDropdown({ onDeleteWorkspace: vi.fn() })
+    const rename = screen.getByRole('button', { name: 'Rename Work' })
+    const del = screen.getByRole('button', { name: 'Delete Work' })
+    const row = rename.parentElement!
+    fireEvent.mouseOver(row)
+    expect(del.style.opacity).toBe('1')
+    expect(rename.style.opacity).toBe('1')
+    fireEvent.mouseOut(row)
+    expect(del.style.opacity).toBe('0')
+    expect(rename.style.opacity).toBe('0')
+  })
+
   it('renames a workspace inline', () => {
     const props = renderDropdown()
     fireEvent.click(screen.getByRole('button', { name: 'Rename Work' }))
