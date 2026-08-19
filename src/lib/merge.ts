@@ -1,5 +1,6 @@
 /**
- * First-connect merge helpers (spec §9.2).
+ * Sync merge helpers (spec §9.2) — run on every sync cycle; planSync
+ * (src/lib/syncPlan.ts) decides when the result is written or pushed.
  *
  * Union local and remote by entity ID at each level of the hierarchy.
  * Entities that exist on only one side are kept as-is. Entities that exist on
@@ -278,8 +279,8 @@ export function dedupeGroupsAcrossCategories(workspaces: Workspace[]): Workspace
 
 /**
  * Union-merge two devices' synced user data, honoring deletions recorded in
- * either side's trash. Used by both the first-connect and remote-wins sync
- * paths (issue #6) — settings are merged separately (last-write-wins).
+ * either side's trash (issue #6). Applied on every sync cycle via planSync —
+ * settings are merged separately (last-write-wins).
  */
 export function mergeSyncedState(
   local: { workspaces: Workspace[]; trash: TrashItem[] },
@@ -291,25 +292,4 @@ export function mergeSyncedState(
     tombstonesFromTrash(trash),
   );
   return { workspaces, trash };
-}
-
-/**
- * True when two synced states carry identical content. Lets the sync handler
- * skip the Drive push-back when a merge added nothing beyond what remote
- * already has (avoids two devices ping-ponging pushes forever).
- *
- * Deliberately strict JSON equality: timestamp/order fields are load-bearing
- * for tombstone resolution, so a "semantic" compare that ignored them could
- * skip pushing a restore-after-delete. The only failure mode of strictness is
- * a false negative from array/key ordering, costing one redundant Drive push
- * that converges on the next cycle.
- */
-export function sameSyncedContent(
-  a: { workspaces: Workspace[]; trash: TrashItem[] },
-  b: { workspaces: Workspace[]; trash: TrashItem[] },
-): boolean {
-  return (
-    JSON.stringify(a.workspaces) === JSON.stringify(b.workspaces) &&
-    JSON.stringify(a.trash) === JSON.stringify(b.trash)
-  );
 }

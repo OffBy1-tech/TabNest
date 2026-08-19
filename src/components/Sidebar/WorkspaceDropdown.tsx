@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Plus, Check, Pencil, Trash2 } from 'lucide-react';
 import type { Workspace } from '../../lib/schema';
 import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog';
+
 export interface WorkspaceDropdownProps {
   workspaces: Workspace[];
   activeWorkspaceId: string | undefined;
@@ -33,15 +34,18 @@ export function WorkspaceDropdown({
   const [renameValue, setRenameValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     if (creatingNew) inputRef.current?.focus();
   }, [creatingNew]);
+
   useEffect(() => {
     if (renamingId) {
       renameInputRef.current?.focus();
       renameInputRef.current?.select();
     }
   }, [renamingId]);
+
   function handleCreate(): void {
     const trimmed = newName.trim();
     if (trimmed) onCreateWorkspace(trimmed, templateId || undefined);
@@ -96,6 +100,7 @@ export function WorkspaceDropdown({
       {workspaces.map((ws) => {
         const isActive = ws.id === activeWorkspaceId;
         const isRenaming = renamingId === ws.id;
+
         if (isRenaming) {
           return (
             <div
@@ -132,16 +137,14 @@ export function WorkspaceDropdown({
             key={ws.id}
             style={{ display: 'flex', alignItems: 'center', borderRadius: 'var(--radius-sm)', position: 'relative' }}
             onMouseEnter={(e) => {
-              const pencil = e.currentTarget.querySelector<HTMLElement>('[data-pencil]');
-              if (pencil) pencil.style.opacity = '1';
+              e.currentTarget.querySelectorAll<HTMLElement>('[data-pencil]').forEach((el) => { el.style.opacity = '1'; });
               if (!isActive) {
                 const btn = e.currentTarget.querySelector<HTMLElement>('[data-ws-btn]');
                 if (btn) btn.style.backgroundColor = 'var(--bg-elevated)';
               }
             }}
             onMouseLeave={(e) => {
-              const pencil = e.currentTarget.querySelector<HTMLElement>('[data-pencil]');
-              if (pencil) pencil.style.opacity = '0';
+              e.currentTarget.querySelectorAll<HTMLElement>('[data-pencil]').forEach((el) => { el.style.opacity = '0'; });
               const btn = e.currentTarget.querySelector<HTMLElement>('[data-ws-btn]');
               if (btn) btn.style.backgroundColor = isActive ? 'var(--color-brand-50)' : 'transparent';
             }}
@@ -170,8 +173,8 @@ export function WorkspaceDropdown({
                 outline: 'none',
               }}
               onFocus={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`;
-                (e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px';
+                (e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
+                ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px';
               }}
               onBlur={(e) => { (e.currentTarget as HTMLButtonElement).style.outline = 'none'; }}
             >
@@ -210,13 +213,13 @@ export function WorkspaceDropdown({
                   (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
                 }}
                 onFocus={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.opacity = '1';
-                  (e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`;
-                  (e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px';
+                  (e.currentTarget as HTMLButtonElement).style.opacity = '1'
+                  ;(e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
+                  ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px';
                 }}
                 onBlur={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.opacity = '0';
-                  (e.currentTarget as HTMLButtonElement).style.outline = 'none';
+                  (e.currentTarget as HTMLButtonElement).style.opacity = '0'
+                  ;(e.currentTarget as HTMLButtonElement).style.outline = 'none';
                 }}
               >
                 <Trash2 size={12} aria-hidden="true" />
@@ -246,13 +249,13 @@ export function WorkspaceDropdown({
                 outline: 'none',
               }}
               onFocus={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.opacity = '1';
-                (e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`;
-                (e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px';
+                (e.currentTarget as HTMLButtonElement).style.opacity = '1'
+                ;(e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
+                ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px';
               }}
               onBlur={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.opacity = '0';
-                (e.currentTarget as HTMLButtonElement).style.outline = 'none';
+                (e.currentTarget as HTMLButtonElement).style.opacity = '0'
+                ;(e.currentTarget as HTMLButtonElement).style.outline = 'none';
               }}
             >
               <Pencil size={12} aria-hidden="true" />
@@ -353,16 +356,16 @@ export function WorkspaceDropdown({
             outline: 'none',
           }}
           onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--bg-elevated)';
-            (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)';
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--bg-elevated)'
+            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)';
           }}
           onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
-            (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)';
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'
+            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)';
           }}
           onFocus={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`;
-            (e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px';
+            (e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
+            ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px';
           }}
           onBlur={(e) => { (e.currentTarget as HTMLButtonElement).style.outline = 'none'; }}
         >

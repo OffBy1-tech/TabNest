@@ -30,7 +30,7 @@ import {
   ExtensionMessageSchema,
 } from '../lib/schema';
 import { tabTitleOrHostname } from '../lib/tabTitle';
-import { mergeSyncedState, sameSyncedContent } from '../lib/merge';
+import { planSync } from '../lib/syncPlan';
 import { syncAlarmCreateInfo } from '../lib/syncAlarm';
 
 // ---------------------------------------------------------------------------
@@ -75,6 +75,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 
   // 4. Register context menus
   await buildContextMenus();
+
   if (details.reason === 'install') {
     console.log('[tabNest] Installed successfully.');
   } else if (details.reason === 'update') {
@@ -118,10 +119,13 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 async function buildContextMenus(): Promise<void> {
   const data = await readStorage();
   await new Promise<void>((resolve) => chrome.contextMenus.removeAll(resolve));
+
   chrome.contextMenus.create({ id: 'save-page', title: 'Save to Tab Nest', contexts: ['page'] });
   chrome.contextMenus.create({ id: 'save-link', title: 'Save Link to Tab Nest', contexts: ['link'] });
+
   const { workspaces } = data;
   const multiWs = workspaces.length > 1;
+
   for (const ws of workspaces) {
     if (multiWs) {
       chrome.contextMenus.create({ id: `p:ws:${ws.id}`, parentId: 'save-page', title: ws.name, contexts: ['page'] });
@@ -131,8 +135,10 @@ async function buildContextMenus(): Promise<void> {
     for (const cat of ws.categories) {
       const pageParent = multiWs ? `p:ws:${ws.id}` : 'save-page';
       const linkParent = multiWs ? `l:ws:${ws.id}` : 'save-link';
+
       chrome.contextMenus.create({ id: `p:cat:${ws.id}:${cat.id}`, parentId: pageParent, title: cat.name, contexts: ['page'] });
       chrome.contextMenus.create({ id: `l:cat:${ws.id}:${cat.id}`, parentId: linkParent, title: cat.name, contexts: ['link'] });
+
       for (const grp of cat.groups) {
         chrome.contextMenus.create({ id: `p:grp:${ws.id}:${cat.id}:${grp.id}`, parentId: `p:cat:${ws.id}:${cat.id}`, title: grp.name, contexts: ['page'] });
         chrome.contextMenus.create({ id: `l:grp:${ws.id}:${cat.id}:${grp.id}`, parentId: `l:cat:${ws.id}:${cat.id}`, title: grp.name, contexts: ['link'] });
@@ -151,10 +157,13 @@ async function buildContextMenus(): Promise<void> {
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (tab == null) return;
+
   const menuId = String(info.menuItemId);
   const isLink = menuId.startsWith('l:') || menuId === 'save-link';
   const url = isLink ? (info.linkUrl ?? info.pageUrl ?? '') : (tab.url ?? '');
+
   if (!url || url.startsWith('chrome://') || url.startsWith('chrome-extension://')) return;
+
   const savedTab: SavedTab = {
     id: crypto.randomUUID(),
     // Links have no title of their own; pages fall back to the hostname when
@@ -164,6 +173,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     favicon: tab.favIconUrl,
     saved_at: Date.now(),
   };
+
   try {
     // New groups created from the context menu are named after the hostname
     const groupName = tabTitleOrHostname(undefined, url);
@@ -180,6 +190,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     }
 
     const [, type, wsId, catId, grpId] = menuId.split(':');
+
     if (type === 'grp' && wsId && catId && grpId) {
       // Add to the chosen group — falls back to a new group if the menu entry
       // is stale (group deleted since the menus were built)
@@ -217,6 +228,7 @@ chrome.runtime.onMessage.addListener(
     return true;
   },
 );
+
 async function handleMessage(message: ExtensionMessage): Promise<unknown> {
   switch (message.type) {
     case 'GET_ALL_DATA':
@@ -233,10 +245,10 @@ async function handleMessage(message: ExtensionMessage): Promise<unknown> {
       return connectDrive();
 
     case 'DISCONNECT_DRIVE':
-      // Reset last_sync_at to 0 so a later reconnect re-enters the safe
-      // union-merge path (runSync gates first-connect on last_sync_at === 0).
-      // Without this, edits made while disconnected reconcile via plain
-      // last-write-wins on reconnect and one side can be wholesale overwritten.
+      // Reset last_sync_at to 0 so the UI reads this device as never-synced
+      // (SyncAndDataTab's "Never" label, App.tsx's staleness check). Sync
+      // safety does not depend on it — runSync union-merges on every cycle,
+      // so a later reconnect merges rather than overwrites regardless.
       await patchSyncMeta({ drive_file_id: null, sync_state: 'idle', error_message: null, last_sync_at: 0 });
       await patchLocalSettings({ sync_enabled: false });
       return { ok: true };
@@ -313,18 +325,22 @@ function menuSignature(workspaces: unknown): string {
 // projection on every change event. Null after an SW restart, where the
 // event's oldValue fills in.
 let lastMenuSignature: string | null = null;
+
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
   const dataChange = changes['tabnest_data'];
   if (!dataChange?.newValue) return;
+
   type StorageData = {
     local_settings?: { sync_interval_minutes?: LocalSettings['sync_interval_minutes'] };
     workspaces?: unknown;
   };
   const oldData = dataChange.oldValue as StorageData | undefined;
   const newData = dataChange.newValue as StorageData;
+
   const oldInterval = oldData?.local_settings?.sync_interval_minutes;
   const newInterval = newData.local_settings?.sync_interval_minutes;
+
   if (newInterval !== oldInterval && newInterval !== undefined) {
     // chrome.alarms.create overwrites an existing alarm of the same name;
     // applySyncAlarm clears it instead when the new interval is "Manual only".
@@ -353,6 +369,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 // single-threaded, so a simple in-flight flag closes the window: a second trigger
 // while one is running is dropped (the running sync already covers the latest state).
 let syncInFlight = false;
+
 async function runSync(): Promise<void> {
   if (syncInFlight) return;
   syncInFlight = true;
@@ -368,12 +385,14 @@ async function runSyncInner(): Promise<void> {
   const meta = data.sync_meta;
   // sync_enabled is per-device — lives in local_settings, never synced to Drive
   if (!data.local_settings.sync_enabled) return;
+
   if (!navigator.onLine) {
     await patchSyncMeta({ pending_sync: true });
     return;
   }
 
   await patchSyncMeta({ sync_state: 'syncing', error_message: null });
+
   try {
     const token = await acquireToken(false);
     if (!token) {
@@ -394,43 +413,14 @@ async function runSyncInner(): Promise<void> {
     const local = await readStorage();
     const fileId = await findOrCreateDriveFile(token, meta.drive_file_id);
 
-    // Compare timestamps to determine winner
+    // planSync decides what to write locally, whether to push, and whether to
+    // adopt remote's last_modified_at — see src/lib/syncPlan.ts for why there
+    // is no "local wins" fast path.
     const remote = await readDriveFile(token, fileId);
-    if (remote !== null && meta.last_sync_at === 0) {
-      // First connect on this device — Drive already has data from another
-      // device. Union both sides so neither device loses tabs; deletions
-      // recorded in either side's trash are honored via tombstones. Settings
-      // go to whichever side was more recently modified.
-      const merged = mergeSyncedState(local, remote);
-      const mergedSettings =
-        remote.sync_meta.last_modified_at > local.sync_meta.last_modified_at
-          ? remote.settings
-          : local.settings;
-      const written = await writeStorage({ workspaces: merged.workspaces, settings: mergedSettings, trash: merged.trash });
-      await writeDriveFile(token, fileId, written);
-    } else if (remote !== null && remote.sync_meta.last_modified_at > local.sync_meta.last_modified_at) {
-      // Remote is newer — but never blind-replace local (issue #6): union-merge
-      // workspaces and trash exactly like first-connect, so data that never
-      // reached Drive (saved while sync was off, or between pushes) survives.
-      // Settings stay last-write-wins (remote is newer on this branch). The
-      // pre-merge local workspaces go into the generational backup (issue #5).
-      await pushLocalBackup(local.workspaces);
-      const merged = mergeSyncedState(local, remote);
-      const written = await writeStorage({ workspaces: merged.workspaces, settings: remote.settings, trash: merged.trash });
-      if (sameSyncedContent(merged, remote)) {
-        // Local contributed nothing — adopt remote's last_modified_at.
-        // writeStorage just bumped it, which would make local look newer than
-        // remote on the next cycle and ping-pong pushes between devices.
-        await patchSyncMeta({ last_modified_at: remote.sync_meta.last_modified_at });
-      } else {
-        // The merge preserved local-only data remote doesn't have — push it
-        // back so both sides converge instead of re-merging forever.
-        await writeDriveFile(token, fileId, written);
-      }
-    } else {
-      // Local wins — push to Drive
-      await writeDriveFile(token, fileId, local);
-    }
+    const plan = planSync(local, remote);
+    if (plan.backupFirst) await pushLocalBackup(local.workspaces);
+    const written = plan.write !== null ? await writeStorage(plan.write) : local;
+    if (plan.push) await writeDriveFile(token, fileId, written);
 
     await patchSyncMeta({
       sync_state: 'idle',
@@ -439,6 +429,11 @@ async function runSyncInner(): Promise<void> {
       retry_count: 0,
       drive_file_id: fileId,
       error_message: null,
+      // Anti-ping-pong — see SyncPlan.adoptRemoteModifiedAt. Non-null only
+      // when plan.push is false.
+      ...(plan.adoptRemoteModifiedAt !== null
+        ? { last_modified_at: plan.adoptRemoteModifiedAt }
+        : {}),
     });
   } catch (err) {
     const retryCount = meta.retry_count + 1;
@@ -482,6 +477,7 @@ async function acquireToken(interactive: boolean): Promise<string | null> {
 async function connectDrive(): Promise<{ connected: boolean }> {
   // Clear any cached token so Chrome shows a fresh account picker / consent screen
   await new Promise<void>((resolve) => chrome.identity.clearAllCachedAuthTokens(resolve));
+
   const token = await acquireToken(true);
   if (!token) return { connected: false };
 
@@ -503,6 +499,7 @@ async function connectDrive(): Promise<{ connected: boolean }> {
     delayInMinutes: 0,
     ...(syncAlarmCreateInfo(data.local_settings.sync_interval_minutes) ?? {}),
   });
+
   return { connected: true };
 }
 
@@ -517,6 +514,7 @@ async function listDriveRevisions(): Promise<Array<{ id: string; modifiedTime: s
   if (!fileId) throw new Error('Drive is not connected');
   const token = await acquireToken(false);
   if (!token) throw new Error('Not authorized — reconnect Google Drive');
+
   const res = await driveFetch(
     `https://www.googleapis.com/drive/v3/files/${fileId}/revisions?fields=revisions(id,modifiedTime)&pageSize=100`,
     { headers: { Authorization: `Bearer ${token}` } },
@@ -535,6 +533,7 @@ async function restoreDriveRevision(revisionId: string): Promise<{ restored: boo
   if (!fileId) throw new Error('Drive is not connected');
   const token = await acquireToken(false);
   if (!token) throw new Error('Not authorized — reconnect Google Drive');
+
   const res = await driveFetch(
     `https://www.googleapis.com/drive/v3/files/${fileId}/revisions/${revisionId}?alt=media`,
     { headers: { Authorization: `Bearer ${token}` } },
@@ -578,6 +577,7 @@ async function findOrCreateDriveFile(
 ): Promise<string> {
   const DRIVE_API = 'https://www.googleapis.com/drive/v3';
   const headers = { Authorization: `Bearer ${token}` };
+
   if (existingFileId) {
     // Verify it still exists
     const check = await driveFetch(`${DRIVE_API}/files/${existingFileId}?fields=id`, { headers });
@@ -643,6 +643,7 @@ async function writeDriveFile(
   // Strip device-local fields (per-device settings, backup snapshots) before
   // writing to Drive — the list lives in one place in the storage layer.
   const drivePayload = stripDeviceOnlyFields(data);
+
   const res = await driveFetch(
     `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
     {

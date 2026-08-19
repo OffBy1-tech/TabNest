@@ -2,10 +2,12 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import type { Workspace } from '../../lib/schema';
 import { WorkspaceDropdown } from './WorkspaceDropdown';
+
 const workspaces: Workspace[] = [
   { id: 'ws-1', name: 'Personal', created_at: 0, categories: [] },
   { id: 'ws-2', name: 'Work', created_at: 0, categories: [] },
 ];
+
 function renderDropdown(overrides: Partial<Parameters<typeof WorkspaceDropdown>[0]> = {}) {
   const props = {
     workspaces,
@@ -25,11 +27,13 @@ describe('WorkspaceDropdown', () => {
     expect(screen.getByRole('menuitem', { name: /Personal/ })).toHaveAttribute('aria-current', 'true');
     expect(screen.getByRole('menuitem', { name: /Work/ })).not.toHaveAttribute('aria-current');
   });
+
   it('selects a workspace on click', () => {
     const props = renderDropdown();
     fireEvent.click(screen.getByRole('menuitem', { name: /Work/ }));
     expect(props.onSelectWorkspace).toHaveBeenCalledWith('ws-2');
   });
+
   it('creates a new workspace through the inline creator', () => {
     const props = renderDropdown();
     fireEvent.click(screen.getByRole('menuitem', { name: 'New workspace' }));
@@ -38,6 +42,7 @@ describe('WorkspaceDropdown', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Confirm new workspace' }));
     expect(props.onCreateWorkspace).toHaveBeenCalledWith('Side Projects', undefined);
   });
+
   it('passes the chosen template workspace to onCreateWorkspace', () => {
     const props = renderDropdown();
     fireEvent.click(screen.getByRole('menuitem', { name: 'New workspace' }));
@@ -48,6 +53,7 @@ describe('WorkspaceDropdown', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Confirm new workspace' }));
     expect(props.onCreateWorkspace).toHaveBeenCalledWith('Copy', firstWsId);
   });
+
   it('offers workspace deletion with confirmation when allowed', () => {
     const props = renderDropdown({ onDeleteWorkspace: vi.fn() });
     const deleteBtns = screen.getAllByRole('button', { name: /^Delete / });
@@ -57,6 +63,20 @@ describe('WorkspaceDropdown', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
     expect(props.onDeleteWorkspace).toHaveBeenCalledOnce();
   });
+
+  it('reveals both the rename and delete icons on row hover', () => {
+    renderDropdown({ onDeleteWorkspace: vi.fn() });
+    const rename = screen.getByRole('button', { name: 'Rename Work' });
+    const del = screen.getByRole('button', { name: 'Delete Work' });
+    const row = rename.parentElement!;
+    fireEvent.mouseOver(row);
+    expect(del.style.opacity).toBe('1');
+    expect(rename.style.opacity).toBe('1');
+    fireEvent.mouseOut(row);
+    expect(del.style.opacity).toBe('0');
+    expect(rename.style.opacity).toBe('0');
+  });
+
   it('renames a workspace inline', () => {
     const props = renderDropdown();
     fireEvent.click(screen.getByRole('button', { name: 'Rename Work' }));
