@@ -1,33 +1,31 @@
-import React from 'react'
-
+import React from 'react';
 interface ErrorBoundaryState {
-  hasError: boolean
-  error: Error | null
+  hasError: boolean;
+  error: Error | null;
 }
 
 interface ErrorBoundaryProps {
-  children: React.ReactNode
-  fallback?: React.ReactNode
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
 }
 
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
-    super(props)
-    this.state = { hasError: false, error: null }
+    super(props);
+    this.state = { hasError: false, error: null };
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error }
+    return { hasError: true, error };
   }
 
   override componentDidCatch(error: Error, info: React.ErrorInfo): void {
-    console.error('[tabNest] Uncaught render error:', error, info.componentStack)
+    console.error('[tabNest] Uncaught render error:', error, info.componentStack);
   }
 
   override render(): React.ReactNode {
     if (this.state.hasError) {
-      if (this.props.fallback) return this.props.fallback
-
+      if (this.props.fallback) return this.props.fallback;
       return (
         <div
           role="alert"
@@ -77,9 +75,9 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
             </details>
           )}
         </div>
-      )
+      );
     }
 
-    return this.props.children
+    return this.props.children;
   }
 }

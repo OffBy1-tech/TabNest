@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-
+import { useCallback, useEffect, useRef, useState } from 'react';
 export interface WindowWithTabs {
-  windowId: number
-  tabs: chrome.tabs.Tab[]
+  windowId: number;
+  tabs: chrome.tabs.Tab[];
 }
 
 /**
@@ -11,74 +10,67 @@ export interface WindowWithTabs {
  * empty list outside an extension context.
  */
 export function useActiveTabs(): WindowWithTabs[] {
-  const [windows, setWindows] = useState<WindowWithTabs[]>([])
-  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
+  const [windows, setWindows] = useState<WindowWithTabs[]>([]);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refresh = useCallback((): void => {
     try {
       chrome.windows.getAll({ populate: true }, (chromeWindows) => {
         const grouped: WindowWithTabs[] = chromeWindows
           .filter((w) => (w.tabs?.length ?? 0) > 0)
-          .map((w) => ({ windowId: w.id ?? 0, tabs: w.tabs ?? [] }))
-        setWindows(grouped)
-      })
+          .map((w) => ({ windowId: w.id ?? 0, tabs: w.tabs ?? [] }));
+        setWindows(grouped);
+      });
     } catch {
       // Non-extension context — leave windows empty
     }
-  }, [])
-
+  }, []);
   const scheduleRefresh = useCallback((): void => {
     if (debounceTimer.current !== null) {
-      clearTimeout(debounceTimer.current)
+      clearTimeout(debounceTimer.current);
     }
     debounceTimer.current = setTimeout(() => {
-      refresh()
-      debounceTimer.current = null
-    }, 300)
-  }, [refresh])
-
+      refresh();
+      debounceTimer.current = null;
+    }, 300);
+  }, [refresh]);
   useEffect(() => {
-    refresh()
-
-    let listeners: (() => void) | null = null
-
+    refresh();
+    let listeners: (() => void) | null = null;
     try {
       function onCreated(): void {
-        scheduleRefresh()
+        scheduleRefresh();
       }
       function onRemoved(): void {
-        scheduleRefresh()
+        scheduleRefresh();
       }
       function onUpdated(): void {
-        scheduleRefresh()
+        scheduleRefresh();
       }
 
       function onMoved(): void {
-        scheduleRefresh()
+        scheduleRefresh();
       }
 
-      chrome.tabs.onCreated.addListener(onCreated)
-      chrome.tabs.onRemoved.addListener(onRemoved)
-      chrome.tabs.onUpdated.addListener(onUpdated)
-      chrome.tabs.onMoved.addListener(onMoved)
-
+      chrome.tabs.onCreated.addListener(onCreated);
+      chrome.tabs.onRemoved.addListener(onRemoved);
+      chrome.tabs.onUpdated.addListener(onUpdated);
+      chrome.tabs.onMoved.addListener(onMoved);
       listeners = () => {
-        chrome.tabs.onCreated.removeListener(onCreated)
-        chrome.tabs.onRemoved.removeListener(onRemoved)
-        chrome.tabs.onUpdated.removeListener(onUpdated)
-        chrome.tabs.onMoved.removeListener(onMoved)
-      }
+        chrome.tabs.onCreated.removeListener(onCreated);
+        chrome.tabs.onRemoved.removeListener(onRemoved);
+        chrome.tabs.onUpdated.removeListener(onUpdated);
+        chrome.tabs.onMoved.removeListener(onMoved);
+      };
     } catch {
       // Non-extension context
     }
 
     return () => {
       if (debounceTimer.current !== null) {
-        clearTimeout(debounceTimer.current)
+        clearTimeout(debounceTimer.current);
       }
-      listeners?.()
-    }
-  }, [refresh, scheduleRefresh])
-
-  return windows
+      listeners?.();
+    };
+  }, [refresh, scheduleRefresh]);
+  return windows;
 }

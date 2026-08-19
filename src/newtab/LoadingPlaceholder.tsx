@@ -1,4 +1,4 @@
-import React from 'react'
+import React from 'react';
 
 /** Centered "Loading…" message shown before storage data is available. */
 export function LoadingPlaceholder(): React.JSX.Element {
@@ -15,5 +15,5 @@ export function LoadingPlaceholder(): React.JSX.Element {
     >
       Loading…
     </div>
-  )
+  );
 }

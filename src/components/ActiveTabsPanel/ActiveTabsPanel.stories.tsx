@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import React, { useEffect } from 'react';
 import type { Workspace } from '../../lib/schema';
 import { ActiveTabsPanel } from './ActiveTabsPanel';
-
 const meta = {
   title: 'Components/ActiveTabsPanel',
   component: ActiveTabsPanel,
@@ -10,7 +9,6 @@ const meta = {
     layout: 'padded',
   },
 } satisfies Meta<typeof ActiveTabsPanel>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -19,7 +17,6 @@ type Story = StoryObj<typeof meta>;
 // ---------------------------------------------------------------------------
 
 const NOW = Date.now();
-
 const mockWorkspaces: Workspace[] = [
   {
     id: 'ws-1',
@@ -104,7 +101,6 @@ const mockTabsWindow1: chrome.tabs.Tab[] = [
   makeMockTab(4, 'Hacker News', 'https://news.ycombinator.com'),
   makeMockTab(5, 'Stack Overflow — Where Developers Learn, Share, & Build Careers', 'https://stackoverflow.com', 'https://stackoverflow.com/favicon.ico'),
 ];
-
 const mockTabsWindow2: chrome.tabs.Tab[] = [
   makeMockTab(10, 'Gmail — Inbox', 'https://mail.google.com', 'https://ssl.gstatic.com/ui/v1/icons/mail/rfr/gmail.ico'),
   makeMockTab(11, 'Google Calendar', 'https://calendar.google.com'),
@@ -120,7 +116,6 @@ function withMockWindows(
   return function MockWindowsDecorator(Story: React.ComponentType): React.JSX.Element {
     useEffect(() => {
       const original = (globalThis as Record<string, unknown>).chrome;
-
       const patched = {
         ...(original as object),
         windows: {
@@ -142,14 +137,11 @@ function withMockWindows(
           onFocusChanged: { addListener: () => {}, removeListener: () => {} },
         },
       };
-
       (globalThis as Record<string, unknown>).chrome = patched;
-
       return () => {
         (globalThis as Record<string, unknown>).chrome = original;
       };
     }, []);
-
     return (
       <div style={{ width: 320, height: 600, position: 'relative' }}>
         <Story />
@@ -178,7 +170,6 @@ export const EmptyNoTabs: Story = {
     ),
   ],
 };
-
 export const SingleWindowWithTabs: Story = {
   args: {
     onSaveTab: (tab, groupName, categoryId, workspaceId) =>
@@ -189,7 +180,6 @@ export const SingleWindowWithTabs: Story = {
   },
   decorators: [withMockWindows([{ id: 1, tabs: mockTabsWindow1 }])],
 };
-
 export const MultipleWindows: Story = {
   args: {
     onSaveTab: (tab, groupName, categoryId, workspaceId) =>
@@ -205,7 +195,6 @@ export const MultipleWindows: Story = {
     ]),
   ],
 };
-
 export const NoWorkspaces: Story = {
   args: {
     onSaveTab: () => {},

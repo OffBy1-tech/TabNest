@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { FaviconImage } from './FaviconImage';
-
 const meta = {
   title: 'Components/GroupCard/FaviconImage',
   component: FaviconImage,
@@ -8,7 +7,6 @@ const meta = {
     layout: 'centered',
   },
 } satisfies Meta<typeof FaviconImage>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -19,7 +17,6 @@ export const WithValidUrl: Story = {
     size: 16,
   },
 };
-
 export const GitHub: Story = {
   args: {
     url: 'https://github.com/favicon.ico',
@@ -27,7 +24,6 @@ export const GitHub: Story = {
     size: 16,
   },
 };
-
 export const LargeSize: Story = {
   args: {
     url: 'https://www.wikipedia.org/favicon.ico',
@@ -35,7 +31,6 @@ export const LargeSize: Story = {
     size: 32,
   },
 };
-
 export const BrokenUrl: Story = {
   args: {
     url: 'https://this-domain-does-not-exist.invalid/favicon.ico',
@@ -43,7 +38,6 @@ export const BrokenUrl: Story = {
     size: 16,
   },
 };
-
 export const EmptyUrl: Story = {
   args: {
     url: '',
@@ -51,7 +45,6 @@ export const EmptyUrl: Story = {
     size: 16,
   },
 };
-
 export const SingleCharacterFallback: Story = {
   args: {
     url: '',

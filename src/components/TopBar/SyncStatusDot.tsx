@@ -1,33 +1,31 @@
-import React from 'react'
-
+import React from 'react';
 export interface SyncStatusDotProps {
-  syncState: 'idle' | 'syncing' | 'error'
-  lastSyncAt: number
+  syncState: 'idle' | 'syncing' | 'error';
+  lastSyncAt: number;
   /** Offline changes waiting to sync (spec §9.2) — shown as an amber dot. */
-  pendingSync?: boolean
+  pendingSync?: boolean;
 }
 
 /** A small colored status dot conveying the current Drive sync state. */
 export function SyncStatusDot({ syncState, lastSyncAt, pendingSync = false }: SyncStatusDotProps): React.JSX.Element {
-  let color: string
-  let label: string
-
+  let color: string;
+  let label: string;
   if (syncState === 'error') {
-    color = 'var(--color-danger)'
-    label = 'Sync error'
+    color = 'var(--color-danger)';
+    label = 'Sync error';
   } else if (syncState === 'syncing') {
-    color = 'var(--color-warning)'
-    label = 'Syncing…'
+    color = 'var(--color-warning)';
+    label = 'Syncing…';
   } else if (pendingSync) {
-    color = 'var(--color-warning)'
-    label = 'Changes pending sync'
+    color = 'var(--color-warning)';
+    label = 'Changes pending sync';
   } else if (lastSyncAt > 0) {
-    color = 'var(--color-success)'
-    const date = new Date(lastSyncAt)
-    label = `Last synced at ${date.toLocaleTimeString()}`
+    color = 'var(--color-success)';
+    const date = new Date(lastSyncAt);
+    label = `Last synced at ${date.toLocaleTimeString()}`;
   } else {
-    color = 'var(--text-muted)'
-    label = 'Never synced'
+    color = 'var(--text-muted)';
+    label = 'Never synced';
   }
 
   return (
@@ -57,7 +55,8 @@ export function SyncStatusDot({ syncState, lastSyncAt, pendingSync = false }: Sy
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0.5; transform: scale(0.85); }
         }
-      `}</style>
+      `}
+      </style>
     </div>
-  )
+  );
 }

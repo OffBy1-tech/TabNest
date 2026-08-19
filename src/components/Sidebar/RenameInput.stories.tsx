@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { RenameInput } from './RenameInput';
-
 const meta = {
   title: 'Components/Sidebar/RenameInput',
   component: RenameInput,
@@ -18,7 +17,6 @@ const meta = {
     ),
   ],
 } satisfies Meta<typeof RenameInput>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 

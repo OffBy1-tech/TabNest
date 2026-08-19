@@ -2,61 +2,60 @@ import React, {
   useCallback,
   useRef,
   useState,
-} from 'react'
-import { MoreHorizontal, StickyNote } from 'lucide-react'
-import type { TabGroup, SavedTab } from '../../lib/schema'
-import { normalizeUrlInput } from '../../lib/tabTitle'
-import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog'
-import { InlineNameEditor } from './InlineNameEditor'
-import { KebabMenu, type KebabMenuItem } from './KebabMenu'
-import { MarkdownNote } from '../Notes/MarkdownNote'
-import { TabRow } from './TabRow'
-import { DRAG_TYPE, ACTIVE_TAB_DRAG_TYPE, type DragPayload, type ActiveTabDragPayload } from './dragTypes'
+} from 'react';
+import { MoreHorizontal, StickyNote } from 'lucide-react';
+import type { TabGroup, SavedTab } from '../../lib/schema';
+import { normalizeUrlInput } from '../../lib/tabTitle';
+import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog';
+import { InlineNameEditor } from './InlineNameEditor';
+import { KebabMenu, type KebabMenuItem } from './KebabMenu';
+import { MarkdownNote } from '../Notes/MarkdownNote';
+import { TabRow } from './TabRow';
+import { DRAG_TYPE, ACTIVE_TAB_DRAG_TYPE, type DragPayload, type ActiveTabDragPayload } from './dragTypes';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 export interface GroupCardProps {
-  group: TabGroup
-  viewMode: 'grid' | 'list'
-  onRename: (id: string, name: string) => void
-  onDelete: (id: string) => void
-  onOpenAll: () => void
-  onOpenTab: (url: string) => void
-  onRemoveTab: (groupId: string, tabId: string) => void
-  onMoveTab: (fromGroupId: string, toGroupId: string, tabId: string) => void
-  onSaveGroupNote: (groupId: string, content: string) => void
-  onSaveTabNote: (groupId: string, tabId: string, note: string) => void
-  showFavicons?: boolean
+  group: TabGroup;
+  viewMode: 'grid' | 'list';
+  onRename: (id: string, name: string) => void;
+  onDelete: (id: string) => void;
+  onOpenAll: () => void;
+  onOpenTab: (url: string) => void;
+  onRemoveTab: (groupId: string, tabId: string) => void;
+  onMoveTab: (fromGroupId: string, toGroupId: string, tabId: string) => void;
+  onSaveGroupNote: (groupId: string, content: string) => void;
+  onSaveTabNote: (groupId: string, tabId: string, note: string) => void;
+  showFavicons?: boolean;
   /** Opens the whole group in an unfocused new window (spec §6.3). */
-  onOpenAllInBackground?: (() => void) | undefined
+  onOpenAllInBackground?: (() => void) | undefined;
   /** Adds a manually entered URL to this group (spec §6.2). */
-  onAddTab?: ((groupId: string, url: string) => void) | undefined
+  onAddTab?: ((groupId: string, url: string) => void) | undefined;
   /** Categories available as "Move to category" targets (excluding checks done here). */
-  categories?: Array<{ id: string; name: string; emoji: string }> | undefined
-  onMoveToCategory?: ((groupId: string, toCategoryId: string) => void) | undefined
-  onDuplicate?: ((groupId: string) => void) | undefined
-  onArchive?: ((groupId: string) => void) | undefined
+  categories?: Array<{ id: string; name: string; emoji: string }> | undefined;
+  onMoveToCategory?: ((groupId: string, toCategoryId: string) => void) | undefined;
+  onDuplicate?: ((groupId: string) => void) | undefined;
+  onArchive?: ((groupId: string) => void) | undefined;
   /** Export the group as a shareable text list of URLs (spec §11.5). */
-  onExport?: ((group: TabGroup) => void) | undefined
+  onExport?: ((group: TabGroup) => void) | undefined;
   /** Reorder a tab within this group (spec §6.2). */
-  onReorderTab?: ((groupId: string, tabId: string, toIndex: number) => void) | undefined
+  onReorderTab?: ((groupId: string, tabId: string, toIndex: number) => void) | undefined;
   /** The category this group currently belongs to (filtered out of move targets). */
-  currentCategoryId?: string | undefined
+  currentCategoryId?: string | undefined;
   /** A tab dragged from the Active Tabs panel was dropped on this card (spec §4.2). */
-  onDropActiveTab?: ((groupId: string, payload: ActiveTabDragPayload) => void) | undefined
+  onDropActiveTab?: ((groupId: string, payload: ActiveTabDragPayload) => void) | undefined;
 }
 
 // ---------------------------------------------------------------------------
 // GroupCard
 // ---------------------------------------------------------------------------
 
-const MAX_VISIBLE_TABS = 5
+const MAX_VISIBLE_TABS = 5;
 
 /** Opening more tabs than this at once asks for confirmation first (spec §17). */
-export const LARGE_OPEN_THRESHOLD = 20
-
+export const LARGE_OPEN_THRESHOLD = 20;
 export function GroupCard({
   group,
   viewMode,
@@ -80,137 +79,131 @@ export function GroupCard({
   currentCategoryId,
   onDropActiveTab,
 }: GroupCardProps): React.JSX.Element {
-  const [isEditing, setIsEditing] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [menuMode, setMenuMode] = useState<'main' | 'move'>('main')
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
-  const [expanded, setExpanded] = useState(false)
-  const [noteOpen, setNoteOpen] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
-  const [isDragOver, setIsDragOver] = useState(false)
+  const [isEditing, setIsEditing] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuMode, setMenuMode] = useState<'main' | 'move'>('main');
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   // Holds the open action awaiting large-group confirmation, or null
-  const [confirmOpenAction, setConfirmOpenAction] = useState<(() => void) | null>(null)
-  const [addingTab, setAddingTab] = useState(false)
-  const [addTabUrl, setAddTabUrl] = useState('')
-  const [addTabError, setAddTabError] = useState(false)
-  const cardRef = useRef<HTMLElement>(null)
-  const kebabRef = useRef<HTMLButtonElement>(null)
-
-  const groupNote = group.notes[0]?.content ?? ''
-  const hasGroupNote = Boolean(groupNote)
+  const [confirmOpenAction, setConfirmOpenAction] = useState<(() => void) | null>(null);
+  const [addingTab, setAddingTab] = useState(false);
+  const [addTabUrl, setAddTabUrl] = useState('');
+  const [addTabError, setAddTabError] = useState(false);
+  const cardRef = useRef<HTMLElement>(null);
+  const kebabRef = useRef<HTMLButtonElement>(null);
+  const groupNote = group.notes[0]?.content ?? '';
+  const hasGroupNote = Boolean(groupNote);
 
   /** Run an open action directly, or ask first when the group is large. */
   const requestOpen = useCallback(
     (action: () => void): void => {
       if (group.tabs.length > LARGE_OPEN_THRESHOLD) {
-        setConfirmOpenAction(() => action)
+        setConfirmOpenAction(() => action);
       } else {
-        action()
+        action();
       }
     },
     [group.tabs.length],
-  )
-
+  );
   function handleAddTabSubmit(): void {
-    const normalized = normalizeUrlInput(addTabUrl)
+    const normalized = normalizeUrlInput(addTabUrl);
     if (!normalized) {
-      setAddTabError(true)
-      return
+      setAddTabError(true);
+      return;
     }
-    onAddTab?.(group.id, normalized)
-    setAddTabUrl('')
-    setAddTabError(false)
-    setAddingTab(false)
+    onAddTab?.(group.id, normalized);
+    setAddTabUrl('');
+    setAddTabError(false);
+    setAddingTab(false);
   }
 
   const closeMenu = useCallback((): void => {
-    setMenuOpen(false)
-    setMenuMode('main')
-  }, [])
-
-  const moveTargets = (categories ?? []).filter((c) => c.id !== currentCategoryId)
-
+    setMenuOpen(false);
+    setMenuMode('main');
+  }, []);
+  const moveTargets = (categories ?? []).filter((c) => c.id !== currentCategoryId);
   const mainMenuItems: KebabMenuItem[] = [
     {
       label: 'Open All',
-      onClick: () => { closeMenu(); requestOpen(onOpenAll) },
+      onClick: () => { closeMenu(); requestOpen(onOpenAll); },
     },
     ...(onOpenAllInBackground
-      ? [{ label: 'Open All in Background', onClick: () => { closeMenu(); requestOpen(onOpenAllInBackground) } }]
+      ? [{ label: 'Open All in Background', onClick: () => { closeMenu(); requestOpen(onOpenAllInBackground); } }]
       : []),
     ...(onAddTab
-      ? [{ label: 'Add tab by URL', onClick: () => { closeMenu(); setAddingTab(true) } }]
+      ? [{ label: 'Add tab by URL', onClick: () => { closeMenu(); setAddingTab(true); } }]
       : []),
-    { label: 'Rename', onClick: () => { closeMenu(); setIsEditing(true) } },
+    { label: 'Rename', onClick: () => { closeMenu(); setIsEditing(true); } },
     ...(onMoveToCategory && moveTargets.length > 0
       ? [{ label: 'Move to category…', dividerBefore: true, onClick: () => setMenuMode('move') }]
       : []),
     ...(onDuplicate
-      ? [{ label: 'Duplicate', onClick: () => { closeMenu(); onDuplicate(group.id) } }]
+      ? [{ label: 'Duplicate', onClick: () => { closeMenu(); onDuplicate(group.id); } }]
       : []),
     ...(onArchive
-      ? [{ label: 'Archive', onClick: () => { closeMenu(); onArchive(group.id) } }]
+      ? [{ label: 'Archive', onClick: () => { closeMenu(); onArchive(group.id); } }]
       : []),
     ...(onExport
-      ? [{ label: 'Copy as URL list', onClick: () => { closeMenu(); onExport(group) } }]
+      ? [{ label: 'Copy as URL list', onClick: () => { closeMenu(); onExport(group); } }]
       : []),
     {
       label: 'Delete',
       danger: true,
       dividerBefore: true,
-      onClick: () => { closeMenu(); setConfirmDelete(true) },
+      onClick: () => { closeMenu(); setConfirmDelete(true); },
     },
-  ]
-
+  ];
   const moveMenuItems: KebabMenuItem[] = [
     { label: '← Back', onClick: () => setMenuMode('main') },
     ...moveTargets.map((cat) => ({
       label: `${cat.emoji} ${cat.name}`,
       dividerBefore: cat.id === moveTargets[0]?.id,
       onClick: () => {
-        closeMenu()
-        onMoveToCategory?.(group.id, cat.id)
+        closeMenu();
+        onMoveToCategory?.(group.id, cat.id);
       },
     })),
-  ]
-
+  ];
   function handleDragOver(e: React.DragEvent<HTMLElement>): void {
-    const isSavedTab = e.dataTransfer.types.includes(DRAG_TYPE)
-    const isActiveTab = onDropActiveTab != null && e.dataTransfer.types.includes(ACTIVE_TAB_DRAG_TYPE)
-    if (!isSavedTab && !isActiveTab) return
-    e.preventDefault()
-    e.dataTransfer.dropEffect = isActiveTab ? 'copy' : 'move'
-    setIsDragOver(true)
+    const isSavedTab = e.dataTransfer.types.includes(DRAG_TYPE);
+    const isActiveTab = onDropActiveTab != null && e.dataTransfer.types.includes(ACTIVE_TAB_DRAG_TYPE);
+    if (!isSavedTab && !isActiveTab) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = isActiveTab ? 'copy' : 'move';
+    setIsDragOver(true);
   }
 
   function handleDragLeave(e: React.DragEvent<HTMLElement>): void {
     // Only clear when leaving the card itself, not a child
     if (!cardRef.current?.contains(e.relatedTarget as Node)) {
-      setIsDragOver(false)
+      setIsDragOver(false);
     }
   }
 
   function handleDrop(e: React.DragEvent<HTMLElement>): void {
-    e.preventDefault()
-    setIsDragOver(false)
+    e.preventDefault();
+    setIsDragOver(false);
 
     // A tab dragged from the Active Tabs panel — save it into this group
-    const activeRaw = e.dataTransfer.getData(ACTIVE_TAB_DRAG_TYPE)
+    const activeRaw = e.dataTransfer.getData(ACTIVE_TAB_DRAG_TYPE);
     if (activeRaw && onDropActiveTab) {
       try {
-        onDropActiveTab(group.id, JSON.parse(activeRaw) as ActiveTabDragPayload)
+        onDropActiveTab(group.id, JSON.parse(activeRaw) as ActiveTabDragPayload);
       } catch {
         // Malformed payload — ignore
       }
-      return
+      return;
     }
 
-    const raw = e.dataTransfer.getData(DRAG_TYPE)
-    if (!raw) return
+    const raw = e.dataTransfer.getData(DRAG_TYPE);
+    if (!raw) return;
     try {
-      const { tabId, fromGroupId } = JSON.parse(raw) as DragPayload
+      const { tabId, fromGroupId } = JSON.parse(raw) as DragPayload;
       if (fromGroupId !== group.id) {
-        onMoveTab(fromGroupId, group.id, tabId)
+        onMoveTab(fromGroupId, group.id, tabId);
       }
     } catch {
       // Malformed payload — ignore
@@ -219,35 +212,31 @@ export function GroupCard({
 
   const visibleTabs: SavedTab[] = expanded
     ? group.tabs
-    : group.tabs.slice(0, MAX_VISIBLE_TABS)
-
-  const hiddenCount = Math.max(0, group.tabs.length - MAX_VISIBLE_TABS)
-
+    : group.tabs.slice(0, MAX_VISIBLE_TABS);
+  const hiddenCount = Math.max(0, group.tabs.length - MAX_VISIBLE_TABS);
   function handleCardKeyDown(e: React.KeyboardEvent<HTMLElement>): void {
-    if (e.target !== cardRef.current) return
+    if (e.target !== cardRef.current) return;
     if (e.key === 'e' || e.key === 'E') {
-      e.preventDefault()
-      setIsEditing(true)
+      e.preventDefault();
+      setIsEditing(true);
     } else if (e.key === 'Delete') {
-      e.preventDefault()
-      setConfirmDelete(true)
+      e.preventDefault();
+      setConfirmDelete(true);
     } else if (e.key === 'Enter') {
-      e.preventDefault()
-      requestOpen(onOpenAll)
+      e.preventDefault();
+      requestOpen(onOpenAll);
     }
   }
 
   const handleConfirmDelete = useCallback(() => {
-    onDelete(group.id)
-    setConfirmDelete(false)
-  }, [onDelete, group.id])
-
-  const isGrid = viewMode === 'grid'
+    onDelete(group.id);
+    setConfirmDelete(false);
+  }, [onDelete, group.id]);
+  const isGrid = viewMode === 'grid';
 
   // content-visibility implies contain:paint, which clips the kebab menu and
   // confirm dialogs to the card box — lift containment while any is open.
-  const popupOpen = menuOpen || confirmDelete || confirmOpenAction !== null
-
+  const popupOpen = menuOpen || confirmDelete || confirmOpenAction !== null;
   return (
     <article
       ref={cardRef}
@@ -281,13 +270,13 @@ export function GroupCard({
       }}
       onFocus={(e) => {
         if (e.target === cardRef.current) {
-          ;(e.currentTarget as HTMLElement).style.outline = `2px solid var(--border-focus)`
-          ;(e.currentTarget as HTMLElement).style.outlineOffset = '2px'
+          (e.currentTarget as HTMLElement).style.outline = `2px solid var(--border-focus)`;
+          (e.currentTarget as HTMLElement).style.outlineOffset = '2px';
         }
       }}
       onBlur={(e) => {
         if (e.target === cardRef.current) {
-          ;(e.currentTarget as HTMLElement).style.outline = 'none'
+          (e.currentTarget as HTMLElement).style.outline = 'none';
         }
       }}
     >
@@ -304,8 +293,8 @@ export function GroupCard({
           <InlineNameEditor
             value={group.name}
             onConfirm={(name) => {
-              onRename(group.id, name)
-              setIsEditing(false)
+              onRename(group.id, name);
+              setIsEditing(false);
             }}
             onCancel={() => setIsEditing(false)}
           />
@@ -331,12 +320,12 @@ export function GroupCard({
               outline: 'none',
             }}
             onFocus={(e) => {
-              ;(e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
-              ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px'
-              ;(e.currentTarget as HTMLButtonElement).style.borderRadius = 'var(--radius-sm)'
+              (e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`;
+              (e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px';
+              (e.currentTarget as HTMLButtonElement).style.borderRadius = 'var(--radius-sm)';
             }}
             onBlur={(e) => {
-              ;(e.currentTarget as HTMLButtonElement).style.outline = 'none'
+              (e.currentTarget as HTMLButtonElement).style.outline = 'none';
             }}
           >
             {group.name}
@@ -378,17 +367,17 @@ export function GroupCard({
             transition: 'background-color var(--duration-fast) var(--ease-default)',
           }}
           onMouseEnter={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-brand-100)'
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-brand-100)';
           }}
           onMouseLeave={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
           }}
           onFocus={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
-            ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px'
+            (e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`;
+            (e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px';
           }}
           onBlur={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.outline = 'none'
+            (e.currentTarget as HTMLButtonElement).style.outline = 'none';
           }}
         >
           Open All
@@ -414,11 +403,11 @@ export function GroupCard({
             outline: 'none',
           }}
           onFocus={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
-            ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px'
+            (e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`;
+            (e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px';
           }}
           onBlur={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.outline = 'none'
+            (e.currentTarget as HTMLButtonElement).style.outline = 'none';
           }}
         >
           <StickyNote size={14} aria-hidden="true" />
@@ -446,19 +435,19 @@ export function GroupCard({
             outline: 'none',
           }}
           onMouseEnter={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--bg-elevated)'
-            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--bg-elevated)';
+            (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)';
           }}
           onMouseLeave={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'
-            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
+            (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
           }}
           onFocus={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
-            ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px'
+            (e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`;
+            (e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px';
           }}
           onBlur={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.outline = 'none'
+            (e.currentTarget as HTMLButtonElement).style.outline = 'none';
           }}
         >
           <MoreHorizontal size={16} aria-hidden="true" />
@@ -484,28 +473,28 @@ export function GroupCard({
             key={tab.id}
             role="listitem"
             onDragOver={(e) => {
-              if (!onReorderTab || !e.dataTransfer.types.includes(DRAG_TYPE)) return
-              e.preventDefault()
-              e.stopPropagation()
-              setDragOverIndex(idx)
+              if (!onReorderTab || !e.dataTransfer.types.includes(DRAG_TYPE)) return;
+              e.preventDefault();
+              e.stopPropagation();
+              setDragOverIndex(idx);
             }}
             onDragLeave={() => {
-              setDragOverIndex((cur) => (cur === idx ? null : cur))
+              setDragOverIndex((cur) => (cur === idx ? null : cur));
             }}
             onDrop={(e) => {
-              if (!onReorderTab) return
-              const raw = e.dataTransfer.getData(DRAG_TYPE)
-              if (!raw) return
-              e.preventDefault()
-              e.stopPropagation()
-              setDragOverIndex(null)
-              setIsDragOver(false)
+              if (!onReorderTab) return;
+              const raw = e.dataTransfer.getData(DRAG_TYPE);
+              if (!raw) return;
+              e.preventDefault();
+              e.stopPropagation();
+              setDragOverIndex(null);
+              setIsDragOver(false);
               try {
-                const { tabId, fromGroupId } = JSON.parse(raw) as DragPayload
+                const { tabId, fromGroupId } = JSON.parse(raw) as DragPayload;
                 if (fromGroupId === group.id) {
-                  if (tabId !== tab.id) onReorderTab(group.id, tabId, idx)
+                  if (tabId !== tab.id) onReorderTab(group.id, tabId, idx);
                 } else {
-                  onMoveTab(fromGroupId, group.id, tabId)
+                  onMoveTab(fromGroupId, group.id, tabId);
                 }
               } catch {
                 // Malformed payload — ignore
@@ -548,12 +537,12 @@ export function GroupCard({
             outline: 'none',
           }}
           onFocus={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
-            ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px'
-            ;(e.currentTarget as HTMLButtonElement).style.borderRadius = 'var(--radius-sm)'
+            (e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`;
+            (e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px';
+            (e.currentTarget as HTMLButtonElement).style.borderRadius = 'var(--radius-sm)';
           }}
           onBlur={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.outline = 'none'
+            (e.currentTarget as HTMLButtonElement).style.outline = 'none';
           }}
         >
           {expanded ? 'Show less' : `Show ${hiddenCount} more`}
@@ -571,12 +560,12 @@ export function GroupCard({
             aria-label="URL of tab to add"
             aria-invalid={addTabError}
             onChange={(e) => {
-              setAddTabUrl(e.target.value)
-              setAddTabError(false)
+              setAddTabUrl(e.target.value);
+              setAddTabError(false);
             }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') { e.preventDefault(); handleAddTabSubmit() }
-              if (e.key === 'Escape') { e.preventDefault(); setAddingTab(false); setAddTabUrl(''); setAddTabError(false) }
+              if (e.key === 'Enter') { e.preventDefault(); handleAddTabSubmit(); }
+              if (e.key === 'Escape') { e.preventDefault(); setAddingTab(false); setAddTabUrl(''); setAddTabError(false); }
             }}
             style={{
               flex: 1,
@@ -689,11 +678,11 @@ export function GroupCard({
         message={`This will open ${group.tabs.length} tabs at once. Continue?`}
         confirmLabel={`Open ${group.tabs.length} tabs`}
         onConfirm={() => {
-          confirmOpenAction?.()
-          setConfirmOpenAction(null)
+          confirmOpenAction?.();
+          setConfirmOpenAction(null);
         }}
         onCancel={() => setConfirmOpenAction(null)}
       />
     </article>
-  )
+  );
 }

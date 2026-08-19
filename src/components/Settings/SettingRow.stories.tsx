@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { SettingRow } from './SettingRow';
 import { ToggleSwitch } from './ToggleSwitch';
-
 const meta = {
   title: 'Components/Settings/SettingRow',
   component: SettingRow,
@@ -14,7 +13,6 @@ const meta = {
     ),
   ],
 } satisfies Meta<typeof SettingRow>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -24,7 +22,6 @@ export const WithToggle: Story = {
     children: <ToggleSwitch id="demo" label="Show favicons" checked onChange={() => {}} />,
   },
 };
-
 export const LastRowNoDivider: Story = {
   args: {
     label: 'Compact mode',

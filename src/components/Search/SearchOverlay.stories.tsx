@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { Workspace } from '../../lib/schema';
 import { SearchOverlay } from './SearchOverlay';
-
 const meta = {
   title: 'Components/SearchOverlay',
   component: SearchOverlay,
@@ -9,7 +8,6 @@ const meta = {
     layout: 'fullscreen',
   },
 } satisfies Meta<typeof SearchOverlay>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -18,7 +16,6 @@ type Story = StoryObj<typeof meta>;
 // ---------------------------------------------------------------------------
 
 const NOW = Date.now();
-
 const mockWorkspaces: Workspace[] = [
   {
     id: 'ws-1',
@@ -132,7 +129,6 @@ export const Open: Story = {
     workspaces: mockWorkspaces,
   },
 };
-
 export const EmptyWorkspaces: Story = {
   args: {
     isOpen: true,
@@ -140,7 +136,6 @@ export const EmptyWorkspaces: Story = {
     workspaces: [],
   },
 };
-
 export const Closed: Story = {
   args: {
     isOpen: false,

@@ -13,12 +13,12 @@
  * without the SW's import-time side effects.
  */
 
-import type { Workspace, Category, TabGroup, TrashItem } from './schema'
+import type { Workspace, Category, TabGroup, TrashItem } from './schema';
 
 /** Concatenate two id-bearing lists, dropping secondary entries whose id is already present in primary. */
 export function unionById<T extends { id: string }>(primary: T[], secondary: T[]): T[] {
-  const seen = new Set(primary.map((x) => x.id))
-  return [...primary, ...secondary.filter((x) => !seen.has(x.id))]
+  const seen = new Set(primary.map((x) => x.id));
+  return [...primary, ...secondary.filter((x) => !seen.has(x.id))];
 }
 
 /**
@@ -35,7 +35,7 @@ export function newerFirst<T extends { updated_at?: number | undefined }>(
   local: T,
   remote: T,
 ): [T, T] {
-  return (local.updated_at ?? 0) >= (remote.updated_at ?? 0) ? [local, remote] : [remote, local]
+  return (local.updated_at ?? 0) >= (remote.updated_at ?? 0) ? [local, remote] : [remote, local];
 }
 
 /**
@@ -45,38 +45,38 @@ export function newerFirst<T extends { updated_at?: number | undefined }>(
  * suppression.
  */
 export function mergeWorkspaces(local: Workspace[], remote: Workspace[]): Workspace[] {
-  const localById = new Map(local.map((ws) => [ws.id, ws]))
-  const remoteById = new Map(remote.map((ws) => [ws.id, ws]))
-  const allIds = new Set([...localById.keys(), ...remoteById.keys()])
+  const localById = new Map(local.map((ws) => [ws.id, ws]));
+  const remoteById = new Map(remote.map((ws) => [ws.id, ws]));
+  const allIds = new Set([...localById.keys(), ...remoteById.keys()]);
   return [...allIds].map((id) => {
-    const l = localById.get(id)
-    const r = remoteById.get(id)
+    const l = localById.get(id);
+    const r = remoteById.get(id);
     // Workspace on both sides — newer side wins the scalars (name); see newerFirst.
     if (l && r) {
-      const [newer] = newerFirst(l, r)
-      return { ...newer, categories: mergeCategories(l.categories, r.categories) }
+      const [newer] = newerFirst(l, r);
+      return { ...newer, categories: mergeCategories(l.categories, r.categories) };
     }
-    return (l ?? r)!
-  })
+    return (l ?? r)!;
+  });
 }
 
 export function mergeCategories(local: Category[], remote: Category[]): Category[] {
-  const localById = new Map(local.map((c) => [c.id, c]))
-  const remoteById = new Map(remote.map((c) => [c.id, c]))
-  const allIds = new Set([...localById.keys(), ...remoteById.keys()])
+  const localById = new Map(local.map((c) => [c.id, c]));
+  const remoteById = new Map(remote.map((c) => [c.id, c]));
+  const allIds = new Set([...localById.keys(), ...remoteById.keys()]);
   const merged = [...allIds].map((id) => {
-    const l = localById.get(id)
-    const r = remoteById.get(id)
+    const l = localById.get(id);
+    const r = remoteById.get(id);
     // Category on both sides — recurse into groups, and union standalone
     // category notes by id so neither device's notes are dropped. The newer
     // side wins the scalar fields (name/color/emoji); see newerFirst.
     if (l && r) {
-      const [newer, older] = newerFirst(l, r)
-      return { ...newer, groups: mergeGroups(l.groups, r.groups), notes: unionById(newer.notes, older.notes) }
+      const [newer, older] = newerFirst(l, r);
+      return { ...newer, groups: mergeGroups(l.groups, r.groups), notes: unionById(newer.notes, older.notes) };
     }
-    return (l ?? r)!
-  })
-  return merged.sort((a, b) => a.order - b.order).map((c, i) => ({ ...c, order: i }))
+    return (l ?? r)!;
+  });
+  return merged.sort((a, b) => a.order - b.order).map((c, i) => ({ ...c, order: i }));
 }
 
 /**
@@ -92,29 +92,29 @@ function mergeGroupPair(winner: TabGroup, loser: TabGroup): TabGroup {
     ...winner,
     tabs: unionById(winner.tabs, loser.tabs),
     notes: unionById(winner.notes, loser.notes),
-  }
+  };
 }
 
 export function mergeGroups(local: TabGroup[], remote: TabGroup[]): TabGroup[] {
-  const localById = new Map(local.map((g) => [g.id, g]))
-  const remoteById = new Map(remote.map((g) => [g.id, g]))
-  const allIds = new Set([...localById.keys(), ...remoteById.keys()])
+  const localById = new Map(local.map((g) => [g.id, g]));
+  const remoteById = new Map(remote.map((g) => [g.id, g]));
+  const allIds = new Set([...localById.keys(), ...remoteById.keys()]);
   const merged = [...allIds].map((id) => {
-    const l = localById.get(id)
-    const r = remoteById.get(id)
+    const l = localById.get(id);
+    const r = remoteById.get(id);
     // Group exists on both sides — same group edited on two devices
     if (l && r) {
-      const [newer, older] = newerFirst(l, r)
-      return mergeGroupPair(newer, older)
+      const [newer, older] = newerFirst(l, r);
+      return mergeGroupPair(newer, older);
     }
-    return (l ?? r)!
-  })
-  return merged.sort((a, b) => a.order - b.order).map((g, i) => ({ ...g, order: i }))
+    return (l ?? r)!;
+  });
+  return merged.sort((a, b) => a.order - b.order).map((g, i) => ({ ...g, order: i }));
 }
 
 export function mergeTrash(local: TrashItem[], remote: TrashItem[]): TrashItem[] {
-  const localIds = new Set(local.map((t) => t.id))
-  return [...local, ...remote.filter((t) => !localIds.has(t.id))]
+  const localIds = new Set(local.map((t) => t.id));
+  return [...local, ...remote.filter((t) => !localIds.has(t.id))];
 }
 
 // ---------------------------------------------------------------------------
@@ -130,25 +130,25 @@ export function mergeTrash(local: TrashItem[], remote: TrashItem[]): TrashItem[]
 
 /** Entity id → newest tombstone deleted_at across the trash list. */
 export function tombstonesFromTrash(trash: TrashItem[]): Map<string, number> {
-  const map = new Map<string, number>()
+  const map = new Map<string, number>();
   for (const t of trash) {
-    const id = (t.data as { id?: unknown } | null | undefined)?.id
-    if (typeof id !== 'string') continue
-    map.set(id, Math.max(map.get(id) ?? 0, t.deleted_at))
+    const id = (t.data as { id?: unknown } | null | undefined)?.id;
+    if (typeof id !== 'string') continue;
+    map.set(id, Math.max(map.get(id) ?? 0, t.deleted_at));
   }
-  return map
+  return map;
 }
 
-const groupLastTouched = (g: TabGroup): number => g.updated_at
+const groupLastTouched = (g: TabGroup): number => g.updated_at;
 const categoryLastTouched = (c: Category): number =>
   Math.max(
     0,
     c.updated_at ?? 0,
     ...c.groups.map(groupLastTouched),
     ...(c.notes ?? []).map((n) => n.updated_at),
-  )
+  );
 const workspaceLastTouched = (w: Workspace): number =>
-  Math.max(w.created_at, w.updated_at ?? 0, ...w.categories.map(categoryLastTouched))
+  Math.max(w.created_at, w.updated_at ?? 0, ...w.categories.map(categoryLastTouched));
 
 /**
  * Stamp a restored category subtree as touched `at`, so every level outranks
@@ -163,7 +163,7 @@ export function stampRestoredCategories(
   at: number,
   tombstones?: Map<string, number>,
 ): Category[] {
-  const bump = (id: string): boolean => tombstones?.has(id) ?? false
+  const bump = (id: string): boolean => tombstones?.has(id) ?? false;
   return categories.map((cat) => ({
     ...cat,
     updated_at: at,
@@ -174,7 +174,7 @@ export function stampRestoredCategories(
       tabs: g.tabs.map((t) => (bump(t.id) ? { ...t, saved_at: at } : t)),
       notes: g.notes.map((n) => (bump(n.id) ? { ...n, updated_at: at } : n)),
     })),
-  }))
+  }));
 }
 
 /** Remove entities (at every level) whose tombstone postdates their last touch. */
@@ -182,9 +182,9 @@ export function applyTombstones(
   workspaces: Workspace[],
   tombstones: Map<string, number>,
 ): Workspace[] {
-  if (tombstones.size === 0) return workspaces // nothing to suppress — skip the tree copy
+  if (tombstones.size === 0) return workspaces; // nothing to suppress — skip the tree copy
   const deletedAfter = (id: string, lastTouched: number): boolean =>
-    (tombstones.get(id) ?? 0) > lastTouched
+    (tombstones.get(id) ?? 0) > lastTouched;
   return workspaces
     .filter((ws) => !deletedAfter(ws.id, workspaceLastTouched(ws)))
     .map((ws) => ({
@@ -202,7 +202,7 @@ export function applyTombstones(
               notes: g.notes.filter((n) => !deletedAfter(n.id, n.updated_at)),
             })),
         })),
-    }))
+    }));
 }
 
 // ---------------------------------------------------------------------------
@@ -224,39 +224,39 @@ export function applyTombstones(
 export function dedupeGroupsAcrossCategories(workspaces: Workspace[]): Workspace[] {
   // Detection first: the common case has no duplicates and should allocate
   // nothing beyond a Set over the already-existing id strings.
-  const seen = new Set<string>()
-  const duplicated = new Set<string>()
+  const seen = new Set<string>();
+  const duplicated = new Set<string>();
   for (const ws of workspaces) {
     for (const cat of ws.categories) {
       for (const g of cat.groups) {
-        if (seen.has(g.id)) duplicated.add(g.id)
-        else seen.add(g.id)
+        if (seen.has(g.id)) duplicated.add(g.id);
+        else seen.add(g.id);
       }
     }
   }
-  if (duplicated.size === 0) return workspaces
+  if (duplicated.size === 0) return workspaces;
 
   // Rare path: collect the duplicated ids' copies and pick each winner.
-  const copies = new Map<string, Array<{ catId: string; group: TabGroup }>>()
+  const copies = new Map<string, Array<{ catId: string; group: TabGroup }>>();
   for (const ws of workspaces) {
     for (const cat of ws.categories) {
       for (const g of cat.groups) {
-        if (!duplicated.has(g.id)) continue
-        const list = copies.get(g.id)
-        if (list) list.push({ catId: cat.id, group: g })
-        else copies.set(g.id, [{ catId: cat.id, group: g }])
+        if (!duplicated.has(g.id)) continue;
+        const list = copies.get(g.id);
+        if (list) list.push({ catId: cat.id, group: g });
+        else copies.set(g.id, [{ catId: cat.id, group: g }]);
       }
     }
   }
 
-  const winners = new Map<string, { catId: string; group: TabGroup }>()
+  const winners = new Map<string, { catId: string; group: TabGroup }>();
   for (const [id, list] of copies) {
-    list.sort((a, b) => b.group.updated_at - a.group.updated_at || (a.catId < b.catId ? -1 : 1))
-    const [first, ...losers] = list
+    list.sort((a, b) => b.group.updated_at - a.group.updated_at || (a.catId < b.catId ? -1 : 1));
+    const [first, ...losers] = list;
     winners.set(id, {
       catId: first!.catId,
       group: losers.reduce((acc, { group }) => mergeGroupPair(acc, group), first!.group),
-    })
+    });
   }
 
   // Rebuild: a category is touched iff one of its groups is duplicated —
@@ -265,15 +265,15 @@ export function dedupeGroupsAcrossCategories(workspaces: Workspace[]): Workspace
   return workspaces.map((ws) => ({
     ...ws,
     categories: ws.categories.map((cat) => {
-      if (!cat.groups.some((g) => duplicated.has(g.id))) return cat
+      if (!cat.groups.some((g) => duplicated.has(g.id))) return cat;
       const kept = cat.groups.flatMap((g) => {
-        const winner = winners.get(g.id)
-        if (winner == null) return [g]
-        return winner.catId === cat.id ? [winner.group] : []
-      })
-      return { ...cat, groups: kept.map((g, i) => ({ ...g, order: i })) }
+        const winner = winners.get(g.id);
+        if (winner == null) return [g];
+        return winner.catId === cat.id ? [winner.group] : [];
+      });
+      return { ...cat, groups: kept.map((g, i) => ({ ...g, order: i })) };
     }),
-  }))
+  }));
 }
 
 /**
@@ -285,12 +285,12 @@ export function mergeSyncedState(
   local: { workspaces: Workspace[]; trash: TrashItem[] },
   remote: { workspaces: Workspace[]; trash: TrashItem[] },
 ): { workspaces: Workspace[]; trash: TrashItem[] } {
-  const trash = mergeTrash(local.trash, remote.trash)
+  const trash = mergeTrash(local.trash, remote.trash);
   const workspaces = applyTombstones(
     dedupeGroupsAcrossCategories(mergeWorkspaces(local.workspaces, remote.workspaces)),
     tombstonesFromTrash(trash),
-  )
-  return { workspaces, trash }
+  );
+  return { workspaces, trash };
 }
 
 /**
@@ -311,5 +311,5 @@ export function sameSyncedContent(
   return (
     JSON.stringify(a.workspaces) === JSON.stringify(b.workspaces) &&
     JSON.stringify(a.trash) === JSON.stringify(b.trash)
-  )
+  );
 }

@@ -1,4 +1,4 @@
-import type React from 'react'
+import type React from 'react';
 
 /** Shared style for the icon-only buttons in the top bar. */
 export const iconButtonStyle: React.CSSProperties = {
@@ -13,4 +13,4 @@ export const iconButtonStyle: React.CSSProperties = {
   cursor: 'pointer',
   transition: 'background-color var(--duration-fast) var(--ease-default), color var(--duration-fast) var(--ease-default)',
   outline: 'none',
-}
+};

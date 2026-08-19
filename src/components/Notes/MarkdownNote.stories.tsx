@@ -18,7 +18,6 @@ const meta = {
   parameters: { layout: 'centered' },
   render: (args) => <StatefulMarkdownNote {...args} />,
 } satisfies Meta<typeof MarkdownNote>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -29,7 +28,6 @@ export const RichContent: Story = {
     onChange: () => {},
   },
 };
-
 export const Checklist: Story = {
   args: {
     content: '- [ ] milk\n- [x] eggs\n- [ ] bread',
@@ -37,7 +35,6 @@ export const Checklist: Story = {
     onChange: () => {},
   },
 };
-
 export const Empty: Story = {
   args: {
     content: '',

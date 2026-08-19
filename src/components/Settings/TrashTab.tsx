@@ -1,25 +1,24 @@
-import React from 'react'
-import type { TrashItem, Workspace } from '../../lib/schema'
-import { sectionHeadingStyle, dangerBtnStyle, ghostBtnStyle } from './styles'
-
+import React from 'react';
+import type { TrashItem, Workspace } from '../../lib/schema';
+import { sectionHeadingStyle, dangerBtnStyle, ghostBtnStyle } from './styles';
 export interface TrashTabProps {
-  trashItems: TrashItem[]
-  onRestore: (id: string) => void
-  onDeletePermanently: (id: string) => void
-  onEmptyTrash: () => void
+  trashItems: TrashItem[];
+  onRestore: (id: string) => void;
+  onDeletePermanently: (id: string) => void;
+  onEmptyTrash: () => void;
   /** Used to resolve original_location ids into names (spec §13). */
-  workspaces?: Workspace[] | undefined
+  workspaces?: Workspace[] | undefined;
 }
 
 /** "Workspace > Category" path for a trash item, or '' when nothing resolves. */
 function originalLocationLabel(item: TrashItem, workspaces: Workspace[]): string {
-  const ws = workspaces.find((w) => w.id === item.original_location.workspace_id)
+  const ws = workspaces.find((w) => w.id === item.original_location.workspace_id);
   // A workspace item's original location is itself — no path to show
-  if (item.type === 'workspace') return ''
-  const wsName = ws?.name ?? '(deleted workspace)'
-  if (!item.original_location.category_id) return wsName
-  const cat = ws?.categories.find((c) => c.id === item.original_location.category_id)
-  return `${wsName} > ${cat?.name ?? '(deleted category)'}`
+  if (item.type === 'workspace') return '';
+  const wsName = ws?.name ?? '(deleted workspace)';
+  if (!item.original_location.category_id) return wsName;
+  const cat = ws?.categories.find((c) => c.id === item.original_location.category_id);
+  return `${wsName} > ${cat?.name ?? '(deleted category)'}`;
 }
 
 export function TrashTab({
@@ -31,17 +30,15 @@ export function TrashTab({
 }: TrashTabProps): React.JSX.Element {
   // Hidden entries are pure sync tombstones (tab moves, cleared notes) — not
   // user-visible deletions, so they don't appear here.
-  const visible = trashItems.filter((item) => item.hidden !== true)
-  const sorted = visible.sort((a, b) => b.deleted_at - a.deleted_at)
-
+  const visible = trashItems.filter((item) => item.hidden !== true);
+  const sorted = visible.sort((a, b) => b.deleted_at - a.deleted_at);
   const typeBadgeColors: Record<TrashItem['type'], string> = {
     group: 'var(--color-info)',
     tab: 'var(--color-success)',
     category: 'var(--color-warning)',
     workspace: 'var(--color-danger)',
     note: 'var(--color-brand-500)',
-  }
-
+  };
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-5)' }}>
@@ -68,15 +65,14 @@ export function TrashTab({
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }} aria-label="Trash items">
           {sorted.map((item) => {
-            const itemData = item.data as Record<string, unknown>
+            const itemData = item.data as Record<string, unknown>;
             // Groups/categories/workspaces carry a name; tabs carry a title
             const itemName =
               (itemData['name'] as string | undefined) ??
               (itemData['title'] as string | undefined) ??
-              'Untitled'
-            const deletedDate = new Date(item.deleted_at).toLocaleDateString()
-            const location = originalLocationLabel(item, workspaces)
-
+              'Untitled';
+            const deletedDate = new Date(item.deleted_at).toLocaleDateString();
+            const location = originalLocationLabel(item, workspaces);
             return (
               <li
                 key={item.id}
@@ -136,10 +132,10 @@ export function TrashTab({
                   </button>
                 </div>
               </li>
-            )
+            );
           })}
         </ul>
       )}
     </div>
-  )
+  );
 }

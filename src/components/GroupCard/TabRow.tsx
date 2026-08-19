@@ -1,17 +1,16 @@
-import React, { useState } from 'react'
-import { GripVertical, X, PenLine } from 'lucide-react'
-import type { SavedTab } from '../../lib/schema'
-import { FaviconImage } from './FaviconImage'
-import { NoteEditor } from './NoteEditor'
-import { DRAG_TYPE, type DragPayload } from './dragTypes'
-
+import React, { useState } from 'react';
+import { GripVertical, X, PenLine } from 'lucide-react';
+import type { SavedTab } from '../../lib/schema';
+import { FaviconImage } from './FaviconImage';
+import { NoteEditor } from './NoteEditor';
+import { DRAG_TYPE, type DragPayload } from './dragTypes';
 export interface TabRowProps {
-  tab: SavedTab
-  groupId: string
-  onOpenTab: (url: string) => void
-  onRemoveTab: (groupId: string, tabId: string) => void
-  onSaveTabNote: (groupId: string, tabId: string, note: string) => void
-  showFavicons?: boolean
+  tab: SavedTab;
+  groupId: string;
+  onOpenTab: (url: string) => void;
+  onRemoveTab: (groupId: string, tabId: string) => void;
+  onSaveTabNote: (groupId: string, tabId: string, note: string) => void;
+  showFavicons?: boolean;
 }
 
 /**
@@ -26,22 +25,21 @@ export function TabRow({
   onSaveTabNote,
   showFavicons = true,
 }: TabRowProps): React.JSX.Element {
-  const [noteOpen, setNoteOpen] = useState(false)
-  let domain = ''
+  const [noteOpen, setNoteOpen] = useState(false);
+  let domain = '';
   try {
-    domain = new URL(tab.url).hostname.replace(/^www\./, '')
+    domain = new URL(tab.url).hostname.replace(/^www\./, '');
   } catch {
-    domain = ''
+    domain = '';
   }
 
   function handleDragStart(e: React.DragEvent<HTMLDivElement>): void {
-    const payload: DragPayload = { tabId: tab.id, fromGroupId: groupId }
-    e.dataTransfer.setData(DRAG_TYPE, JSON.stringify(payload))
-    e.dataTransfer.effectAllowed = 'move'
+    const payload: DragPayload = { tabId: tab.id, fromGroupId: groupId };
+    e.dataTransfer.setData(DRAG_TYPE, JSON.stringify(payload));
+    e.dataTransfer.effectAllowed = 'move';
   }
 
-  const hasNote = Boolean(tab.note)
-
+  const hasNote = Boolean(tab.note);
   return (
     <div>
       {/* Tab row */}
@@ -58,10 +56,10 @@ export function TabRow({
           cursor: 'grab',
         }}
         onMouseEnter={(e) => {
-          ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--bg-elevated)'
+          (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--bg-elevated)';
         }}
         onMouseLeave={(e) => {
-          ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent'
+          (e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent';
         }}
       >
         <span
@@ -88,12 +86,12 @@ export function TabRow({
             outline: 'none',
           }}
           onFocus={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
-            ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px'
-            ;(e.currentTarget as HTMLButtonElement).style.borderRadius = 'var(--radius-sm)'
+            (e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`;
+            (e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px';
+            (e.currentTarget as HTMLButtonElement).style.borderRadius = 'var(--radius-sm)';
           }}
           onBlur={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.outline = 'none'
+            (e.currentTarget as HTMLButtonElement).style.outline = 'none';
           }}
         >
           <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -124,11 +122,11 @@ export function TabRow({
             outline: 'none',
           }}
           onFocus={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
-            ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px'
+            (e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`;
+            (e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px';
           }}
           onBlur={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.outline = 'none'
+            (e.currentTarget as HTMLButtonElement).style.outline = 'none';
           }}
         >
           <PenLine size={12} aria-hidden="true" />
@@ -153,19 +151,19 @@ export function TabRow({
             outline: 'none',
           }}
           onMouseEnter={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--bg-elevated)'
-            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--color-danger)'
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--bg-elevated)';
+            (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-danger)';
           }}
           onMouseLeave={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'
-            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
+            (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
           }}
           onFocus={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
-            ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px'
+            (e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`;
+            (e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px';
           }}
           onBlur={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.outline = 'none'
+            (e.currentTarget as HTMLButtonElement).style.outline = 'none';
           }}
         >
           <X size={12} aria-hidden="true" />
@@ -183,5 +181,5 @@ export function TabRow({
         </div>
       )}
     </div>
-  )
+  );
 }

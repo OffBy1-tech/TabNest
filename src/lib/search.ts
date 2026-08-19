@@ -7,8 +7,8 @@
  * sensitive personal information and should not be surfaced in search results.
  */
 
-import Fuse from 'fuse.js'
-import type { Workspace } from './schema'
+import Fuse from 'fuse.js';
+import type { Workspace } from './schema';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -16,37 +16,37 @@ import type { Workspace } from './schema'
 
 export interface SearchRecord {
   /** Unique identifier for the record — tabs use SavedTab.id, groups use TabGroup.id, etc. */
-  id: string
-  type: 'tab' | 'group' | 'category' | 'workspace'
-  title: string
-  url?: string
-  group_name?: string
-  workspace_name: string
-  category_name: string
+  id: string;
+  type: 'tab' | 'group' | 'category' | 'workspace';
+  title: string;
+  url?: string;
+  group_name?: string;
+  workspace_name: string;
+  category_name: string;
   /** Human-readable location path e.g. "My Workspace > Work > Research" */
-  breadcrumb: string
-  workspace_id: string
-  category_id?: string
-  group_id?: string
+  breadcrumb: string;
+  workspace_id: string;
+  category_id?: string;
+  group_id?: string;
   /** Epoch ms used for date filtering/sorting: tab saved_at or group created_at. */
-  timestamp?: number
+  timestamp?: number;
 }
 
 // ---------------------------------------------------------------------------
 // Filters & sorting (spec §8.3)
 // ---------------------------------------------------------------------------
 
-export type SearchDateRange = 'any' | 'day' | 'week' | 'month'
-export type SearchSort = 'relevance' | 'newest' | 'oldest' | 'az'
+export type SearchDateRange = 'any' | 'day' | 'week' | 'month';
+export type SearchSort = 'relevance' | 'newest' | 'oldest' | 'az';
 
 export interface SearchFilters {
   /** Restrict to a single workspace ('' = all). */
-  workspaceId: string
+  workspaceId: string;
   /** Restrict to a single category ('' = all). */
-  categoryId: string
+  categoryId: string;
   /** Record types to include (empty set = all types). */
-  types: ReadonlySet<SearchRecord['type']>
-  dateRange: SearchDateRange
+  types: ReadonlySet<SearchRecord['type']>;
+  dateRange: SearchDateRange;
 }
 
 export const DEFAULT_SEARCH_FILTERS: SearchFilters = {
@@ -54,13 +54,12 @@ export const DEFAULT_SEARCH_FILTERS: SearchFilters = {
   categoryId: '',
   types: new Set(),
   dateRange: 'any',
-}
-
+};
 const DATE_RANGE_MS: Record<Exclude<SearchDateRange, 'any'>, number> = {
   day: 24 * 60 * 60 * 1000,
   week: 7 * 24 * 60 * 60 * 1000,
   month: 30 * 24 * 60 * 60 * 1000,
-}
+};
 
 /**
  * Apply chip filters to a result list. A date range only keeps records that
@@ -72,15 +71,15 @@ export function filterRecords(
   now: number = Date.now(),
 ): SearchRecord[] {
   return records.filter((r) => {
-    if (filters.workspaceId && r.workspace_id !== filters.workspaceId) return false
-    if (filters.categoryId && r.category_id !== filters.categoryId) return false
-    if (filters.types.size > 0 && !filters.types.has(r.type)) return false
+    if (filters.workspaceId && r.workspace_id !== filters.workspaceId) return false;
+    if (filters.categoryId && r.category_id !== filters.categoryId) return false;
+    if (filters.types.size > 0 && !filters.types.has(r.type)) return false;
     if (filters.dateRange !== 'any') {
-      if (r.timestamp == null) return false
-      if (now - r.timestamp > DATE_RANGE_MS[filters.dateRange]) return false
+      if (r.timestamp == null) return false;
+      if (now - r.timestamp > DATE_RANGE_MS[filters.dateRange]) return false;
     }
-    return true
-  })
+    return true;
+  });
 }
 
 /**
@@ -88,20 +87,20 @@ export function filterRecords(
  * records without a timestamp last; 'az' is a locale-aware title sort.
  */
 export function sortRecords(records: SearchRecord[], sort: SearchSort): SearchRecord[] {
-  if (sort === 'relevance') return records
-  const sorted = [...records]
+  if (sort === 'relevance') return records;
+  const sorted = [...records];
   if (sort === 'az') {
-    sorted.sort((a, b) => a.title.localeCompare(b.title))
+    sorted.sort((a, b) => a.title.localeCompare(b.title));
   } else {
-    const dir = sort === 'newest' ? -1 : 1
+    const dir = sort === 'newest' ? -1 : 1;
     sorted.sort((a, b) => {
-      if (a.timestamp == null && b.timestamp == null) return 0
-      if (a.timestamp == null) return 1
-      if (b.timestamp == null) return -1
-      return (a.timestamp - b.timestamp) * dir
-    })
+      if (a.timestamp == null && b.timestamp == null) return 0;
+      if (a.timestamp == null) return 1;
+      if (b.timestamp == null) return -1;
+      return (a.timestamp - b.timestamp) * dir;
+    });
   }
-  return sorted
+  return sorted;
 }
 
 // ---------------------------------------------------------------------------
@@ -113,8 +112,7 @@ export function sortRecords(records: SearchRecord[], sort: SearchSort): SearchRe
  * Called when data loads or changes; pass the result to createSearchEngine().
  */
 export function buildSearchIndex(workspaces: Workspace[]): SearchRecord[] {
-  const records: SearchRecord[] = []
-
+  const records: SearchRecord[] = [];
   for (const workspace of workspaces) {
     // Workspace-level record
     records.push({
@@ -125,8 +123,7 @@ export function buildSearchIndex(workspaces: Workspace[]): SearchRecord[] {
       category_name: '',
       breadcrumb: workspace.name,
       workspace_id: workspace.id,
-    })
-
+    });
     for (const category of workspace.categories) {
       // Category-level record
       records.push({
@@ -138,10 +135,9 @@ export function buildSearchIndex(workspaces: Workspace[]): SearchRecord[] {
         breadcrumb: `${workspace.name} > ${category.name}`,
         workspace_id: workspace.id,
         category_id: category.id,
-      })
-
+      });
       for (const group of category.groups) {
-        const groupBreadcrumb = `${workspace.name} > ${category.name} > ${group.name}`
+        const groupBreadcrumb = `${workspace.name} > ${category.name} > ${group.name}`;
 
         // Group-level record
         records.push({
@@ -156,7 +152,7 @@ export function buildSearchIndex(workspaces: Workspace[]): SearchRecord[] {
           category_id: category.id,
           group_id: group.id,
           timestamp: group.created_at,
-        })
+        });
 
         // Tab-level records — note content intentionally omitted
         for (const tab of group.tabs) {
@@ -173,13 +169,13 @@ export function buildSearchIndex(workspaces: Workspace[]): SearchRecord[] {
             category_id: category.id,
             group_id: group.id,
             timestamp: tab.saved_at,
-          })
+          });
         }
       }
     }
   }
 
-  return records
+  return records;
 }
 
 // ---------------------------------------------------------------------------
@@ -204,7 +200,7 @@ export function createSearchEngine(records: SearchRecord[]): Fuse<SearchRecord> 
     ignoreLocation: true,
     // Do not include match indices in results — keeps payload light
     includeMatches: false,
-  })
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -220,10 +216,9 @@ export function search(
   query: string,
   limit = 50,
 ): SearchRecord[] {
-  if (query.trim().length === 0) return []
-
-  const results = engine.search(query, { limit })
+  if (query.trim().length === 0) return [];
+  const results = engine.search(query, { limit });
 
   // Map from Fuse result wrapper to plain SearchRecord
-  return results.map((r) => r.item)
+  return results.map((r) => r.item);
 }

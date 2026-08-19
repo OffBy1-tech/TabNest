@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { HelpTab } from './HelpTab';
-
 const meta = {
   title: 'Components/Settings/HelpTab',
   component: HelpTab,
@@ -14,7 +13,6 @@ const meta = {
     ),
   ],
 } satisfies Meta<typeof HelpTab>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 

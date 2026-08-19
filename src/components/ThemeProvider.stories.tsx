@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import React from 'react';
 import { ThemeProvider, useTheme } from './ThemeProvider';
-
 const meta = {
   title: 'Components/ThemeProvider',
   component: ThemeProvider,
@@ -9,7 +8,6 @@ const meta = {
     layout: 'centered',
   },
 } satisfies Meta<typeof ThemeProvider>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -65,14 +63,12 @@ export const Light: Story = {
     children: <ThemeDisplay />,
   },
 };
-
 export const Dark: Story = {
   args: {
     defaultTheme: 'dark',
     children: <ThemeDisplay />,
   },
 };
-
 export const System: Story = {
   args: {
     defaultTheme: 'system',

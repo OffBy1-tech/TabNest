@@ -1,14 +1,13 @@
-import React, { useState } from 'react'
-import { StickyNote, X } from 'lucide-react'
-import type { Note } from '../../lib/schema'
-import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog'
-import { MarkdownNote } from './MarkdownNote'
-
+import React, { useState } from 'react';
+import { StickyNote, X } from 'lucide-react';
+import type { Note } from '../../lib/schema';
+import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog';
+import { MarkdownNote } from './MarkdownNote';
 export interface NoteCardProps {
-  note: Note
-  viewMode: 'grid' | 'list'
-  onChange: (noteId: string, content: string) => void
-  onDelete: (noteId: string) => void
+  note: Note;
+  viewMode: 'grid' | 'list';
+  onChange: (noteId: string, content: string) => void;
+  onDelete: (noteId: string) => void;
 }
 
 /**
@@ -17,9 +16,8 @@ export interface NoteCardProps {
  * checkboxes; deletion asks for confirmation (notes are hard-deleted).
  */
 export function NoteCard({ note, viewMode, onChange, onDelete }: NoteCardProps): React.JSX.Element {
-  const [confirmDelete, setConfirmDelete] = useState(false)
-  const isGrid = viewMode === 'grid'
-
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const isGrid = viewMode === 'grid';
   return (
     <article
       aria-label="Standalone note"
@@ -70,10 +68,10 @@ export function NoteCard({ note, viewMode, onChange, onDelete }: NoteCardProps):
             borderRadius: 'var(--radius-sm)',
           }}
           onMouseEnter={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--color-danger)'
+            (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-danger)';
           }}
           onMouseLeave={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'
+            (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
           }}
         >
           <X size={14} aria-hidden="true" />
@@ -98,11 +96,11 @@ export function NoteCard({ note, viewMode, onChange, onDelete }: NoteCardProps):
         confirmLabel="Delete"
         destructive
         onConfirm={() => {
-          onDelete(note.id)
-          setConfirmDelete(false)
+          onDelete(note.id);
+          setConfirmDelete(false);
         }}
         onCancel={() => setConfirmDelete(false)}
       />
     </article>
-  )
+  );
 }

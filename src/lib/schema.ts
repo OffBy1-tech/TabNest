@@ -4,13 +4,13 @@
  * All chrome.storage reads/writes are validated against these schemas.
  */
 
-import { z } from 'zod'
+import { z } from 'zod';
 
 // ---------------------------------------------------------------------------
 // Version
 // ---------------------------------------------------------------------------
 
-export const SCHEMA_VERSION = 7
+export const SCHEMA_VERSION = 7;
 
 // ---------------------------------------------------------------------------
 // Core entities — Zod schemas first, TypeScript types inferred from them
@@ -21,28 +21,25 @@ export const SavedTabSchema = z.object({
   title: z.string(),
   url: z.string().url(),
   favicon: z.string().optional(),
-  saved_at: z.number().int().positive(),       // epoch ms
+  saved_at: z.number().int().positive(), // epoch ms
   note: z.string().optional(),
-})
-
+});
 export const NoteSchema = z.object({
   id: z.string().uuid(),
   content: z.string(),
-  created_at: z.number().int().positive(),     // epoch ms
-  updated_at: z.number().int().positive(),     // epoch ms
-})
-
+  created_at: z.number().int().positive(), // epoch ms
+  updated_at: z.number().int().positive(), // epoch ms
+});
 export const TabGroupSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
-  created_at: z.number().int().positive(),     // epoch ms
-  updated_at: z.number().int().positive(),     // epoch ms
+  created_at: z.number().int().positive(), // epoch ms
+  updated_at: z.number().int().positive(), // epoch ms
   order: z.number().int().nonnegative(),
   tabs: z.array(SavedTabSchema),
   notes: z.array(NoteSchema),
   archived: z.boolean().optional(),
-})
-
+});
 export const CategorySchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
@@ -63,12 +60,11 @@ export const CategorySchema = z.object({
    * this.
    */
   updated_at: z.number().int().positive().optional(),
-})
-
+});
 export const WorkspaceSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
-  created_at: z.number().int().positive(),     // epoch ms
+  created_at: z.number().int().positive(), // epoch ms
   categories: z.array(CategorySchema),
   /**
    * Last content-relevant edit (rename, restore). Optional so pre-existing
@@ -77,7 +73,7 @@ export const WorkspaceSchema = z.object({
    * the merge only through this.
    */
   updated_at: z.number().int().positive().optional(),
-})
+});
 
 // ---------------------------------------------------------------------------
 // Settings
@@ -104,18 +100,18 @@ export const UserSettingsSchema = z.object({
   background: z.string().default(''),
   /** When true, opening a whole group moves it to trash (spec §6.3 restore toggle). */
   delete_group_on_open: z.boolean().default(false),
-})
+});
 
 /** Type guard for theme values, derived from the schema enum so a future
  *  theme can't pass Zod but fail hand-rolled membership checks. */
 export function isThemePreference(value: unknown): value is UserSettings['theme'] {
-  return UserSettingsSchema.shape.theme.safeParse(value).success
+  return UserSettingsSchema.shape.theme.safeParse(value).success;
 }
 
 /** Bounds for the user-resizable sidebar (px). */
-export const SIDEBAR_WIDTH_MIN = 180
-export const SIDEBAR_WIDTH_MAX = 600
-export const SIDEBAR_WIDTH_DEFAULT = 240
+export const SIDEBAR_WIDTH_MIN = 180;
+export const SIDEBAR_WIDTH_MAX = 600;
+export const SIDEBAR_WIDTH_DEFAULT = 240;
 
 /**
  * Per-device settings — stored in chrome.storage.local only, never written
@@ -131,7 +127,7 @@ export const LocalSettingsSchema = z.object({
   ]),
   /** Sidebar width in px, set by the resize handle. Optional so pre-existing data parses. */
   sidebar_width: z.number().int().min(SIDEBAR_WIDTH_MIN).max(SIDEBAR_WIDTH_MAX).optional(),
-})
+});
 
 // ---------------------------------------------------------------------------
 // Sync metadata
@@ -139,14 +135,14 @@ export const LocalSettingsSchema = z.object({
 
 export const SyncMetaSchema = z.object({
   drive_file_id: z.string().nullable(),
-  last_sync_at: z.number().int().nonnegative(),        // epoch ms, 0 = never
-  last_modified_at: z.number().int().nonnegative(),    // epoch ms
+  last_sync_at: z.number().int().nonnegative(), // epoch ms, 0 = never
+  last_modified_at: z.number().int().nonnegative(), // epoch ms
   device_id: z.string().uuid(),
   sync_state: z.enum(['idle', 'syncing', 'error']),
   pending_sync: z.boolean(),
   error_message: z.string().nullable(),
   retry_count: z.number().int().nonnegative(),
-})
+});
 
 // ---------------------------------------------------------------------------
 // Trash
@@ -156,8 +152,7 @@ export const TrashLocationSchema = z.object({
   workspace_id: z.string().uuid(),
   category_id: z.string().uuid().optional(),
   group_id: z.string().uuid().optional(),
-})
-
+});
 export const TrashItemSchema = z.object({
   id: z.string().uuid(),
   type: z.enum(['group', 'tab', 'category', 'workspace', 'note']),
@@ -165,7 +160,7 @@ export const TrashItemSchema = z.object({
   // members without recursive schema complexity; validated contextually.
   data: z.unknown(),
   original_location: TrashLocationSchema,
-  deleted_at: z.number().int().positive(),             // epoch ms
+  deleted_at: z.number().int().positive(), // epoch ms
   /**
    * Pure sync tombstone — kept out of the Trash UI. Written by mutations that
    * are not user-visible deletions (moving a tab, clearing a note) but still
@@ -173,7 +168,7 @@ export const TrashItemSchema = z.object({
    * resurrecting. Purged on the same 30-day schedule as visible items.
    */
   hidden: z.boolean().optional(),
-})
+});
 
 // ---------------------------------------------------------------------------
 // Local backup generations (issue #5)
@@ -186,9 +181,9 @@ export const TrashItemSchema = z.object({
  * snapshot of unknown age.
  */
 export const BackupGenerationSchema = z.object({
-  saved_at: z.number().int().nonnegative(),            // epoch ms
+  saved_at: z.number().int().nonnegative(), // epoch ms
   workspaces: z.array(WorkspaceSchema),
-})
+});
 
 // ---------------------------------------------------------------------------
 // Storage root
@@ -209,7 +204,7 @@ export const StorageSchemaZod = z.object({
   /** Legacy pre-v6 single snapshot. Kept parseable so old JSON exports still import; live data was migrated to the device-only `tabnest_backups` storage key (v7). */
   backup_local: z.array(WorkspaceSchema).optional(),
   trash: z.array(TrashItemSchema),
-})
+});
 
 // ---------------------------------------------------------------------------
 // Message passing
@@ -249,35 +244,35 @@ export const ExtensionMessageSchema = z.discriminatedUnion('type', [
     type: z.literal('RESTORE_DRIVE_REVISION'),
     payload: z.object({ revision_id: z.string() }),
   }),
-])
+]);
 
 /** A Drive revision entry shown in Settings > Restore (spec §9.2/§11.3). */
 export interface DriveRevision {
-  id: string
-  modifiedTime: string
+  id: string;
+  modifiedTime: string;
 }
 
 // ---------------------------------------------------------------------------
 // TypeScript types inferred from Zod schemas
 // ---------------------------------------------------------------------------
 
-export type SavedTab = z.infer<typeof SavedTabSchema>
-export type Note = z.infer<typeof NoteSchema>
-export type TabGroup = z.infer<typeof TabGroupSchema>
-export type Category = z.infer<typeof CategorySchema>
-export type Workspace = z.infer<typeof WorkspaceSchema>
-export type UserSettings = z.infer<typeof UserSettingsSchema>
-export type LocalSettings = z.infer<typeof LocalSettingsSchema>
-export type SyncMeta = z.infer<typeof SyncMetaSchema>
-export type BackupGeneration = z.infer<typeof BackupGenerationSchema>
-export type TrashLocation = z.infer<typeof TrashLocationSchema>
-export type TrashItem = z.infer<typeof TrashItemSchema>
-export type StorageSchema = z.infer<typeof StorageSchemaZod>
-export type ExtensionMessage = z.infer<typeof ExtensionMessageSchema>
+export type SavedTab = z.infer<typeof SavedTabSchema>;
+export type Note = z.infer<typeof NoteSchema>;
+export type TabGroup = z.infer<typeof TabGroupSchema>;
+export type Category = z.infer<typeof CategorySchema>;
+export type Workspace = z.infer<typeof WorkspaceSchema>;
+export type UserSettings = z.infer<typeof UserSettingsSchema>;
+export type LocalSettings = z.infer<typeof LocalSettingsSchema>;
+export type SyncMeta = z.infer<typeof SyncMetaSchema>;
+export type BackupGeneration = z.infer<typeof BackupGenerationSchema>;
+export type TrashLocation = z.infer<typeof TrashLocationSchema>;
+export type TrashItem = z.infer<typeof TrashItemSchema>;
+export type StorageSchema = z.infer<typeof StorageSchemaZod>;
+export type ExtensionMessage = z.infer<typeof ExtensionMessageSchema>;
 
 export type MessageResponse<T = unknown> =
-  | { ok: true; data: T }
-  | { ok: false; error: string }
+  | { ok: true; data: T } |
+  { ok: false; error: string };
 
 // ---------------------------------------------------------------------------
 // Default values & factories
@@ -295,7 +290,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   show_clock: true,
   background: '',
   delete_group_on_open: false,
-}
+};
 
 /**
  * New-tab background presets. The id is stored in settings.background;
@@ -309,12 +304,11 @@ export const BACKGROUND_PRESETS: ReadonlyArray<{ id: string; label: string; css:
   { id: 'sunset', label: 'Sunset', css: 'linear-gradient(160deg, #355c7d 0%, #6c5b7b 50%, #c06c84 100%)' },
   { id: 'meadow', label: 'Meadow', css: 'linear-gradient(160deg, #134e5e 0%, #2e8b57 100%)' },
   { id: 'lavender', label: 'Lavender', css: 'linear-gradient(160deg, #e0c3fc 0%, #8ec5fc 100%)' },
-]
-
+];
 export const DEFAULT_LOCAL_SETTINGS: LocalSettings = {
   sync_enabled: false,
   sync_interval_minutes: 15,
-}
+};
 
 /**
  * Factory — generates a fresh SyncMeta with a unique device_id.
@@ -330,7 +324,7 @@ export function DEFAULT_SYNC_META(): SyncMeta {
     pending_sync: false,
     error_message: null,
     retry_count: 0,
-  }
+  };
 }
 
 /**
@@ -338,9 +332,8 @@ export function DEFAULT_SYNC_META(): SyncMeta {
  * so IDs are genuinely unique at runtime.
  */
 export function DEFAULT_WORKSPACE(): Workspace {
-  const now = Date.now()
-  const categoryId = crypto.randomUUID()
-
+  const now = Date.now();
+  const categoryId = crypto.randomUUID();
   return {
     id: crypto.randomUUID(),
     name: 'My Workspace',
@@ -357,5 +350,5 @@ export function DEFAULT_WORKSPACE(): Workspace {
         groups: [],
       },
     ],
-  }
+  };
 }

@@ -9,18 +9,17 @@ import React, {
   useEffect,
   useRef,
   useState,
-} from 'react'
-import { WorkspaceDiagram } from './WorkspaceDiagram'
-import { StepDots } from './StepDots'
-import { type Step } from './steps'
-import { writeOnboardingCompleted } from '../../lib/storage'
-
+} from 'react';
+import { WorkspaceDiagram } from './WorkspaceDiagram';
+import { StepDots } from './StepDots';
+import { type Step } from './steps';
+import { writeOnboardingCompleted } from '../../lib/storage';
 export interface OnboardingOverlayProps {
-  isOpen: boolean
-  onComplete: () => void
-  onSkip: () => void
-  onOpenActiveTabs: () => void
-  onConnectDrive: () => void
+  isOpen: boolean;
+  onComplete: () => void;
+  onSkip: () => void;
+  onOpenActiveTabs: () => void;
+  onConnectDrive: () => void;
 }
 
 const FOCUSABLE_SELECTORS = [
@@ -30,10 +29,9 @@ const FOCUSABLE_SELECTORS = [
   'select:not([disabled])',
   'textarea:not([disabled])',
   '[tabindex]:not([tabindex="-1"])',
-].join(', ')
-
+].join(', ');
 function getFocusable(container: HTMLElement): HTMLElement[] {
-  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTORS))
+  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTORS));
 }
 
 // ------------------------------------------------------------------
@@ -47,89 +45,82 @@ export function OnboardingOverlay({
   onOpenActiveTabs,
   onConnectDrive,
 }: OnboardingOverlayProps): React.JSX.Element | null {
-  const [step, setStep] = useState<Step>(1)
-  const overlayRef = useRef<HTMLDivElement>(null)
-  const previousFocusRef = useRef<HTMLElement | null>(null)
-  const prevIsOpenRef = useRef(false)
+  const [step, setStep] = useState<Step>(1);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const prevIsOpenRef = useRef(false);
 
   // Reset to step 1 whenever the overlay is re-opened (handles "Show onboarding again")
   useEffect(() => {
     if (isOpen && !prevIsOpenRef.current) {
-      setStep(1)
+      setStep(1);
     }
-    prevIsOpenRef.current = isOpen
-  }, [isOpen])
-
+    prevIsOpenRef.current = isOpen;
+  }, [isOpen]);
   const handleComplete = useCallback(() => {
-    void writeOnboardingCompleted()
-    onComplete()
-  }, [onComplete])
-
+    void writeOnboardingCompleted();
+    onComplete();
+  }, [onComplete]);
   const handleSkip = useCallback(() => {
-    void writeOnboardingCompleted()
-    onSkip()
-  }, [onSkip])
+    void writeOnboardingCompleted();
+    onSkip();
+  }, [onSkip]);
 
   // Focus trap
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (!isOpen) return
-
+      if (!isOpen) return;
       if (e.key === 'Escape') {
-        e.preventDefault()
-        handleSkip()
-        return
+        e.preventDefault();
+        handleSkip();
+        return;
       }
 
       if (e.key === 'Tab' && overlayRef.current) {
-        const focusable = getFocusable(overlayRef.current)
+        const focusable = getFocusable(overlayRef.current);
         if (focusable.length === 0) {
-          e.preventDefault()
-          return
+          e.preventDefault();
+          return;
         }
         // Non-null: the length === 0 guard above already returned.
-        const first = focusable[0]!
-        const last = focusable[focusable.length - 1]!
+        const first = focusable[0]!;
+        const last = focusable[focusable.length - 1]!;
         if (e.shiftKey) {
           if (document.activeElement === first) {
-            e.preventDefault()
-            last.focus()
+            e.preventDefault();
+            last.focus();
           }
         } else {
           if (document.activeElement === last) {
-            e.preventDefault()
-            first.focus()
+            e.preventDefault();
+            first.focus();
           }
         }
       }
     },
     [isOpen, handleSkip],
-  )
+  );
 
   // Focus trap and keyboard listener
   useEffect(() => {
     if (isOpen) {
-      previousFocusRef.current = document.activeElement as HTMLElement
-
+      previousFocusRef.current = document.activeElement as HTMLElement;
       const raf = requestAnimationFrame(() => {
         if (overlayRef.current) {
-          const focusable = getFocusable(overlayRef.current)
-          focusable[0]?.focus()
+          const focusable = getFocusable(overlayRef.current);
+          focusable[0]?.focus();
         }
-      })
-
-      document.addEventListener('keydown', handleKeyDown)
-
+      });
+      document.addEventListener('keydown', handleKeyDown);
       return () => {
-        cancelAnimationFrame(raf)
-        document.removeEventListener('keydown', handleKeyDown)
-        previousFocusRef.current?.focus()
-      }
+        cancelAnimationFrame(raf);
+        document.removeEventListener('keydown', handleKeyDown);
+        previousFocusRef.current?.focus();
+      };
     }
-    return undefined
-  }, [isOpen, handleKeyDown])
-
-  if (!isOpen) return null
+    return undefined;
+  }, [isOpen, handleKeyDown]);
+  if (!isOpen) return null;
 
   // ------------------------------------------------------------------
   // Shared styles
@@ -141,15 +132,13 @@ export function OnboardingOverlay({
     fontWeight: 700,
     color: 'var(--text-primary)',
     lineHeight: 1.25,
-  }
-
+  };
   const bodyStyle: React.CSSProperties = {
     margin: '0 0 var(--space-8)',
     fontSize: 'var(--text-base)',
     color: 'var(--text-secondary)',
     lineHeight: 1.65,
-  }
-
+  };
   const primaryBtnStyle: React.CSSProperties = {
     display: 'inline-flex',
     alignItems: 'center',
@@ -165,8 +154,7 @@ export function OnboardingOverlay({
     cursor: 'pointer',
     fontFamily: 'var(--font-sans)',
     width: '100%',
-  }
-
+  };
   const secondaryBtnStyle: React.CSSProperties = {
     display: 'inline-flex',
     alignItems: 'center',
@@ -182,7 +170,7 @@ export function OnboardingOverlay({
     fontFamily: 'var(--font-sans)',
     width: '100%',
     marginTop: 'var(--space-2)',
-  }
+  };
 
   // ------------------------------------------------------------------
   // Step content
@@ -200,15 +188,15 @@ export function OnboardingOverlay({
             <button
               style={primaryBtnStyle}
               onClick={() => {
-                onOpenActiveTabs()
-                setStep(2)
+                onOpenActiveTabs();
+                setStep(2);
               }}
               aria-label="Open Active Tabs panel"
             >
               Open Active Tabs &rarr;
             </button>
           </>
-        )
+        );
 
       case 2:
         return (
@@ -228,7 +216,7 @@ export function OnboardingOverlay({
               </button>
             </div>
           </>
-        )
+        );
 
       case 3:
         return (
@@ -241,8 +229,8 @@ export function OnboardingOverlay({
             <button
               style={primaryBtnStyle}
               onClick={() => {
-                onConnectDrive()
-                handleComplete()
+                onConnectDrive();
+                handleComplete();
               }}
               aria-label="Connect Google Drive"
             >
@@ -256,13 +244,12 @@ export function OnboardingOverlay({
               Skip for now
             </button>
           </>
-        )
+        );
 
       default:
-        return null
+        return null;
     }
-  }
-
+  };
   return (
     <div
       style={{
@@ -324,5 +311,5 @@ export function OnboardingOverlay({
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,18 +1,17 @@
-import React, { useEffect, useRef } from 'react'
-
+import React, { useEffect, useRef } from 'react';
 export interface KebabMenuItem {
-  label: string
-  onClick: () => void
+  label: string;
+  onClick: () => void;
   /** Render in the danger color (e.g. Delete). */
-  danger?: boolean
+  danger?: boolean;
   /** Draw a divider line above this item. */
-  dividerBefore?: boolean
+  dividerBefore?: boolean;
 }
 
 export interface KebabMenuProps {
-  items: KebabMenuItem[]
-  onClose: () => void
-  anchorRef: React.RefObject<HTMLButtonElement | null>
+  items: KebabMenuItem[];
+  onClose: () => void;
+  anchorRef: React.RefObject<HTMLButtonElement | null>;
 }
 
 /**
@@ -21,8 +20,7 @@ export interface KebabMenuProps {
  * same menu shell serves any action set.
  */
 export function KebabMenu({ items, onClose, anchorRef }: KebabMenuProps): React.JSX.Element {
-  const menuRef = useRef<HTMLDivElement>(null)
-
+  const menuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     function handleClick(e: MouseEvent): void {
       if (
@@ -31,20 +29,19 @@ export function KebabMenu({ items, onClose, anchorRef }: KebabMenuProps): React.
         anchorRef.current &&
         !anchorRef.current.contains(e.target as Node)
       ) {
-        onClose()
+        onClose();
       }
     }
     function handleKeyDown(e: KeyboardEvent): void {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') onClose();
     }
-    document.addEventListener('mousedown', handleClick)
-    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEventListener('mousedown', handleClick)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [onClose, anchorRef])
-
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose, anchorRef]);
   const menuItemStyle: React.CSSProperties = {
     display: 'block',
     width: '100%',
@@ -57,8 +54,7 @@ export function KebabMenu({ items, onClose, anchorRef }: KebabMenuProps): React.
     textAlign: 'left',
     borderRadius: 'var(--radius-sm)',
     whiteSpace: 'nowrap',
-  }
-
+  };
   return (
     <div
       ref={menuRef}
@@ -95,10 +91,10 @@ export function KebabMenu({ items, onClose, anchorRef }: KebabMenuProps): React.
             style={item.danger ? { ...menuItemStyle, color: 'var(--color-danger)' } : menuItemStyle}
             onClick={item.onClick}
             onMouseEnter={(e) => {
-              ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--bg-elevated)'
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--bg-elevated)';
             }}
             onMouseLeave={(e) => {
-              ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
             }}
           >
             {item.label}
@@ -106,5 +102,5 @@ export function KebabMenu({ items, onClose, anchorRef }: KebabMenuProps): React.
         </React.Fragment>
       ))}
     </div>
-  )
+  );
 }

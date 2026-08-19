@@ -5,7 +5,20 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.4] - 2026-08-19
+
+Tooling only. No extension behavior changed.
+
+### Changed
+
+- Formatting is now enforced by ESLint via `@stylistic/eslint-plugin`,
+  configured to the codebase's existing conventions (2-space indent, single
+  quotes, semicolons, 1TBS braces, parenthesized arrow args). The repo-wide
+  auto-fix removed the stray leading-`;(` statements, repaired genuinely broken
+  indentation, and normalized quotes and spacing. `npx eslint src --fix`
+  reapplies the style; no Prettier.
+
+## [1.1.3] - 2026-08-17
 
 Public open-source release preparation. No extension behavior changed.
 

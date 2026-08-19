@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { diffWorkspaces } from '../../lib/diff';
 import { tab, group, category, workspace } from '../../lib/testFixtures';
 import { DiffTree } from './DiffTree';
-
 const before = [
   workspace('w1', [
     category('research', {
@@ -15,7 +14,6 @@ const before = [
     category('start', { name: 'Getting Started', groups: [group('welcome', { name: 'Welcome', tabs: [tab('Docs')] })] }),
   ], { name: 'My Workspace' }),
 ];
-
 const after = [
   workspace('w1', [
     category('research', {
@@ -28,25 +26,21 @@ const after = [
     category('start', { name: 'Getting Started', groups: [group('welcome', { name: 'Welcome', tabs: [tab('Docs')] })] }),
   ], { name: 'My Workspace' }),
 ];
-
 const meta = {
   title: 'Components/Settings/DiffTree',
   component: DiffTree,
   parameters: { layout: 'padded' },
   decorators: [(Story) => <div style={{ maxWidth: 560 }}><Story /></div>],
 } satisfies Meta<typeof DiffTree>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const MixedChanges: Story = {
   args: { diff: diffWorkspaces(before, after) },
 };
-
 export const NoDifferences: Story = {
   args: { diff: diffWorkspaces(after, after) },
 };
-
 export const LongTabListTruncated: Story = {
   args: {
     diff: diffWorkspaces(

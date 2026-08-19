@@ -15,7 +15,6 @@ const meta = {
   args: { id: 'demo', label: 'Demo toggle', checked: false, onChange: () => {} },
   render: (args) => <StatefulToggle {...args} />,
 } satisfies Meta<typeof ToggleSwitch>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 

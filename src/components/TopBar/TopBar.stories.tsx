@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { TopBar } from './TopBar';
-
 const meta = {
   title: 'Components/TopBar',
   component: TopBar,
@@ -8,7 +7,6 @@ const meta = {
     layout: 'fullscreen',
   },
 } satisfies Meta<typeof TopBar>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -17,7 +15,6 @@ const baseArgs = {
   onActiveTabsToggle: () => console.log('active tabs toggled'),
   onSettingsClick: () => console.log('settings opened'),
 };
-
 export const Idle: Story = {
   args: {
     ...baseArgs,
@@ -26,7 +23,6 @@ export const Idle: Story = {
     lastSyncAt: Date.now() - 60000, // 1 minute ago
   },
 };
-
 export const ActiveTabsOpen: Story = {
   args: {
     ...baseArgs,
@@ -35,7 +31,6 @@ export const ActiveTabsOpen: Story = {
     lastSyncAt: Date.now() - 120000,
   },
 };
-
 export const Syncing: Story = {
   args: {
     ...baseArgs,
@@ -44,7 +39,6 @@ export const Syncing: Story = {
     lastSyncAt: Date.now() - 300000,
   },
 };
-
 export const SyncError: Story = {
   args: {
     ...baseArgs,
@@ -53,7 +47,6 @@ export const SyncError: Story = {
     lastSyncAt: 0,
   },
 };
-
 export const NeverSynced: Story = {
   args: {
     ...baseArgs,
@@ -62,7 +55,6 @@ export const NeverSynced: Story = {
     lastSyncAt: 0,
   },
 };
-
 export const WithClock: Story = {
   args: {
     ...baseArgs,

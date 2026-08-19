@@ -1,9 +1,9 @@
 // Vitest setup for the jsdom unit-test project (see vitest.config.ts).
 // Adds jest-dom matchers (toBeInTheDocument, toHaveStyle, …) and ensures the
 // React Testing Library DOM is torn down between tests.
-import '@testing-library/jest-dom/vitest'
-import { cleanup } from '@testing-library/react'
-import { afterEach, vi } from 'vitest'
+import '@testing-library/jest-dom/vitest';
+import { cleanup } from '@testing-library/react';
+import { afterEach, vi } from 'vitest';
 
 // jsdom doesn't implement matchMedia; ThemeProvider (and anything that reads the
 // OS color-scheme preference) needs it. Provide a minimal stub.
@@ -17,16 +17,16 @@ if (typeof window !== 'undefined' && !window.matchMedia) {
     addListener: vi.fn(),
     removeListener: vi.fn(),
     dispatchEvent: vi.fn(),
-  }))
+  }));
 }
 
 afterEach(() => {
-  cleanup()
+  cleanup();
   // ThemeProvider persists the chosen theme to localStorage; clear it so a
   // theme change in one test can't leak into another test's initial state.
   try {
-    localStorage.clear()
+    localStorage.clear();
   } catch {
     // localStorage unavailable — nothing to clear
   }
-})
+});

@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { DEFAULT_SETTINGS, type UserSettings, type LocalSettings, type SyncMeta, type Workspace, type TrashItem } from '../../lib/schema';
 import { SettingsModal } from './SettingsModal';
-
 const meta = {
   title: 'Components/SettingsModal',
   component: SettingsModal,
@@ -9,7 +8,6 @@ const meta = {
     layout: 'fullscreen',
   },
 } satisfies Meta<typeof SettingsModal>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -18,19 +16,16 @@ type Story = StoryObj<typeof meta>;
 // ---------------------------------------------------------------------------
 
 const NOW = Date.now();
-
 const defaultSettings: UserSettings = {
   ...DEFAULT_SETTINGS,
   theme: 'light',
   active_tabs_on_load: true,
   default_workspace_id: 'ws-1',
 };
-
 const defaultLocalSettings: LocalSettings = {
   sync_enabled: false,
   sync_interval_minutes: 15,
 };
-
 const syncMeta: SyncMeta = {
   drive_file_id: null,
   last_sync_at: 0,
@@ -41,21 +36,18 @@ const syncMeta: SyncMeta = {
   error_message: null,
   retry_count: 0,
 };
-
 const syncMetaConnected: SyncMeta = {
   ...syncMeta,
   drive_file_id: 'drive-file-xyz',
   last_sync_at: NOW - 300000,
   sync_state: 'idle',
 };
-
 const syncMetaError: SyncMeta = {
   ...syncMeta,
   sync_state: 'error',
   error_message: 'Failed to authenticate with Google Drive. Please reconnect.',
   retry_count: 3,
 };
-
 const mockWorkspaces: Workspace[] = [
   {
     id: 'ws-1',
@@ -91,7 +83,6 @@ const mockWorkspaces: Workspace[] = [
     categories: [],
   },
 ];
-
 const mockTrashItems: TrashItem[] = [
   {
     id: 'trash-1',
@@ -120,7 +111,6 @@ const mockTrashItems: TrashItem[] = [
     deleted_at: NOW - 86400000,
   },
 ];
-
 const sharedArgs = {
   isOpen: true,
   onClose: () => console.log('close settings'),
@@ -146,7 +136,6 @@ export const GeneralTab: Story = {
     trashItems: [],
   },
 };
-
 export const SyncConnected: Story = {
   args: {
     ...sharedArgs,
@@ -157,7 +146,6 @@ export const SyncConnected: Story = {
     trashItems: [],
   },
 };
-
 export const SyncError: Story = {
   args: {
     ...sharedArgs,
@@ -168,7 +156,6 @@ export const SyncError: Story = {
     trashItems: [],
   },
 };
-
 export const WithTrashItems: Story = {
   args: {
     ...sharedArgs,
@@ -178,7 +165,6 @@ export const WithTrashItems: Story = {
     trashItems: mockTrashItems,
   },
 };
-
 export const NoWorkspaces: Story = {
   args: {
     ...sharedArgs,
@@ -188,7 +174,6 @@ export const NoWorkspaces: Story = {
     trashItems: [],
   },
 };
-
 export const Closed: Story = {
   args: {
     ...sharedArgs,

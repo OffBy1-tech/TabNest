@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Toast } from './Toast';
-
 const meta = {
   title: 'Components/Toast/Toast',
   component: Toast,
@@ -8,7 +7,6 @@ const meta = {
     layout: 'centered',
   },
 } satisfies Meta<typeof Toast>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -23,7 +21,6 @@ export const Success: Story = {
     onDismiss: () => {},
   },
 };
-
 export const Error: Story = {
   args: {
     toast: {
@@ -35,7 +32,6 @@ export const Error: Story = {
     onDismiss: () => {},
   },
 };
-
 export const Info: Story = {
   args: {
     toast: {
@@ -47,7 +43,6 @@ export const Info: Story = {
     onDismiss: () => {},
   },
 };
-
 export const LongMessage: Story = {
   args: {
     toast: {

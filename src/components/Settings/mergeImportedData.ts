@@ -1,4 +1,4 @@
-import type { StorageSchema } from '../../lib/schema'
+import type { StorageSchema } from '../../lib/schema';
 
 /**
  * Merge an imported export into the current data without clobbering it.
@@ -9,38 +9,34 @@ import type { StorageSchema } from '../../lib/schema'
  * collide with existing local ids.
  */
 export function mergeImportedData(current: StorageSchema, incoming: StorageSchema): StorageSchema {
-  const resultWorkspaces = [...current.workspaces]
-
+  const resultWorkspaces = [...current.workspaces];
   for (const incomingWs of incoming.workspaces) {
     const existingWsIdx = resultWorkspaces.findIndex(
-      ws => ws.name.toLowerCase() === incomingWs.name.toLowerCase(),
-    )
-
+      (ws) => ws.name.toLowerCase() === incomingWs.name.toLowerCase(),
+    );
     if (existingWsIdx >= 0) {
-      const existingWs = resultWorkspaces[existingWsIdx]!
-      const mergedCats = [...existingWs.categories]
-
+      const existingWs = resultWorkspaces[existingWsIdx]!;
+      const mergedCats = [...existingWs.categories];
       for (const incomingCat of incomingWs.categories) {
         const existingCatIdx = mergedCats.findIndex(
-          cat => cat.name.toLowerCase() === incomingCat.name.toLowerCase(),
-        )
-
+          (cat) => cat.name.toLowerCase() === incomingCat.name.toLowerCase(),
+        );
         if (existingCatIdx >= 0) {
-          const existingCat = mergedCats[existingCatIdx]!
-          const nextOrder = existingCat.groups.length
+          const existingCat = mergedCats[existingCatIdx]!;
+          const nextOrder = existingCat.groups.length;
           const freshGroups = incomingCat.groups.map((g, i) => ({
             ...g,
             id: crypto.randomUUID(),
             order: nextOrder + i,
-            tabs: g.tabs.map(t => ({ ...t, id: crypto.randomUUID() })),
-            notes: g.notes.map(n => ({ ...n, id: crypto.randomUUID() })),
-          }))
-          const freshNotes = (incomingCat.notes ?? []).map(n => ({ ...n, id: crypto.randomUUID() }))
+            tabs: g.tabs.map((t) => ({ ...t, id: crypto.randomUUID() })),
+            notes: g.notes.map((n) => ({ ...n, id: crypto.randomUUID() })),
+          }));
+          const freshNotes = (incomingCat.notes ?? []).map((n) => ({ ...n, id: crypto.randomUUID() }));
           mergedCats[existingCatIdx] = {
             ...existingCat,
             groups: [...existingCat.groups, ...freshGroups],
             notes: [...(existingCat.notes ?? []), ...freshNotes],
-          }
+          };
         } else {
           mergedCats.push({
             ...incomingCat,
@@ -50,15 +46,15 @@ export function mergeImportedData(current: StorageSchema, incoming: StorageSchem
               ...g,
               id: crypto.randomUUID(),
               order: i,
-              tabs: g.tabs.map(t => ({ ...t, id: crypto.randomUUID() })),
-              notes: g.notes.map(n => ({ ...n, id: crypto.randomUUID() })),
+              tabs: g.tabs.map((t) => ({ ...t, id: crypto.randomUUID() })),
+              notes: g.notes.map((n) => ({ ...n, id: crypto.randomUUID() })),
             })),
-            notes: (incomingCat.notes ?? []).map(n => ({ ...n, id: crypto.randomUUID() })),
-          })
+            notes: (incomingCat.notes ?? []).map((n) => ({ ...n, id: crypto.randomUUID() })),
+          });
         }
       }
 
-      resultWorkspaces[existingWsIdx] = { ...existingWs, categories: mergedCats }
+      resultWorkspaces[existingWsIdx] = { ...existingWs, categories: mergedCats };
     } else {
       resultWorkspaces.push({
         ...incomingWs,
@@ -71,14 +67,14 @@ export function mergeImportedData(current: StorageSchema, incoming: StorageSchem
             ...g,
             id: crypto.randomUUID(),
             order: i,
-            tabs: g.tabs.map(t => ({ ...t, id: crypto.randomUUID() })),
-            notes: g.notes.map(n => ({ ...n, id: crypto.randomUUID() })),
+            tabs: g.tabs.map((t) => ({ ...t, id: crypto.randomUUID() })),
+            notes: g.notes.map((n) => ({ ...n, id: crypto.randomUUID() })),
           })),
-          notes: (cat.notes ?? []).map(n => ({ ...n, id: crypto.randomUUID() })),
+          notes: (cat.notes ?? []).map((n) => ({ ...n, id: crypto.randomUUID() })),
         })),
-      })
+      });
     }
   }
 
-  return { ...current, workspaces: resultWorkspaces }
+  return { ...current, workspaces: resultWorkspaces };
 }

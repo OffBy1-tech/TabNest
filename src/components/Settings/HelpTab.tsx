@@ -1,10 +1,9 @@
-import React from 'react'
-import { sectionHeadingStyle, primaryBtnStyle } from './styles'
-
+import React from 'react';
+import { sectionHeadingStyle, primaryBtnStyle } from './styles';
 export interface HelpTabProps {
   // Explicitly allows `undefined` so the value can flow from SettingsModal's
   // optional prop under exactOptionalPropertyTypes.
-  onShowOnboarding?: (() => void) | undefined
+  onShowOnboarding?: (() => void) | undefined;
 }
 
 export function HelpTab({ onShowOnboarding }: HelpTabProps): React.JSX.Element {
@@ -12,8 +11,7 @@ export function HelpTab({ onShowOnboarding }: HelpTabProps): React.JSX.Element {
   // version. Accessed via globalThis because in non-extension contexts (dev
   // server, Storybook, jsdom tests) the `chrome` identifier is undeclared and
   // a bare `chrome?.` would throw ReferenceError.
-  const version = globalThis.chrome?.runtime?.getManifest?.().version ?? 'dev'
-
+  const version = globalThis.chrome?.runtime?.getManifest?.().version ?? 'dev';
   return (
     <div>
       <h3 style={sectionHeadingStyle}>Help</h3>
@@ -55,5 +53,5 @@ export function HelpTab({ onShowOnboarding }: HelpTabProps): React.JSX.Element {
         </div>
       </div>
     </div>
-  )
+  );
 }

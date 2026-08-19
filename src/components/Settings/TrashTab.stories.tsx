@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { TrashItem } from '../../lib/schema';
 import { TrashTab } from './TrashTab';
-
 const items: TrashItem[] = [
   {
     id: '11111111-1111-1111-1111-111111111111',
@@ -18,7 +17,6 @@ const items: TrashItem[] = [
     deleted_at: Date.now() - 86_400_000,
   },
 ];
-
 const meta = {
   title: 'Components/Settings/TrashTab',
   component: TrashTab,
@@ -37,12 +35,10 @@ const meta = {
     ),
   ],
 } satisfies Meta<typeof TrashTab>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const WithItems: Story = {};
-
 export const Empty: Story = {
   args: { trashItems: [] },
 };

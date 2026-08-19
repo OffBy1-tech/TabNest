@@ -1,12 +1,11 @@
-import React from 'react'
-
+import React from 'react';
 export interface SelectFieldProps {
-  id: string
-  label: string
-  value: string
-  onChange: (v: string) => void
-  disabled?: boolean
-  children: React.ReactNode
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+  children: React.ReactNode;
 }
 
 /** A labelled <select> field used in the popup's save form. */
@@ -41,5 +40,5 @@ export function SelectField({ id, label, value, onChange, disabled, children }: 
         {children}
       </select>
     </div>
-  )
+  );
 }

@@ -34,7 +34,6 @@ const meta = {
   },
   render: (args) => <KebabMenuWithAnchor {...args} />,
 } satisfies Meta<typeof KebabMenu>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 

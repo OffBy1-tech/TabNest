@@ -1,29 +1,29 @@
-import React, { useState } from 'react'
-import type { Workspace } from '../../lib/schema'
-import { useActiveTabs } from './useActiveTabs'
-import { WindowSection } from './WindowSection'
+import React, { useState } from 'react';
+import type { Workspace } from '../../lib/schema';
+import { useActiveTabs } from './useActiveTabs';
+import { WindowSection } from './WindowSection';
 
 /** Sort orders for tabs within each window section (spec §4.3). */
-export type ActiveTabsSort = 'window' | 'title' | 'domain'
+export type ActiveTabsSort = 'window' | 'title' | 'domain';
 
 /** www-stripped hostname of a tab, '' when the URL is missing or unparsable. */
 export function domainOf(tab: chrome.tabs.Tab): string {
   try {
-    return tab.url ? new URL(tab.url).hostname.replace(/^www\./, '') : ''
+    return tab.url ? new URL(tab.url).hostname.replace(/^www\./, '') : '';
   } catch {
-    return ''
+    return '';
   }
 }
 
 export function sortActiveTabs(tabs: chrome.tabs.Tab[], sort: ActiveTabsSort): chrome.tabs.Tab[] {
-  if (sort === 'window') return tabs // browser order
-  const sorted = [...tabs]
+  if (sort === 'window') return tabs; // browser order
+  const sorted = [...tabs];
   if (sort === 'title') {
-    sorted.sort((a, b) => (a.title ?? '').localeCompare(b.title ?? ''))
+    sorted.sort((a, b) => (a.title ?? '').localeCompare(b.title ?? ''));
   } else {
-    sorted.sort((a, b) => domainOf(a).localeCompare(domainOf(b)) || (a.title ?? '').localeCompare(b.title ?? ''))
+    sorted.sort((a, b) => domainOf(a).localeCompare(domainOf(b)) || (a.title ?? '').localeCompare(b.title ?? ''));
   }
-  return sorted
+  return sorted;
 }
 
 // ---------------------------------------------------------------------------
@@ -37,19 +37,19 @@ export interface ActiveTabsPanelProps {
     categoryId: string,
     workspaceId: string,
     groupId: string | null,
-  ) => void
+  ) => void;
   onSaveWindowTabs: (
     tabs: chrome.tabs.Tab[],
     groupName: string,
     categoryId: string,
     workspaceId: string,
     groupId: string | null,
-  ) => void
-  onCloseTab: (tabId: number) => void
-  workspaces: Workspace[]
-  showFavicons?: boolean
-  activeWorkspaceId?: string | undefined
-  activeCategoryId?: string | null
+  ) => void;
+  onCloseTab: (tabId: number) => void;
+  workspaces: Workspace[];
+  showFavicons?: boolean;
+  activeWorkspaceId?: string | undefined;
+  activeCategoryId?: string | null;
 }
 
 export function ActiveTabsPanel({
@@ -61,20 +61,18 @@ export function ActiveTabsPanel({
   activeWorkspaceId,
   activeCategoryId,
 }: ActiveTabsPanelProps): React.JSX.Element {
-  const windows = useActiveTabs()
-  const [sort, setSort] = useState<ActiveTabsSort>('window')
-
-  const totalTabs = windows.reduce((sum, win) => sum + win.tabs.length, 0)
-
+  const windows = useActiveTabs();
+  const [sort, setSort] = useState<ActiveTabsSort>('window');
+  const totalTabs = windows.reduce((sum, win) => sum + win.tabs.length, 0);
   function handleCloseDuplicates(): void {
-    const seen = new Set<string>()
+    const seen = new Set<string>();
     for (const win of windows) {
       for (const tab of win.tabs) {
-        if (tab.id == null || !tab.url) continue
+        if (tab.id == null || !tab.url) continue;
         if (seen.has(tab.url)) {
-          onCloseTab(tab.id)
+          onCloseTab(tab.id);
         } else {
-          seen.add(tab.url)
+          seen.add(tab.url);
         }
       }
     }
@@ -168,11 +166,11 @@ export function ActiveTabsPanel({
             outline: 'none',
           }}
           onFocus={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
-            ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px'
+            (e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`;
+            (e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px';
           }}
           onBlur={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.outline = 'none'
+            (e.currentTarget as HTMLButtonElement).style.outline = 'none';
           }}
         >
           Close Duplicates
@@ -222,5 +220,5 @@ export function ActiveTabsPanel({
         )}
       </div>
     </aside>
-  )
+  );
 }

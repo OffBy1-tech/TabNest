@@ -1,13 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
-import type { Workspace } from '../../lib/schema'
-
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import type { Workspace } from '../../lib/schema';
 export interface SavePopoverProps {
-  tab: chrome.tabs.Tab
-  workspaces: Workspace[]
-  onSave: (tab: chrome.tabs.Tab, groupName: string, categoryId: string, workspaceId: string, groupId: string | null) => void
-  onClose: () => void
-  defaultWorkspaceId?: string | undefined
-  defaultCategoryId?: string | undefined
+  tab: chrome.tabs.Tab;
+  workspaces: Workspace[];
+  onSave: (tab: chrome.tabs.Tab, groupName: string, categoryId: string, workspaceId: string, groupId: string | null) => void;
+  onClose: () => void;
+  defaultWorkspaceId?: string | undefined;
+  defaultCategoryId?: string | undefined;
 }
 
 /** Popover to save a single active tab into a (new or existing) group. */
@@ -21,72 +20,65 @@ export function SavePopover({
 }: SavePopoverProps): React.JSX.Element {
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>(
     defaultWorkspaceId ?? workspaces[0]?.id ?? '',
-  )
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(defaultCategoryId ?? '')
-  const [selectedGroupId, setSelectedGroupId] = useState<string>('')
-  const [newGroupName, setNewGroupName] = useState('')
-  const popoverRef = useRef<HTMLDivElement>(null)
-
+  );
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(defaultCategoryId ?? '');
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
+  const [newGroupName, setNewGroupName] = useState('');
+  const popoverRef = useRef<HTMLDivElement>(null);
   const isDuplicate = useMemo(() => {
-    if (!tab.url) return false
+    if (!tab.url) return false;
     return workspaces.some((ws) =>
       ws.categories.some((cat) =>
-        cat.groups.some((grp) => grp.tabs.some((t) => t.url === tab.url))
-      )
-    )
-  }, [workspaces, tab.url])
-
-  const selectedWorkspace = workspaces.find((w) => w.id === selectedWorkspaceId)
-  const categories = selectedWorkspace?.categories ?? []
-
+        cat.groups.some((grp) => grp.tabs.some((t) => t.url === tab.url)),
+      ),
+    );
+  }, [workspaces, tab.url]);
+  const selectedWorkspace = workspaces.find((w) => w.id === selectedWorkspaceId);
+  const categories = selectedWorkspace?.categories ?? [];
   useEffect(() => {
-    const ids = categories.map((c) => c.id)
+    const ids = categories.map((c) => c.id);
     if (!ids.includes(selectedCategoryId)) {
-      setSelectedCategoryId(categories[0]?.id ?? '')
+      setSelectedCategoryId(categories[0]?.id ?? '');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedWorkspaceId, categories.length])
-
-  const selectedCategory = categories.find((c) => c.id === selectedCategoryId)
-  const groups = selectedCategory?.groups ?? []
-
+  }, [selectedWorkspaceId, categories.length]);
+  const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
+  const groups = selectedCategory?.groups ?? [];
   useEffect(() => {
     if (groups.length > 0) {
-      setSelectedGroupId(groups[0]!.id)
+      setSelectedGroupId(groups[0]!.id);
     } else {
-      setSelectedGroupId('__new__')
+      setSelectedGroupId('__new__');
     }
-  }, [selectedCategoryId])  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedCategoryId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close on outside click or Escape
   useEffect(() => {
     function handleClick(e: MouseEvent): void {
       if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
-        onClose()
+        onClose();
       }
     }
     function handleKeyDown(e: KeyboardEvent): void {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') onClose();
     }
-    document.addEventListener('mousedown', handleClick)
-    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEventListener('mousedown', handleClick)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [onClose])
-
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose]);
   function handleSave(): void {
-    if (!selectedCategoryId || !selectedWorkspaceId) return
-
+    if (!selectedCategoryId || !selectedWorkspaceId) return;
     if (selectedGroupId === '__new__') {
-      const groupName = newGroupName.trim() || tab.title || 'Untitled Group'
-      onSave(tab, groupName, selectedCategoryId, selectedWorkspaceId, null)
+      const groupName = newGroupName.trim() || tab.title || 'Untitled Group';
+      onSave(tab, groupName, selectedCategoryId, selectedWorkspaceId, null);
     } else {
-      const groupName = groups.find((g) => g.id === selectedGroupId)?.name ?? 'Untitled Group'
-      onSave(tab, groupName, selectedCategoryId, selectedWorkspaceId, selectedGroupId)
+      const groupName = groups.find((g) => g.id === selectedGroupId)?.name ?? 'Untitled Group';
+      onSave(tab, groupName, selectedCategoryId, selectedWorkspaceId, selectedGroupId);
     }
-    onClose()
+    onClose();
   }
 
   const inputStyle: React.CSSProperties = {
@@ -98,16 +90,14 @@ export function SavePopover({
     border: '1px solid var(--border-default)',
     borderRadius: 'var(--radius-sm)',
     outline: 'none',
-  }
-
+  };
   const labelStyle: React.CSSProperties = {
     display: 'block',
     fontSize: 'var(--text-xs)',
     color: 'var(--text-muted)',
     marginBottom: 'var(--space-1)',
     fontWeight: 600,
-  }
-
+  };
   return (
     <div
       ref={popoverRef}
@@ -157,10 +147,10 @@ export function SavePopover({
           onChange={(e) => setSelectedWorkspaceId(e.target.value)}
           style={{ ...inputStyle, cursor: 'pointer' }}
           onFocus={(e) => {
-            ;(e.currentTarget as HTMLSelectElement).style.borderColor = 'var(--border-focus)'
+            (e.currentTarget as HTMLSelectElement).style.borderColor = 'var(--border-focus)';
           }}
           onBlur={(e) => {
-            ;(e.currentTarget as HTMLSelectElement).style.borderColor = 'var(--border-default)'
+            (e.currentTarget as HTMLSelectElement).style.borderColor = 'var(--border-default)';
           }}
         >
           {workspaces.map((w) => (
@@ -181,10 +171,10 @@ export function SavePopover({
           onChange={(e) => setSelectedCategoryId(e.target.value)}
           style={{ ...inputStyle, cursor: 'pointer' }}
           onFocus={(e) => {
-            ;(e.currentTarget as HTMLSelectElement).style.borderColor = 'var(--border-focus)'
+            (e.currentTarget as HTMLSelectElement).style.borderColor = 'var(--border-focus)';
           }}
           onBlur={(e) => {
-            ;(e.currentTarget as HTMLSelectElement).style.borderColor = 'var(--border-default)'
+            (e.currentTarget as HTMLSelectElement).style.borderColor = 'var(--border-default)';
           }}
         >
           {categories.map((c) => (
@@ -205,10 +195,10 @@ export function SavePopover({
           onChange={(e) => setSelectedGroupId(e.target.value)}
           style={{ ...inputStyle, cursor: 'pointer' }}
           onFocus={(e) => {
-            ;(e.currentTarget as HTMLSelectElement).style.borderColor = 'var(--border-focus)'
+            (e.currentTarget as HTMLSelectElement).style.borderColor = 'var(--border-focus)';
           }}
           onBlur={(e) => {
-            ;(e.currentTarget as HTMLSelectElement).style.borderColor = 'var(--border-default)'
+            (e.currentTarget as HTMLSelectElement).style.borderColor = 'var(--border-default)';
           }}
         >
           {groups.map((g) => (
@@ -233,10 +223,10 @@ export function SavePopover({
             placeholder={tab.title ?? 'Group name'}
             style={inputStyle}
             onFocus={(e) => {
-              ;(e.currentTarget as HTMLInputElement).style.borderColor = 'var(--border-focus)'
+              (e.currentTarget as HTMLInputElement).style.borderColor = 'var(--border-focus)';
             }}
             onBlur={(e) => {
-              ;(e.currentTarget as HTMLInputElement).style.borderColor = 'var(--border-default)'
+              (e.currentTarget as HTMLInputElement).style.borderColor = 'var(--border-default)';
             }}
           />
         </div>
@@ -258,15 +248,15 @@ export function SavePopover({
           outline: 'none',
         }}
         onFocus={(e) => {
-          ;(e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
-          ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px'
+          (e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`;
+          (e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px';
         }}
         onBlur={(e) => {
-          ;(e.currentTarget as HTMLButtonElement).style.outline = 'none'
+          (e.currentTarget as HTMLButtonElement).style.outline = 'none';
         }}
       >
         Save
       </button>
     </div>
-  )
+  );
 }

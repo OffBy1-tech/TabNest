@@ -1,14 +1,14 @@
-<!-- TabNest Privacy Policy — Off By 1 LLC
-     Host at e.g. https://offby1.tech/tabnest-privacy
+<!-- Tab Nest Privacy Policy — Off By 1 LLC
+     Host at e.g. https://offby1.tech/tab nest-privacy
      Self-contained: no external fonts, scripts, or trackers (deliberate — a privacy
      page that quietly loaded third-party assets would undercut its own claims).
-     Before going public, confirm the two facts called out in the chat message:
-       1. The exact Google Drive OAuth scope you request.
-       2. That "nothing is collected or transmitted to us" is literally true. -->
+     Drive scope: drive.appdata (hidden Application Data folder; no user-visible file).
+     Before going public, confirm "nothing is collected or transmitted to us" is literally
+     true (no error reporting / analytics / telemetry SDK phoning home). -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="all">
-<title>TabNest Privacy Policy — Off By 1 LLC</title>
+<title>Tab Nest Privacy Policy — Off By 1 LLC</title>
 <style>
   :root {
     --bg: #f6f7f9;
@@ -135,60 +135,63 @@
 
 <div class="wrap">
   <p class="eyebrow">Privacy Policy</p>
-  <h1>TabNest</h1>
+  <h1>Tab Nest</h1>
   <p class="dates">
     Provided by <span class="wordmark">Off By <b>1</b> LLC</span> &nbsp;·&nbsp;
-    Effective June 9, 2026 &nbsp;·&nbsp; Last updated June 9, 2026
+    Effective June 9, 2026 &nbsp;·&nbsp; Last updated June 12, 2026
   </p>
 
   <div class="tldr">
     <h2>The short version</h2>
-    <p>TabNest stores your tab and session data in <strong>your own Google Drive</strong>.
-    We don't collect it, we never see it, and it isn't sent to any server we run. There are
-    no analytics, no advertising, and no selling or sharing of your data — there's nothing to sell.</p>
+    <p>Tab Nest stores your tab and session data in a <strong>private application-data area
+    of your own Google Drive</strong> that only Tab Nest can reach — it never appears among your
+    normal Drive files. We don't collect it, we never see it, and it isn't sent to any server we
+    run. There are no analytics, no advertising, and no selling or sharing of your data — there's
+    nothing to sell.</p>
   </div>
 
   <h2 class="sec">01 — Who this covers</h2>
   <h3>The basics</h3>
-  <p>This policy explains how the <strong>TabNest</strong> browser extension ("TabNest,"
-  "the extension") handles information. TabNest is published by <strong>Off By 1 LLC</strong>,
+  <p>This policy explains how the <strong>Tab Nest</strong> browser extension ("Tab Nest,"
+  "the extension") handles information. Tab Nest is published by <strong>Off By 1 LLC</strong>,
   a Washington limited liability company ("we," "us," "our"). It applies to your use of the
   extension and to the Google account data the extension accesses on your behalf.</p>
 
-  <h2 class="sec">02 — What TabNest does</h2>
+  <h2 class="sec">02 — What Tab Nest does</h2>
   <h3>Saving and syncing your tabs</h3>
-  <p>TabNest lets you save, organize, and restore browser tabs and tab groups. To make your
-  saved tabs available across your devices, TabNest can sync that data to your own Google Drive
+  <p>Tab Nest lets you save, organize, and restore browser tabs and tab groups. To make your
+  saved tabs available across your devices, Tab Nest can sync that data to your own Google Drive
   using Google's authorization (OAuth). Drive sync is something you turn on by signing in with
   your Google account; if you don't connect Drive, your data stays only in your browser.</p>
 
-  <h2 class="sec">03 — Information TabNest handles</h2>
+  <h2 class="sec">03 — Information Tab Nest handles</h2>
   <h3>Your tab data, and your Google Drive</h3>
-  <p>The information TabNest works with is the content you choose to save in it — for example,
+  <p>The information Tab Nest works with is the content you choose to save in it — for example,
   the page titles and URLs of tabs you store, the names of your tab groups, and your extension
   settings.</p>
-  <p>When you enable Drive sync, TabNest uses the <code>drive.file</code> authorization scope.
-  This scope lets TabNest read and write <strong>only the files it creates</strong> in your
-  Google Drive. It cannot see, open, or touch any of your other Drive files. The TabNest data
-  file lives in your Drive, under your control.</p>
-  <p>TabNest does not request your name, email address, contacts, browsing history, or any other
+  <p>When you enable Drive sync, Tab Nest uses the <code>drive.appdata</code> authorization scope.
+  This scope lets Tab Nest read and write only to a hidden Application Data folder that Google sets
+  aside for it in your Drive. Files saved there are <strong>not visible in your normal Drive
+  view</strong>, and Tab Nest cannot see, open, or touch any of your other Drive files. The data is
+  stored within your own Drive storage and remains under your control.</p>
+  <p>Tab Nest does not request your name, email address, contacts, browsing history, or any other
   personal information beyond what's described above.</p>
 
   <h2 class="sec">04 — What we collect</h2>
   <h3>Nothing reaches us</h3>
-  <p>Off By 1 LLC operates no server or backend for TabNest. Your saved data moves directly
+  <p>Off By 1 LLC operates no server or backend for Tab Nest. Your saved data moves directly
   between your browser and your own Google Drive. We do not receive, store, log, or have access
   to your tab data, your Drive contents, or your Google account credentials. We do not use
   cookies, analytics SDKs, fingerprinting, or any third-party tracking inside the extension.</p>
 
   <h2 class="sec">05 — How Google user data is used</h2>
   <h3>Limited Use commitment</h3>
-  <p>TabNest's access to information from Google APIs is limited to providing and improving the
-  tab-sync features described above. TabNest's use and transfer of information received from
+  <p>Tab Nest's access to information from Google APIs is limited to providing and improving the
+  tab-sync features described above. Tab Nest's use and transfer of information received from
   Google APIs adheres to the
   <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener" target="_blank">Google
   API Services User Data Policy</a>, including its Limited Use requirements. Specifically,
-  TabNest does not:</p>
+  Tab Nest does not:</p>
   <ul>
     <li>transfer or sell Google user data to third parties, ad platforms, data brokers, or for
     any advertising purpose;</li>
@@ -207,12 +210,14 @@
 
   <h2 class="sec">07 — Keeping and deleting your data</h2>
   <h3>You're in control</h3>
-  <p>Your TabNest data persists in your browser and, if sync is enabled, in your Google Drive
+  <p>Your Tab Nest data persists in your browser and, if sync is enabled, in your Google Drive
   for as long as you keep it. To remove it:</p>
   <ul>
     <li>Delete saved tabs or clear data from within the extension.</li>
-    <li>Delete the TabNest file from your Google Drive.</li>
-    <li>Revoke TabNest's access to your Google account at
+    <li>Remove Tab Nest's hidden app data from Drive: open
+    <a href="https://drive.google.com/drive/settings" rel="noopener" target="_blank">Drive settings</a>
+    → Manage apps → Tab Nest → Options → Delete hidden app data.</li>
+    <li>Revoke Tab Nest's access to your Google account at
     <a href="https://myaccount.google.com/permissions" rel="noopener" target="_blank">myaccount.google.com/permissions</a>.</li>
     <li>Uninstall the extension to remove its locally stored data.</li>
   </ul>
@@ -225,12 +230,12 @@
 
   <h2 class="sec">09 — Children</h2>
   <h3>Not directed to children</h3>
-  <p>TabNest is a general-audience productivity tool and is not directed to children under 13.
+  <p>Tab Nest is a general-audience productivity tool and is not directed to children under 13.
   We do not knowingly collect personal information from children.</p>
 
   <h2 class="sec">10 — Changes</h2>
   <h3>Updates to this policy</h3>
-  <p>If we change how TabNest handles data, we'll update this page and revise the "Last updated"
+  <p>If we change how Tab Nest handles data, we'll update this page and revise the "Last updated"
   date above. Material changes that affect how your data is used will be reflected here before
   they take effect in a published release.</p>
 
@@ -244,6 +249,6 @@
   </div>
 
   <footer>
-    <span class="wordmark">Off By <b>1</b> LLC</span> · TabNest Privacy Policy
+    <span class="wordmark">Off By <b>1</b> LLC</span> · Tab Nest Privacy Policy
   </footer>
 </div>

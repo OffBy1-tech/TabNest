@@ -1,19 +1,18 @@
-import type { SavedTab } from '../lib/schema'
-import { sendExtensionMessage } from '../lib/messaging'
-
+import type { SavedTab } from '../lib/schema';
+import { sendExtensionMessage } from '../lib/messaging';
 export interface SaveTabsParams {
-  tabs: SavedTab[]
-  group_name: string
-  category_id: string
-  workspace_id: string
+  tabs: SavedTab[];
+  group_name: string;
+  category_id: string;
+  workspace_id: string;
   /** Append to this existing group instead of creating a new one. */
-  group_id?: string
+  group_id?: string;
 }
 
 async function save(params: SaveTabsParams): Promise<void> {
-  const response = await sendExtensionMessage({ type: 'SAVE_TABS', payload: params })
+  const response = await sendExtensionMessage({ type: 'SAVE_TABS', payload: params });
   if (!response.ok) {
-    throw new Error(response.error)
+    throw new Error(response.error);
   }
 }
 
@@ -29,17 +28,16 @@ async function deleteGroup(
       category_id: categoryId,
       workspace_id: workspaceId,
     },
-  })
+  });
   if (!response.ok) {
-    throw new Error(response.error)
+    throw new Error(response.error);
   }
 }
 
 // Stable at module scope: nothing here is per-render state, and a fresh
 // object each call would invalidate every downstream useCallback/useEffect
 // that lists `tabs` as a dependency.
-const api = { save, delete: deleteGroup }
-
+const api = { save, delete: deleteGroup };
 export function useTabs(): typeof api {
-  return api
+  return api;
 }

@@ -1,18 +1,17 @@
-import React from 'react'
-import type { UserSettings } from '../../lib/schema'
-import { useTheme } from '../ThemeProvider'
-import { SegmentedControl } from './SegmentedControl'
-import { ToggleSwitch } from './ToggleSwitch'
-import { SettingRow } from './SettingRow'
-import { sectionHeadingStyle } from './styles'
-
+import React from 'react';
+import type { UserSettings } from '../../lib/schema';
+import { useTheme } from '../ThemeProvider';
+import { SegmentedControl } from './SegmentedControl';
+import { ToggleSwitch } from './ToggleSwitch';
+import { SettingRow } from './SettingRow';
+import { sectionHeadingStyle } from './styles';
 export interface GeneralTabProps {
-  settings: UserSettings
-  onChange: (patch: Partial<UserSettings>) => void
+  settings: UserSettings;
+  onChange: (patch: Partial<UserSettings>) => void;
 }
 
 export function GeneralTab({ settings, onChange }: GeneralTabProps): React.JSX.Element {
-  const { theme, setTheme } = useTheme()
+  const { theme, setTheme } = useTheme();
   return (
     <div>
       <h3 style={sectionHeadingStyle}>General</h3>
@@ -27,12 +26,11 @@ export function GeneralTab({ settings, onChange }: GeneralTabProps): React.JSX.E
             { value: 'system', label: 'System' },
           ]}
           onChange={(v) => {
-            setTheme(v)
-            onChange({ theme: v })
+            setTheme(v);
+            onChange({ theme: v });
           }}
         />
       </SettingRow>
-
 
       <SettingRow label="Default view">
         <SegmentedControl
@@ -116,5 +114,5 @@ export function GeneralTab({ settings, onChange }: GeneralTabProps): React.JSX.E
         />
       </SettingRow>
     </div>
-  )
+  );
 }

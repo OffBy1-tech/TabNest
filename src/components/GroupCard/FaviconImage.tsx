@@ -1,17 +1,16 @@
-import React, { useState } from 'react'
-import { resolveFaviconUrl } from '../../lib/safeUrl'
-
+import React, { useState } from 'react';
+import { resolveFaviconUrl } from '../../lib/safeUrl';
 interface FaviconImageProps {
   /** The stored favicon URL (semi-untrusted: Drive sync / JSON import). */
-  url: string
-  title: string
+  url: string;
+  title: string;
   /**
    * The saved tab's page URL. When provided (and running as an extension), the
    * favicon is served from Chrome's local `_favicon` cache instead of the stored
    * URL — no network request to the site, so a crafted favicon can't beacon.
    */
-  pageUrl?: string | undefined
-  size?: number
+  pageUrl?: string | undefined;
+  size?: number;
 }
 
 export function FaviconImage({
@@ -20,14 +19,12 @@ export function FaviconImage({
   pageUrl,
   size = 16,
 }: FaviconImageProps): React.JSX.Element {
-  const [failed, setFailed] = useState(false)
-
-  const firstLetter = title.trim().charAt(0).toUpperCase() || '?'
+  const [failed, setFailed] = useState(false);
+  const firstLetter = title.trim().charAt(0).toUpperCase() || '?';
 
   // Prefer Chrome's local favicon service; fall back to the scheme-filtered
   // stored favicon; else the letter avatar. See resolveFaviconUrl in safeUrl.ts.
-  const src = resolveFaviconUrl(pageUrl, url, size)
-
+  const src = resolveFaviconUrl(pageUrl, url, size);
   if (!src || failed) {
     return (
       <div
@@ -50,7 +47,7 @@ export function FaviconImage({
       >
         {firstLetter}
       </div>
-    )
+    );
   }
 
   return (
@@ -68,5 +65,5 @@ export function FaviconImage({
       }}
       onError={() => setFailed(true)}
     />
-  )
+  );
 }

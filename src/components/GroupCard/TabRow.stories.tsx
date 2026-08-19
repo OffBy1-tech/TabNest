@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { SavedTab } from '../../lib/schema';
 import { TabRow } from './TabRow';
-
 const tab: SavedTab = {
   id: 'tab-1',
   title: 'React Documentation',
@@ -9,7 +8,6 @@ const tab: SavedTab = {
   favicon: 'https://react.dev/favicon.ico',
   saved_at: Date.now(),
 };
-
 const meta = {
   title: 'Components/GroupCard/TabRow',
   component: TabRow,
@@ -29,16 +27,13 @@ const meta = {
     ),
   ],
 } satisfies Meta<typeof TabRow>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
-
 export const WithNote: Story = {
   args: { tab: { ...tab, note: 'Re-read the hooks section.' } },
 };
-
 export const NoFavicon: Story = {
   args: { showFavicons: false },
 };

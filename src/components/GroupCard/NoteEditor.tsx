@@ -1,9 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react'
-
+import React, { useEffect, useRef, useState } from 'react';
 export interface NoteEditorProps {
-  initialValue: string
-  placeholder: string
-  onSave: (value: string) => void
+  initialValue: string;
+  placeholder: string;
+  onSave: (value: string) => void;
 }
 
 /**
@@ -16,18 +15,16 @@ export function NoteEditor({
   placeholder,
   onSave,
 }: NoteEditorProps): React.JSX.Element {
-  const [value, setValue] = useState(initialValue)
-  const ref = useRef<HTMLTextAreaElement>(null)
-
+  const [value, setValue] = useState(initialValue);
+  const ref = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
-    ref.current?.focus()
-  }, [])
+    ref.current?.focus();
+  }, []);
 
   // Sync if the stored value changes externally (e.g. Drive sync)
   useEffect(() => {
-    setValue(initialValue)
-  }, [initialValue])
-
+    setValue(initialValue);
+  }, [initialValue]);
   return (
     <textarea
       ref={ref}
@@ -51,8 +48,8 @@ export function NoteEditor({
         boxSizing: 'border-box',
       }}
       onFocus={(e) => {
-        e.currentTarget.style.borderColor = 'var(--border-focus)'
+        e.currentTarget.style.borderColor = 'var(--border-focus)';
       }}
     />
-  )
+  );
 }

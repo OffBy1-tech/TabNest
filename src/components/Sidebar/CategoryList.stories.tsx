@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { Category } from '../../lib/schema';
 import { CategoryList } from './CategoryList';
-
 const meta = {
   title: 'Components/Sidebar/CategoryList',
   component: CategoryList,
@@ -9,7 +8,6 @@ const meta = {
     layout: 'padded',
   },
 } satisfies Meta<typeof CategoryList>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -18,7 +16,6 @@ type Story = StoryObj<typeof meta>;
 // ---------------------------------------------------------------------------
 
 const NOW = Date.now();
-
 function makeGroup(id: string, name: string) {
   return {
     id,
@@ -63,12 +60,10 @@ const mockCategories: Category[] = [
     groups: [makeGroup('g6', 'Courses'), makeGroup('g7', 'Articles'), makeGroup('g8', 'Videos'), makeGroup('g9', 'Books')],
   },
 ];
-
 const mockWorkspaces = [
   { id: 'ws-1', name: 'Default', created_at: NOW, categories: mockCategories },
   { id: 'ws-2', name: 'Side Projects', created_at: NOW, categories: [] },
 ];
-
 const sharedArgs = {
   onSelectCategory: (id: string | null) => console.log('select', id),
   onCreateCategory: () => console.log('create category'),
@@ -101,7 +96,6 @@ export const Default: Story = {
     ),
   ],
 };
-
 export const FirstCategorySelected: Story = {
   args: {
     categories: mockCategories,
@@ -116,7 +110,6 @@ export const FirstCategorySelected: Story = {
     ),
   ],
 };
-
 export const EmptyList: Story = {
   args: {
     categories: [],
@@ -131,7 +124,6 @@ export const EmptyList: Story = {
     ),
   ],
 };
-
 export const SingleCategory: Story = {
   args: {
     categories: [mockCategories[0]!],
@@ -146,7 +138,6 @@ export const SingleCategory: Story = {
     ),
   ],
 };
-
 export const LongCategoryName: Story = {
   args: {
     categories: [

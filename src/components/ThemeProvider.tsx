@@ -7,9 +7,7 @@ import React, {
 } from 'react';
 import { readStorage, patchSettings, subscribeToStorageChange } from '../lib/storage';
 import { isThemePreference, type UserSettings } from '../lib/schema';
-
 export type ThemePreference = UserSettings['theme'];
-
 interface ThemeContextValue {
   theme: ThemePreference;
   setTheme: (theme: ThemePreference) => void;
@@ -25,7 +23,6 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
  * server) where chrome.storage is unavailable.
  */
 const LOCAL_FALLBACK_KEY = 'tabnest_theme';
-
 function getSystemPreference(): 'light' | 'dark' {
   return window.matchMedia('(prefers-color-scheme: dark)').matches
     ? 'dark'
@@ -87,7 +84,6 @@ export function ThemeProvider({
   // OS-level changes.
   useEffect(() => {
     let cancelled = false;
-
     async function init(): Promise<void> {
       let saved: ThemePreference | null = null;
       try {
@@ -113,7 +109,6 @@ export function ThemeProvider({
 
     // Listen for OS-level color scheme changes (only matters when preference is 'system')
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
     function handleOsChange(): void {
       // Only re-resolve if the user's preference is 'system'
       setThemeState((current) => {
@@ -138,14 +133,12 @@ export function ThemeProvider({
         applyPreference(newTheme);
       }
     });
-
     return () => {
       cancelled = true;
       mediaQuery.removeEventListener('change', handleOsChange);
       unsubscribe();
     };
   }, [defaultTheme, applyPreference]);
-
   return (
     <ThemeContext.Provider value={{ theme, setTheme, resolvedTheme }}>
       {children}

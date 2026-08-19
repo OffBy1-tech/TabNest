@@ -1,4 +1,4 @@
-import type { Workspace } from '../../lib/schema'
+import type { Workspace } from '../../lib/schema';
 
 /** Minimal chrome.tabs.Tab for tests/stories (only the fields the UI reads). */
 export function makeTab(overrides: Partial<chrome.tabs.Tab> = {}): chrome.tabs.Tab {
@@ -9,7 +9,7 @@ export function makeTab(overrides: Partial<chrome.tabs.Tab> = {}): chrome.tabs.T
     favIconUrl: '',
     active: false,
     ...overrides,
-  } as chrome.tabs.Tab
+  } as chrome.tabs.Tab;
 }
 
 export function makeWorkspaces(): Workspace[] {
@@ -33,5 +33,5 @@ export function makeWorkspaces(): Workspace[] {
         },
       ],
     },
-  ]
+  ];
 }

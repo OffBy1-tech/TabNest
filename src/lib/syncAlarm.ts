@@ -9,10 +9,9 @@
  * Pure function, extracted from the service worker for unit testing.
  */
 
-import type { LocalSettings } from './schema'
-
+import type { LocalSettings } from './schema';
 export function syncAlarmCreateInfo(
   interval: LocalSettings['sync_interval_minutes'],
 ): { periodInMinutes: number } | null {
-  return interval === null ? null : { periodInMinutes: interval }
+  return interval === null ? null : { periodInMinutes: interval };
 }

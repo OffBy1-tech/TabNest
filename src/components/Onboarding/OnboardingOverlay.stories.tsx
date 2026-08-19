@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { OnboardingOverlay } from './OnboardingOverlay';
-
 const meta = {
   title: 'Components/OnboardingOverlay',
   component: OnboardingOverlay,
@@ -8,7 +7,6 @@ const meta = {
     layout: 'fullscreen',
   },
 } satisfies Meta<typeof OnboardingOverlay>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -25,7 +23,6 @@ const baseArgs = {
 export const Open: Story = {
   args: { ...baseArgs },
 };
-
 export const Closed: Story = {
   args: { ...baseArgs, isOpen: false },
 };

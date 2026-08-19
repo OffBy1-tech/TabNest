@@ -1,9 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react'
-
+import React, { useEffect, useRef, useState } from 'react';
 export interface InlineNameEditorProps {
-  value: string
-  onConfirm: (value: string) => void
-  onCancel: () => void
+  value: string;
+  onConfirm: (value: string) => void;
+  onCancel: () => void;
 }
 
 /**
@@ -15,27 +14,25 @@ export function InlineNameEditor({
   onConfirm,
   onCancel,
 }: InlineNameEditorProps): React.JSX.Element {
-  const [value, setValue] = useState(initialValue)
-  const inputRef = useRef<HTMLInputElement>(null)
-
+  const [value, setValue] = useState(initialValue);
+  const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    inputRef.current?.focus()
-    inputRef.current?.select()
-  }, [])
-
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
   function commit(): void {
-    const trimmed = value.trim()
-    if (trimmed) onConfirm(trimmed)
-    else onCancel()
+    const trimmed = value.trim();
+    if (trimmed) onConfirm(trimmed);
+    else onCancel();
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>): void {
     if (e.key === 'Enter') {
-      e.preventDefault()
-      commit()
+      e.preventDefault();
+      commit();
     } else if (e.key === 'Escape') {
-      e.preventDefault()
-      onCancel()
+      e.preventDefault();
+      onCancel();
     }
   }
 
@@ -61,5 +58,5 @@ export function InlineNameEditor({
         flex: 1,
       }}
     />
-  )
+  );
 }

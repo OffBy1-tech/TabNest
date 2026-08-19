@@ -1,13 +1,12 @@
-import React, { useId } from 'react'
-import { BACKGROUND_PRESETS, type UserSettings, type Workspace } from '../../lib/schema'
-import { ToggleSwitch } from './ToggleSwitch'
-import { SettingRow } from './SettingRow'
-import { sectionHeadingStyle, selectStyle } from './styles'
-
+import React, { useId } from 'react';
+import { BACKGROUND_PRESETS, type UserSettings, type Workspace } from '../../lib/schema';
+import { ToggleSwitch } from './ToggleSwitch';
+import { SettingRow } from './SettingRow';
+import { sectionHeadingStyle, selectStyle } from './styles';
 export interface NewTabPageTabProps {
-  settings: UserSettings
-  onChange: (patch: Partial<UserSettings>) => void
-  workspaces: Workspace[]
+  settings: UserSettings;
+  onChange: (patch: Partial<UserSettings>) => void;
+  workspaces: Workspace[];
 }
 
 export function NewTabPageTab({
@@ -15,8 +14,7 @@ export function NewTabPageTab({
   onChange,
   workspaces,
 }: NewTabPageTabProps): React.JSX.Element {
-  const workspaceSelectId = useId()
-
+  const workspaceSelectId = useId();
   return (
     <div>
       <h3 style={sectionHeadingStyle}>New Tab Page</h3>
@@ -35,8 +33,7 @@ export function NewTabPageTab({
           id={workspaceSelectId}
           value={settings.default_workspace_id ?? ''}
           onChange={(e) =>
-            onChange({ default_workspace_id: e.target.value || null })
-          }
+            onChange({ default_workspace_id: e.target.value || null })}
           aria-label="Default workspace"
           style={selectStyle}
         >
@@ -65,7 +62,7 @@ export function NewTabPageTab({
           style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}
         >
           {BACKGROUND_PRESETS.map((preset) => {
-            const active = (settings.background ?? '') === preset.id
+            const active = (settings.background ?? '') === preset.id;
             return (
               <button
                 key={preset.id || 'default'}
@@ -94,10 +91,10 @@ export function NewTabPageTab({
               >
                 {preset.id === '' ? 'Aa' : ''}
               </button>
-            )
+            );
           })}
         </div>
       </SettingRow>
     </div>
-  )
+  );
 }

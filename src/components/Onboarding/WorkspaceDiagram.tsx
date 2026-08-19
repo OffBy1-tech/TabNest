@@ -1,4 +1,4 @@
-import React from 'react'
+import React from 'react';
 
 /** Static illustration for onboarding step 2: Category › Group › Tabs hierarchy. */
 export function WorkspaceDiagram(): React.JSX.Element {
@@ -7,14 +7,14 @@ export function WorkspaceDiagram(): React.JSX.Element {
     flexDirection: 'column',
     alignItems: 'center',
     gap: 'var(--space-1)',
-  }
+  };
   const labelStyle: React.CSSProperties = {
     fontSize: 'var(--text-xs)',
     color: 'var(--text-muted)',
     fontWeight: 500,
     textTransform: 'uppercase',
     letterSpacing: '0.06em',
-  }
+  };
   const nodeStyle: React.CSSProperties = {
     padding: 'var(--space-2) var(--space-4)',
     borderRadius: 'var(--radius-md)',
@@ -24,13 +24,12 @@ export function WorkspaceDiagram(): React.JSX.Element {
     color: 'var(--text-primary)',
     fontWeight: 500,
     whiteSpace: 'nowrap',
-  }
+  };
   const arrowStyle: React.CSSProperties = {
     fontSize: 'var(--text-lg)',
     color: 'var(--text-muted)',
     lineHeight: 1,
-  }
-
+  };
   return (
     <div
       aria-label="Hierarchy diagram: Category contains Groups, Groups contain Tabs"
@@ -86,5 +85,5 @@ export function WorkspaceDiagram(): React.JSX.Element {
         </div>
       </div>
     </div>
-  )
+  );
 }

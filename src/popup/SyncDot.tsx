@@ -1,6 +1,5 @@
-import React from 'react'
-
-export type SyncState = 'idle' | 'syncing' | 'error'
+import React from 'react';
+export type SyncState = 'idle' | 'syncing' | 'error';
 
 /** A small colored dot conveying sync state, used in the popup header. */
 export function SyncDot({ state }: { state: SyncState }): React.JSX.Element {
@@ -8,12 +7,12 @@ export function SyncDot({ state }: { state: SyncState }): React.JSX.Element {
     idle: 'var(--color-success)',
     syncing: 'var(--color-warning)',
     error: 'var(--color-danger)',
-  }
+  };
   const labelMap: Record<SyncState, string> = {
     idle: 'Sync up to date',
     syncing: 'Syncing…',
     error: 'Sync error',
-  }
+  };
   return (
     <span
       title={labelMap[state]}
@@ -27,5 +26,5 @@ export function SyncDot({ state }: { state: SyncState }): React.JSX.Element {
         flexShrink: 0,
       }}
     />
-  )
+  );
 }

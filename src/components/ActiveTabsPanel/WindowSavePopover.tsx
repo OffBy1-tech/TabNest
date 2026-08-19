@@ -1,13 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react'
-import type { Workspace } from '../../lib/schema'
-
+import React, { useEffect, useRef, useState } from 'react';
+import type { Workspace } from '../../lib/schema';
 export interface WindowSavePopoverProps {
-  tabCount: number
-  workspaces: Workspace[]
-  onSave: (groupName: string, categoryId: string, workspaceId: string, groupId: string | null) => void
-  onClose: () => void
-  defaultWorkspaceId?: string | undefined
-  defaultCategoryId?: string | undefined
+  tabCount: number;
+  workspaces: Workspace[];
+  onSave: (groupName: string, categoryId: string, workspaceId: string, groupId: string | null) => void;
+  onClose: () => void;
+  defaultWorkspaceId?: string | undefined;
+  defaultCategoryId?: string | undefined;
 }
 
 /** Popover to save every tab in a window into a single (new or existing) group. */
@@ -21,54 +20,49 @@ export function WindowSavePopover({
 }: WindowSavePopoverProps): React.JSX.Element {
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>(
     defaultWorkspaceId ?? workspaces[0]?.id ?? '',
-  )
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(defaultCategoryId ?? '')
-  const [selectedGroupId, setSelectedGroupId] = useState<string>('')
-  const [newGroupName, setNewGroupName] = useState('')
-  const popoverRef = useRef<HTMLDivElement>(null)
-
-  const selectedWorkspace = workspaces.find((w) => w.id === selectedWorkspaceId)
-  const categories = selectedWorkspace?.categories ?? []
-
+  );
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(defaultCategoryId ?? '');
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
+  const [newGroupName, setNewGroupName] = useState('');
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const selectedWorkspace = workspaces.find((w) => w.id === selectedWorkspaceId);
+  const categories = selectedWorkspace?.categories ?? [];
   useEffect(() => {
-    const ids = categories.map((c) => c.id)
+    const ids = categories.map((c) => c.id);
     if (!ids.includes(selectedCategoryId)) {
-      setSelectedCategoryId(categories[0]?.id ?? '')
+      setSelectedCategoryId(categories[0]?.id ?? '');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedWorkspaceId, categories.length])
-
-  const selectedCategory = categories.find((c) => c.id === selectedCategoryId)
-  const groups = selectedCategory?.groups ?? []
-
+  }, [selectedWorkspaceId, categories.length]);
+  const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
+  const groups = selectedCategory?.groups ?? [];
   useEffect(() => {
-    setSelectedGroupId(groups[0]?.id ?? '__new__')
-  }, [selectedCategoryId]) // eslint-disable-line react-hooks/exhaustive-deps
+    setSelectedGroupId(groups[0]?.id ?? '__new__');
+  }, [selectedCategoryId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     function handleClick(e: MouseEvent): void {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) onClose()
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) onClose();
     }
     function handleKeyDown(e: KeyboardEvent): void {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') onClose();
     }
-    document.addEventListener('mousedown', handleClick)
-    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEventListener('mousedown', handleClick)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [onClose])
-
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose]);
   function handleSave(): void {
-    if (!selectedCategoryId || !selectedWorkspaceId) return
+    if (!selectedCategoryId || !selectedWorkspaceId) return;
     if (selectedGroupId === '__new__') {
-      onSave(newGroupName.trim() || `Window tabs`, selectedCategoryId, selectedWorkspaceId, null)
+      onSave(newGroupName.trim() || `Window tabs`, selectedCategoryId, selectedWorkspaceId, null);
     } else {
-      const name = groups.find((g) => g.id === selectedGroupId)?.name ?? 'Window tabs'
-      onSave(name, selectedCategoryId, selectedWorkspaceId, selectedGroupId)
+      const name = groups.find((g) => g.id === selectedGroupId)?.name ?? 'Window tabs';
+      onSave(name, selectedCategoryId, selectedWorkspaceId, selectedGroupId);
     }
-    onClose()
+    onClose();
   }
 
   const inputStyle: React.CSSProperties = {
@@ -80,15 +74,14 @@ export function WindowSavePopover({
     border: '1px solid var(--border-default)',
     borderRadius: 'var(--radius-sm)',
     outline: 'none',
-  }
+  };
   const labelStyle: React.CSSProperties = {
     display: 'block',
     fontSize: 'var(--text-xs)',
     color: 'var(--text-muted)',
     marginBottom: 'var(--space-1)',
     fontWeight: 600,
-  }
-
+  };
   return (
     <div
       ref={popoverRef}
@@ -142,7 +135,7 @@ export function WindowSavePopover({
             type="text"
             value={newGroupName}
             onChange={(e) => setNewGroupName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleSave() }}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
             placeholder="Window tabs"
             style={inputStyle}
             autoFocus
@@ -167,5 +160,5 @@ export function WindowSavePopover({
         Save {tabCount} tabs
       </button>
     </div>
-  )
+  );
 }

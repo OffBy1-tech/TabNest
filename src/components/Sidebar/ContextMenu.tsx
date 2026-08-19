@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react';
 
 /** Preset category colors offered by the picker (spec §3.3). */
 export const CATEGORY_COLORS = [
@@ -10,25 +10,24 @@ export const CATEGORY_COLORS = [
   '#ec4899', // pink
   '#8b5cf6', // violet
   '#64748b', // slate
-] as const
+] as const;
 
 /** Preset category emojis offered by the picker (spec §3.3). */
 export const CATEGORY_EMOJIS = [
   '📁', '💼', '🏠', '🎓', '💡', '🛒', '✈️', '🎮',
   '📚', '💰', '🔬', '🎨', '🍽️', '🏋️', '🎵', '🗄️',
-] as const
-
+] as const;
 export interface ContextMenuProps {
-  x: number
-  y: number
-  onRename: () => void
-  onDelete: () => void
-  onClose: () => void
-  onChangeColor?: ((color: string) => void) | undefined
-  onChangeEmoji?: ((emoji: string) => void) | undefined
-  onCollapseAll?: (() => void) | undefined
-  currentColor?: string | undefined
-  currentEmoji?: string | undefined
+  x: number;
+  y: number;
+  onRename: () => void;
+  onDelete: () => void;
+  onClose: () => void;
+  onChangeColor?: ((color: string) => void) | undefined;
+  onChangeEmoji?: ((emoji: string) => void) | undefined;
+  onCollapseAll?: (() => void) | undefined;
+  currentColor?: string | undefined;
+  currentEmoji?: string | undefined;
 }
 
 /**
@@ -48,26 +47,24 @@ export function ContextMenu({
   currentColor,
   currentEmoji,
 }: ContextMenuProps): React.JSX.Element {
-  const menuRef = useRef<HTMLDivElement>(null)
-  const [mode, setMode] = useState<'main' | 'color' | 'emoji'>('main')
-
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [mode, setMode] = useState<'main' | 'color' | 'emoji'>('main');
   useEffect(() => {
     function handleClick(e: MouseEvent): void {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose()
+        onClose();
       }
     }
     function handleKeyDown(e: KeyboardEvent): void {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') onClose();
     }
-    document.addEventListener('mousedown', handleClick)
-    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEventListener('mousedown', handleClick)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [onClose])
-
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose]);
   const menuItemStyle: React.CSSProperties = {
     display: 'block',
     width: '100%',
@@ -80,8 +77,7 @@ export function ContextMenu({
     textAlign: 'left',
     borderRadius: 'var(--radius-sm)',
     whiteSpace: 'nowrap',
-  }
-
+  };
   function menuButton(label: string, onClick: () => void, danger = false): React.JSX.Element {
     return (
       <button
@@ -90,15 +86,15 @@ export function ContextMenu({
         style={danger ? { ...menuItemStyle, color: 'var(--color-danger)' } : menuItemStyle}
         onClick={onClick}
         onMouseEnter={(e) => {
-          ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--bg-elevated)'
+          (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--bg-elevated)';
         }}
         onMouseLeave={(e) => {
-          ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'
+          (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
         }}
       >
         {label}
       </button>
-    )
+    );
   }
 
   return (
@@ -201,5 +197,5 @@ export function ContextMenu({
         </div>
       )}
     </div>
-  )
+  );
 }

@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { TabGroup } from '../../lib/schema';
 import { GroupCard } from './GroupCard';
-
 const meta = {
   title: 'Components/GroupCard',
   component: GroupCard,
@@ -15,7 +14,6 @@ const meta = {
     },
   },
 } satisfies Meta<typeof GroupCard>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -24,7 +22,6 @@ type Story = StoryObj<typeof meta>;
 // ---------------------------------------------------------------------------
 
 const NOW = Date.now();
-
 const mockGroup: TabGroup = {
   id: 'group-1',
   name: 'Research',
@@ -56,7 +53,6 @@ const mockGroup: TabGroup = {
     },
   ],
 };
-
 const manyTabsGroup: TabGroup = {
   id: 'group-2',
   name: 'Reading List',
@@ -75,7 +71,6 @@ const manyTabsGroup: TabGroup = {
     { id: 't8', title: 'Dev.to — Latest Articles', url: 'https://dev.to', favicon: '', saved_at: NOW },
   ],
 };
-
 const singleTabGroup: TabGroup = {
   id: 'group-3',
   name: 'Quick Save',
@@ -93,7 +88,6 @@ const singleTabGroup: TabGroup = {
     },
   ],
 };
-
 const longNameGroup: TabGroup = {
   id: 'group-4',
   name: 'A Very Long Group Name That Should Truncate Elegantly In Grid View',
@@ -105,7 +99,6 @@ const longNameGroup: TabGroup = {
     { id: 'tab-ln', title: 'Example', url: 'https://example.com', saved_at: NOW },
   ],
 };
-
 const emptyGroup: TabGroup = {
   id: 'group-5',
   name: 'Empty Group',
@@ -115,7 +108,6 @@ const emptyGroup: TabGroup = {
   notes: [],
   tabs: [],
 };
-
 const sharedArgs = {
   onRename: (id: string, name: string) => console.log('rename', id, name),
   onDelete: (id: string) => console.log('delete', id),
@@ -148,7 +140,6 @@ export const GridView: Story = {
     ),
   ],
 };
-
 export const ListView: Story = {
   args: {
     group: mockGroup,
@@ -156,7 +147,6 @@ export const ListView: Story = {
     ...sharedArgs,
   },
 };
-
 export const ManyTabsCollapsed: Story = {
   name: 'Many Tabs — Collapsed',
   args: {
@@ -172,7 +162,6 @@ export const ManyTabsCollapsed: Story = {
     ),
   ],
 };
-
 export const SingleTab: Story = {
   args: {
     group: singleTabGroup,
@@ -187,7 +176,6 @@ export const SingleTab: Story = {
     ),
   ],
 };
-
 export const LongGroupName: Story = {
   args: {
     group: longNameGroup,
@@ -202,7 +190,6 @@ export const LongGroupName: Story = {
     ),
   ],
 };
-
 export const EmptyGroup: Story = {
   args: {
     group: emptyGroup,

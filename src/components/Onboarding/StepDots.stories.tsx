@@ -1,12 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { StepDots } from './StepDots';
-
 const meta = {
   title: 'Components/Onboarding/StepDots',
   component: StepDots,
   parameters: { layout: 'centered' },
 } satisfies Meta<typeof StepDots>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 

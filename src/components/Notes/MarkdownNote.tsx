@@ -1,22 +1,21 @@
-import React, { useEffect, useRef, useState } from 'react'
-import type { Block, InlineToken } from '../../lib/markdown'
-import { parseMarkdown, toggleCheckbox, hasCheckedItems, clearCheckedItems } from '../../lib/markdown'
-
+import React, { useEffect, useRef, useState } from 'react';
+import type { Block, InlineToken } from '../../lib/markdown';
+import { parseMarkdown, toggleCheckbox, hasCheckedItems, clearCheckedItems } from '../../lib/markdown';
 export interface MarkdownNoteProps {
-  content: string
-  placeholder: string
-  onChange: (content: string) => void
+  content: string;
+  placeholder: string;
+  onChange: (content: string) => void;
   /** Start in edit mode (used when the note is brand new/empty). */
-  autoEdit?: boolean
+  autoEdit?: boolean;
 }
 
 function renderInline(tokens: InlineToken[]): React.ReactNode {
   return tokens.map((t, i) => {
     switch (t.kind) {
       case 'bold':
-        return <strong key={i}>{t.text}</strong>
+        return <strong key={i}>{t.text}</strong>;
       case 'italic':
-        return <em key={i}>{t.text}</em>
+        return <em key={i}>{t.text}</em>;
       case 'code':
         return (
           <code
@@ -31,18 +30,18 @@ function renderInline(tokens: InlineToken[]): React.ReactNode {
           >
             {t.text}
           </code>
-        )
+        );
       default:
-        return <React.Fragment key={i}>{t.text}</React.Fragment>
+        return <React.Fragment key={i}>{t.text}</React.Fragment>;
     }
-  })
+  });
 }
 
 const headingSizes: Record<1 | 2 | 3, string> = {
   1: 'var(--text-lg)',
   2: 'var(--text-md, 1rem)',
   3: 'var(--text-sm)',
-}
+};
 
 /**
  * A Markdown note (spec §7.2/§7.3): shows a rendered preview; clicking the
@@ -56,22 +55,20 @@ export function MarkdownNote({
   onChange,
   autoEdit = false,
 }: MarkdownNoteProps): React.JSX.Element {
-  const [editing, setEditing] = useState(autoEdit || content.trim() === '')
-  const [draft, setDraft] = useState(content)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const [editing, setEditing] = useState(autoEdit || content.trim() === '');
+  const [draft, setDraft] = useState(content);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Re-sync when the stored value changes externally (e.g. Drive sync)
   useEffect(() => {
-    setDraft(content)
-  }, [content])
-
+    setDraft(content);
+  }, [content]);
   useEffect(() => {
-    if (editing) textareaRef.current?.focus()
-  }, [editing])
-
+    if (editing) textareaRef.current?.focus();
+  }, [editing]);
   function commit(): void {
-    onChange(draft)
-    if (draft.trim() !== '') setEditing(false)
+    onChange(draft);
+    if (draft.trim() !== '') setEditing(false);
   }
 
   if (editing) {
@@ -99,14 +96,13 @@ export function MarkdownNote({
           boxSizing: 'border-box',
         }}
         onFocus={(e) => {
-          e.currentTarget.style.borderColor = 'var(--border-focus)'
+          e.currentTarget.style.borderColor = 'var(--border-focus)';
         }}
       />
-    )
+    );
   }
 
-  const blocks: Block[] = parseMarkdown(content)
-
+  const blocks: Block[] = parseMarkdown(content);
   return (
     <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)', lineHeight: 1.5 }}>
       <div
@@ -116,8 +112,8 @@ export function MarkdownNote({
         onClick={() => setEditing(true)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault()
-            setEditing(true)
+            e.preventDefault();
+            setEditing(true);
           }
         }}
         style={{ cursor: 'text' }}
@@ -138,14 +134,14 @@ export function MarkdownNote({
                 >
                   {renderInline(block.inline)}
                 </div>
-              )
+              );
             case 'list-item':
               return (
                 <div key={i} style={{ display: 'flex', gap: 'var(--space-2)', paddingLeft: 'var(--space-2)' }}>
                   <span aria-hidden="true">•</span>
                   <span>{renderInline(block.inline)}</span>
                 </div>
-              )
+              );
             case 'checkbox':
               return (
                 <label
@@ -177,11 +173,11 @@ export function MarkdownNote({
                     {renderInline(block.inline)}
                   </span>
                 </label>
-              )
+              );
             case 'blank':
-              return <div key={i} style={{ height: 'var(--space-2)' }} />
+              return <div key={i} style={{ height: 'var(--space-2)' }} />;
             default:
-              return <p key={i} style={{ margin: '2px 0' }}>{renderInline(block.inline)}</p>
+              return <p key={i} style={{ margin: '2px 0' }}>{renderInline(block.inline)}</p>;
           }
         })}
       </div>
@@ -205,5 +201,5 @@ export function MarkdownNote({
         </button>
       )}
     </div>
-  )
+  );
 }

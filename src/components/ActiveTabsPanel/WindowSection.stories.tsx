@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { WindowSection } from './WindowSection';
 import { makeTab, makeWorkspaces } from './testFixtures';
-
 const meta = {
   title: 'Components/ActiveTabsPanel/WindowSection',
   component: WindowSection,
@@ -27,7 +26,6 @@ const meta = {
     ),
   ],
 } satisfies Meta<typeof WindowSection>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
