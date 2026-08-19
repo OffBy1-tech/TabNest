@@ -139,16 +139,14 @@ export function WorkspaceDropdown({
             key={ws.id}
             style={{ display: 'flex', alignItems: 'center', borderRadius: 'var(--radius-sm)', position: 'relative' }}
             onMouseEnter={(e) => {
-              const pencil = e.currentTarget.querySelector<HTMLElement>('[data-pencil]')
-              if (pencil) pencil.style.opacity = '1'
+              e.currentTarget.querySelectorAll<HTMLElement>('[data-pencil]').forEach((el) => { el.style.opacity = '1' })
               if (!isActive) {
                 const btn = e.currentTarget.querySelector<HTMLElement>('[data-ws-btn]')
                 if (btn) btn.style.backgroundColor = 'var(--bg-elevated)'
               }
             }}
             onMouseLeave={(e) => {
-              const pencil = e.currentTarget.querySelector<HTMLElement>('[data-pencil]')
-              if (pencil) pencil.style.opacity = '0'
+              e.currentTarget.querySelectorAll<HTMLElement>('[data-pencil]').forEach((el) => { el.style.opacity = '0' })
               const btn = e.currentTarget.querySelector<HTMLElement>('[data-ws-btn]')
               if (btn) btn.style.backgroundColor = isActive ? 'var(--color-brand-50)' : 'transparent'
             }}

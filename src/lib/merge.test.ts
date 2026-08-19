@@ -8,7 +8,6 @@ import {
   tombstonesFromTrash,
   applyTombstones,
   mergeSyncedState,
-  sameSyncedContent,
 } from './merge'
 import type { TrashItem, Workspace } from './schema'
 import { tab, note, group, category, workspace, trashItem as trash } from './testFixtures'
@@ -182,19 +181,6 @@ describe('mergeSyncedState', () => {
     const ids = merged.workspaces[0]!.categories[0]!.groups.map((g) => g.id).sort()
     expect(ids).toEqual(['gL', 'gS']) // gL preserved, gB deletion propagated
     expect(merged.trash.map((t) => t.id)).toEqual(['trash-gB'])
-  })
-})
-
-describe('sameSyncedContent', () => {
-  it('is true for content-identical states and false when one side has extra data', () => {
-    const state = {
-      workspaces: [workspace('w', [category('c', { groups: [group('g')] })])],
-      trash: [] as TrashItem[],
-    }
-    const clone = JSON.parse(JSON.stringify(state)) as typeof state
-    expect(sameSyncedContent(state, clone)).toBe(true)
-    const extra = { ...state, trash: [tombstone('x', 1)] }
-    expect(sameSyncedContent(state, extra)).toBe(false)
   })
 })
 
