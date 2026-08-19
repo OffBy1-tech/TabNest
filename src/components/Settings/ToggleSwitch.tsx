@@ -1,10 +1,9 @@
-import React from 'react'
-
+import React from 'react';
 export interface ToggleSwitchProps {
-  checked: boolean
-  onChange: (v: boolean) => void
-  id: string
-  label: string
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  id: string;
+  label: string;
 }
 
 /** An accessible on/off switch (role="switch") used throughout the settings panels. */
@@ -45,5 +44,5 @@ export function ToggleSwitch({ checked, onChange, id, label }: ToggleSwitchProps
         }}
       />
     </button>
-  )
+  );
 }

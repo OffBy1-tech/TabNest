@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { ContextMenu } from './ContextMenu';
-
 const meta = {
   title: 'Components/Sidebar/ContextMenu',
   component: ContextMenu,
@@ -13,7 +12,6 @@ const meta = {
     onClose: () => console.log('close'),
   },
 } satisfies Meta<typeof ContextMenu>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 

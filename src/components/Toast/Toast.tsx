@@ -3,73 +3,66 @@
  * Individual toast notification component with slide-in animation.
  */
 
-import React, { useEffect, useRef, useState } from 'react'
-
-export type ToastType = 'success' | 'error' | 'info'
+import React, { useEffect, useRef, useState } from 'react';
+export type ToastType = 'success' | 'error' | 'info';
 
 /** Optional inline action (e.g. "Retry" on a sync failure, spec §17). */
 export interface ToastAction {
-  label: string
-  onClick: () => void
+  label: string;
+  onClick: () => void;
 }
 
 export interface ToastItem {
-  id: string
-  message: string
-  type: ToastType
-  duration: number
-  action?: ToastAction | undefined
+  id: string;
+  message: string;
+  type: ToastType;
+  duration: number;
+  action?: ToastAction | undefined;
 }
 
 interface ToastProps {
-  toast: ToastItem
-  onDismiss: (id: string) => void
+  toast: ToastItem;
+  onDismiss: (id: string) => void;
 }
 
 const TYPE_COLORS: Record<ToastType, string> = {
   success: 'var(--color-success)',
   error: 'var(--color-danger)',
   info: 'var(--color-info)',
-}
-
+};
 const TYPE_LABELS: Record<ToastType, string> = {
   success: 'Success',
   error: 'Error',
   info: 'Information',
-}
-
+};
 export function Toast({ toast, onDismiss }: ToastProps): React.JSX.Element {
-  const [visible, setVisible] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const slideOutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const dismissedRef = useRef(false)
-
+  const [visible, setVisible] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const slideOutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dismissedRef = useRef(false);
   function dismiss(): void {
-    if (dismissedRef.current) return
-    dismissedRef.current = true
-    setVisible(false)
-    slideOutRef.current = setTimeout(() => onDismiss(toast.id), 300)
+    if (dismissedRef.current) return;
+    dismissedRef.current = true;
+    setVisible(false);
+    slideOutRef.current = setTimeout(() => onDismiss(toast.id), 300);
   }
 
   // Trigger slide-in after mount
   useEffect(() => {
-    const raf = requestAnimationFrame(() => setVisible(true))
-    return () => cancelAnimationFrame(raf)
-  }, [])
+    const raf = requestAnimationFrame(() => setVisible(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   // Auto-dismiss after duration
   useEffect(() => {
-    timerRef.current = setTimeout(dismiss, toast.duration)
-
+    timerRef.current = setTimeout(dismiss, toast.duration);
     return () => {
-      if (timerRef.current !== null) clearTimeout(timerRef.current)
-      if (slideOutRef.current !== null) clearTimeout(slideOutRef.current)
-    }
+      if (timerRef.current !== null) clearTimeout(timerRef.current);
+      if (slideOutRef.current !== null) clearTimeout(slideOutRef.current);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toast.id, toast.duration])
-
-  const accentColor = TYPE_COLORS[toast.type]
-
+  }, [toast.id, toast.duration]);
+  const accentColor = TYPE_COLORS[toast.type];
   return (
     <div
       role="alert"
@@ -124,8 +117,8 @@ export function Toast({ toast, onDismiss }: ToastProps): React.JSX.Element {
         <button
           type="button"
           onClick={() => {
-            toast.action?.onClick()
-            dismiss()
+            toast.action?.onClick();
+            dismiss();
           }}
           style={{
             flexShrink: 0,
@@ -165,5 +158,5 @@ export function Toast({ toast, onDismiss }: ToastProps): React.JSX.Element {
         &#x2715;
       </button>
     </div>
-  )
+  );
 }

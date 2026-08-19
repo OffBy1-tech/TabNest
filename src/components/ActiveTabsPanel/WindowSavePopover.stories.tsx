@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { WindowSavePopover } from './WindowSavePopover';
 import { makeWorkspaces } from './testFixtures';
-
 const meta = {
   title: 'Components/ActiveTabsPanel/WindowSavePopover',
   component: WindowSavePopover,
@@ -20,7 +19,6 @@ const meta = {
     ),
   ],
 } satisfies Meta<typeof WindowSavePopover>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 

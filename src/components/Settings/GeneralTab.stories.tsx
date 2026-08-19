@@ -2,13 +2,11 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { DEFAULT_SETTINGS, type UserSettings } from '../../lib/schema';
 import { ThemeProvider } from '../ThemeProvider';
 import { GeneralTab } from './GeneralTab';
-
 const settings: UserSettings = {
   ...DEFAULT_SETTINGS,
   theme: 'light',
   active_tabs_on_load: true,
 };
-
 const meta = {
   title: 'Components/Settings/GeneralTab',
   component: GeneralTab,
@@ -24,7 +22,6 @@ const meta = {
     ),
   ],
 } satisfies Meta<typeof GeneralTab>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 

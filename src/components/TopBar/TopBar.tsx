@@ -1,23 +1,23 @@
-import React from 'react'
-import { Layers, Settings } from 'lucide-react'
-import { Clock } from '../Clock/Clock'
-import { SyncStatusDot } from './SyncStatusDot'
-import { ThemeToggle } from './ThemeToggle'
-import { iconButtonStyle } from './styles'
+import React from 'react';
+import { Layers, Settings } from 'lucide-react';
+import { Clock } from '../Clock/Clock';
+import { SyncStatusDot } from './SyncStatusDot';
+import { ThemeToggle } from './ThemeToggle';
+import { iconButtonStyle } from './styles';
 
 // ---------------------------------------------------------------------------
 // TopBar
 // ---------------------------------------------------------------------------
 
 export interface TopBarProps {
-  onSearch: () => void
-  onActiveTabsToggle: () => void
-  activeTabsOpen: boolean
-  syncState: 'idle' | 'syncing' | 'error'
-  lastSyncAt: number
-  pendingSync?: boolean
-  onSettingsClick: () => void
-  showClock?: boolean
+  onSearch: () => void;
+  onActiveTabsToggle: () => void;
+  activeTabsOpen: boolean;
+  syncState: 'idle' | 'syncing' | 'error';
+  lastSyncAt: number;
+  pendingSync?: boolean;
+  onSettingsClick: () => void;
+  showClock?: boolean;
 }
 
 export function TopBar({
@@ -30,7 +30,6 @@ export function TopBar({
   onSettingsClick,
   showClock = false,
 }: TopBarProps): React.JSX.Element {
-
   return (
     <header
       role="banner"
@@ -87,13 +86,13 @@ export function TopBar({
             outline: 'none',
           }}
           onFocus={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-focus)'
-            ;(e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
-            ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px'
+            (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-focus)';
+            (e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`;
+            (e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px';
           }}
           onBlur={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-default)'
-            ;(e.currentTarget as HTMLButtonElement).style.outline = 'none'
+            (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-default)';
+            (e.currentTarget as HTMLButtonElement).style.outline = 'none';
           }}
         >
           <span style={{ flex: 1 }}>Search tabs... ⌘K, Ctrl+K, or '/'</span>
@@ -130,24 +129,24 @@ export function TopBar({
           }}
           onMouseEnter={(e) => {
             if (!activeTabsOpen) {
-              ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--bg-elevated)'
-              ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--bg-elevated)';
+              (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)';
             }
           }}
           onMouseLeave={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = activeTabsOpen
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor = activeTabsOpen
               ? 'var(--color-brand-100)'
-              : 'transparent'
-            ;(e.currentTarget as HTMLButtonElement).style.color = activeTabsOpen
+              : 'transparent';
+            (e.currentTarget as HTMLButtonElement).style.color = activeTabsOpen
               ? 'var(--color-brand-500)'
-              : 'var(--text-secondary)'
+              : 'var(--text-secondary)';
           }}
           onFocus={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
-            ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px'
+            (e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`;
+            (e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px';
           }}
           onBlur={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.outline = 'none'
+            (e.currentTarget as HTMLButtonElement).style.outline = 'none';
           }}
         >
           <Layers size={18} aria-hidden="true" />
@@ -167,24 +166,24 @@ export function TopBar({
           title="Settings"
           style={iconButtonStyle}
           onMouseEnter={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--bg-elevated)'
-            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--bg-elevated)';
+            (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)';
           }}
           onMouseLeave={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'
-            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)'
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
+            (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)';
           }}
           onFocus={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
-            ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px'
+            (e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`;
+            (e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px';
           }}
           onBlur={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.outline = 'none'
+            (e.currentTarget as HTMLButtonElement).style.outline = 'none';
           }}
         >
           <Settings size={18} aria-hidden="true" />
         </button>
       </div>
     </header>
-  )
+  );
 }

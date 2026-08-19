@@ -1,17 +1,17 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { Plus, Check, Pencil, Trash2 } from 'lucide-react'
-import type { Workspace } from '../../lib/schema'
-import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog'
+import React, { useEffect, useRef, useState } from 'react';
+import { Plus, Check, Pencil, Trash2 } from 'lucide-react';
+import type { Workspace } from '../../lib/schema';
+import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog';
 
 export interface WorkspaceDropdownProps {
-  workspaces: Workspace[]
-  activeWorkspaceId: string | undefined
-  onSelectWorkspace: (id: string) => void
+  workspaces: Workspace[];
+  activeWorkspaceId: string | undefined;
+  onSelectWorkspace: (id: string) => void;
   /** Creates a workspace; optionally copying categories from a template (spec §10). */
-  onCreateWorkspace: (name: string, templateWorkspaceId?: string) => void
-  onRenameWorkspace: (id: string, name: string) => void
+  onCreateWorkspace: (name: string, templateWorkspaceId?: string) => void;
+  onRenameWorkspace: (id: string, name: string) => void;
   /** Deletes a workspace (moved to Trash). Hidden for the last workspace. */
-  onDeleteWorkspace?: ((id: string) => void) | undefined
+  onDeleteWorkspace?: ((id: string) => void) | undefined;
 }
 
 /**
@@ -26,58 +26,56 @@ export function WorkspaceDropdown({
   onRenameWorkspace,
   onDeleteWorkspace,
 }: WorkspaceDropdownProps): React.JSX.Element {
-  const [creatingNew, setCreatingNew] = useState(false)
-  const [newName, setNewName] = useState('')
-  const [templateId, setTemplateId] = useState('')
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
-  const [renamingId, setRenamingId] = useState<string | null>(null)
-  const [renameValue, setRenameValue] = useState('')
-  const inputRef = useRef<HTMLInputElement>(null)
-  const renameInputRef = useRef<HTMLInputElement>(null)
+  const [creatingNew, setCreatingNew] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [templateId, setTemplateId] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (creatingNew) inputRef.current?.focus()
-  }, [creatingNew])
+    if (creatingNew) inputRef.current?.focus();
+  }, [creatingNew]);
 
   useEffect(() => {
     if (renamingId) {
-      renameInputRef.current?.focus()
-      renameInputRef.current?.select()
+      renameInputRef.current?.focus();
+      renameInputRef.current?.select();
     }
-  }, [renamingId])
+  }, [renamingId]);
 
   function handleCreate(): void {
-    const trimmed = newName.trim()
-    if (trimmed) onCreateWorkspace(trimmed, templateId || undefined)
-    setNewName('')
-    setTemplateId('')
-    setCreatingNew(false)
+    const trimmed = newName.trim();
+    if (trimmed) onCreateWorkspace(trimmed, templateId || undefined);
+    setNewName('');
+    setTemplateId('');
+    setCreatingNew(false);
   }
 
   function handleInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>): void {
-    if (e.key === 'Enter') { e.preventDefault(); handleCreate() }
-    else if (e.key === 'Escape') { e.preventDefault(); setCreatingNew(false); setNewName('') }
+    if (e.key === 'Enter') { e.preventDefault(); handleCreate(); } else if (e.key === 'Escape') { e.preventDefault(); setCreatingNew(false); setNewName(''); }
   }
 
   function startRename(ws: Workspace): void {
-    setRenamingId(ws.id)
-    setRenameValue(ws.name)
+    setRenamingId(ws.id);
+    setRenameValue(ws.name);
   }
 
   function confirmRename(): void {
-    if (renamingId && renameValue.trim()) onRenameWorkspace(renamingId, renameValue.trim())
-    setRenamingId(null)
-    setRenameValue('')
+    if (renamingId && renameValue.trim()) onRenameWorkspace(renamingId, renameValue.trim());
+    setRenamingId(null);
+    setRenameValue('');
   }
 
   function cancelRename(): void {
-    setRenamingId(null)
-    setRenameValue('')
+    setRenamingId(null);
+    setRenameValue('');
   }
 
   function handleRenameKeyDown(e: React.KeyboardEvent<HTMLInputElement>): void {
-    if (e.key === 'Enter') { e.preventDefault(); confirmRename() }
-    else if (e.key === 'Escape') { e.preventDefault(); cancelRename() }
+    if (e.key === 'Enter') { e.preventDefault(); confirmRename(); } else if (e.key === 'Escape') { e.preventDefault(); cancelRename(); }
   }
 
   return (
@@ -100,8 +98,8 @@ export function WorkspaceDropdown({
       }}
     >
       {workspaces.map((ws) => {
-        const isActive = ws.id === activeWorkspaceId
-        const isRenaming = renamingId === ws.id
+        const isActive = ws.id === activeWorkspaceId;
+        const isRenaming = renamingId === ws.id;
 
         if (isRenaming) {
           return (
@@ -131,7 +129,7 @@ export function WorkspaceDropdown({
                 }}
               />
             </div>
-          )
+          );
         }
 
         return (
@@ -139,16 +137,16 @@ export function WorkspaceDropdown({
             key={ws.id}
             style={{ display: 'flex', alignItems: 'center', borderRadius: 'var(--radius-sm)', position: 'relative' }}
             onMouseEnter={(e) => {
-              e.currentTarget.querySelectorAll<HTMLElement>('[data-pencil]').forEach((el) => { el.style.opacity = '1' })
+              e.currentTarget.querySelectorAll<HTMLElement>('[data-pencil]').forEach((el) => { el.style.opacity = '1'; });
               if (!isActive) {
-                const btn = e.currentTarget.querySelector<HTMLElement>('[data-ws-btn]')
-                if (btn) btn.style.backgroundColor = 'var(--bg-elevated)'
+                const btn = e.currentTarget.querySelector<HTMLElement>('[data-ws-btn]');
+                if (btn) btn.style.backgroundColor = 'var(--bg-elevated)';
               }
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.querySelectorAll<HTMLElement>('[data-pencil]').forEach((el) => { el.style.opacity = '0' })
-              const btn = e.currentTarget.querySelector<HTMLElement>('[data-ws-btn]')
-              if (btn) btn.style.backgroundColor = isActive ? 'var(--color-brand-50)' : 'transparent'
+              e.currentTarget.querySelectorAll<HTMLElement>('[data-pencil]').forEach((el) => { el.style.opacity = '0'; });
+              const btn = e.currentTarget.querySelector<HTMLElement>('[data-ws-btn]');
+              if (btn) btn.style.backgroundColor = isActive ? 'var(--color-brand-50)' : 'transparent';
             }}
           >
             <button
@@ -175,10 +173,10 @@ export function WorkspaceDropdown({
                 outline: 'none',
               }}
               onFocus={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
-                ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px'
+                (e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
+                ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px';
               }}
-              onBlur={(e) => { ;(e.currentTarget as HTMLButtonElement).style.outline = 'none' }}
+              onBlur={(e) => { (e.currentTarget as HTMLButtonElement).style.outline = 'none'; }}
             >
               {isActive ? <Check size={14} aria-hidden="true" /> : <span style={{ width: 14, flexShrink: 0 }} />}
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -191,7 +189,7 @@ export function WorkspaceDropdown({
                 data-pencil
                 type="button"
                 aria-label={`Delete ${ws.name}`}
-                onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(ws.id) }}
+                onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(ws.id); }}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -209,19 +207,19 @@ export function WorkspaceDropdown({
                   outline: 'none',
                 }}
                 onMouseEnter={(e) => {
-                  ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--color-danger)'
+                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-danger)';
                 }}
                 onMouseLeave={(e) => {
-                  ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'
+                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
                 }}
                 onFocus={(e) => {
-                  ;(e.currentTarget as HTMLButtonElement).style.opacity = '1'
+                  (e.currentTarget as HTMLButtonElement).style.opacity = '1'
                   ;(e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
-                  ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px'
+                  ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px';
                 }}
                 onBlur={(e) => {
-                  ;(e.currentTarget as HTMLButtonElement).style.opacity = '0'
-                  ;(e.currentTarget as HTMLButtonElement).style.outline = 'none'
+                  (e.currentTarget as HTMLButtonElement).style.opacity = '0'
+                  ;(e.currentTarget as HTMLButtonElement).style.outline = 'none';
                 }}
               >
                 <Trash2 size={12} aria-hidden="true" />
@@ -232,7 +230,7 @@ export function WorkspaceDropdown({
               data-pencil
               type="button"
               aria-label={`Rename ${ws.name}`}
-              onClick={(e) => { e.stopPropagation(); startRename(ws) }}
+              onClick={(e) => { e.stopPropagation(); startRename(ws); }}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -251,19 +249,19 @@ export function WorkspaceDropdown({
                 outline: 'none',
               }}
               onFocus={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.opacity = '1'
+                (e.currentTarget as HTMLButtonElement).style.opacity = '1'
                 ;(e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
-                ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px'
+                ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px';
               }}
               onBlur={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.opacity = '0'
-                ;(e.currentTarget as HTMLButtonElement).style.outline = 'none'
+                (e.currentTarget as HTMLButtonElement).style.opacity = '0'
+                ;(e.currentTarget as HTMLButtonElement).style.outline = 'none';
               }}
             >
               <Pencil size={12} aria-hidden="true" />
             </button>
           </div>
-        )
+        );
       })}
 
       <div role="separator" style={{ height: 1, backgroundColor: 'var(--border-default)', margin: 'var(--space-1) 0' }} />
@@ -358,18 +356,18 @@ export function WorkspaceDropdown({
             outline: 'none',
           }}
           onMouseEnter={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--bg-elevated)'
-            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--bg-elevated)'
+            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)';
           }}
           onMouseLeave={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'
-            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)'
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'
+            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)';
           }}
           onFocus={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
-            ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px'
+            (e.currentTarget as HTMLButtonElement).style.outline = `2px solid var(--border-focus)`
+            ;(e.currentTarget as HTMLButtonElement).style.outlineOffset = '2px';
           }}
-          onBlur={(e) => { ;(e.currentTarget as HTMLButtonElement).style.outline = 'none' }}
+          onBlur={(e) => { (e.currentTarget as HTMLButtonElement).style.outline = 'none'; }}
         >
           <Plus size={14} aria-hidden="true" />
           New workspace
@@ -384,11 +382,11 @@ export function WorkspaceDropdown({
         confirmLabel="Delete"
         destructive
         onConfirm={() => {
-          if (confirmDeleteId) onDeleteWorkspace?.(confirmDeleteId)
-          setConfirmDeleteId(null)
+          if (confirmDeleteId) onDeleteWorkspace?.(confirmDeleteId);
+          setConfirmDeleteId(null);
         }}
         onCancel={() => setConfirmDeleteId(null)}
       />
     </div>
-  )
+  );
 }

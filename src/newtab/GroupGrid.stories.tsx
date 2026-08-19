@@ -1,9 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { TabGroup } from '@/lib/schema';
 import { GroupGrid } from './GroupGrid';
-
 const NOW = Date.now();
-
 const groups: TabGroup[] = [
   {
     id: 'g1', name: 'Research', created_at: NOW, updated_at: NOW, order: 0, notes: [],
@@ -17,9 +15,7 @@ const groups: TabGroup[] = [
     tabs: [{ id: 't3', title: 'Hacker News', url: 'https://news.ycombinator.com', favicon: '', saved_at: NOW }],
   },
 ];
-
 const noop = () => {};
-
 const meta = {
   title: 'Newtab/GroupGrid',
   component: GroupGrid,
@@ -38,7 +34,6 @@ const meta = {
     onSaveTabNote: noop,
   },
 } satisfies Meta<typeof GroupGrid>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 

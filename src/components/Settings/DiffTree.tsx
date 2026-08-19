@@ -4,7 +4,7 @@
  * No storage access. All colors from design tokens.
  */
 
-import React, { useState } from 'react'
+import React, { useState } from 'react';
 import type {
   DiffStatus,
   FieldChange,
@@ -13,25 +13,21 @@ import type {
   GroupDiff,
   CategoryDiff,
   WorkspaceDiff,
-} from '../../lib/diff'
-
+} from '../../lib/diff';
 const STATUS_COLOR: Record<DiffStatus, string> = {
   added: 'var(--color-success)',
   removed: 'var(--color-danger)',
   modified: 'var(--color-warning)',
   unchanged: 'var(--text-muted)',
-}
-
+};
 const STATUS_PREFIX: Record<DiffStatus, string> = {
   added: '+',
   removed: '−',
   modified: '~',
   unchanged: '',
-}
-
-const TAB_TRUNCATE_AT = 10
-const INDENT = 20
-
+};
+const TAB_TRUNCATE_AT = 10;
+const INDENT = 20;
 const rowStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'baseline',
@@ -39,32 +35,29 @@ const rowStyle: React.CSSProperties = {
   fontSize: 'var(--text-sm)',
   lineHeight: 1.7,
   minWidth: 0,
-}
-
+};
 const prefixStyle = (status: DiffStatus): React.CSSProperties => ({
   color: STATUS_COLOR[status],
   width: 14,
   flexShrink: 0,
   textAlign: 'center',
   fontWeight: 700,
-})
-
+});
 const ellipsisStyle: React.CSSProperties = {
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
-}
-
+};
 function StatusBadge({ status }: { status: DiffStatus }): React.JSX.Element {
   return (
     <span style={{ marginLeft: 'auto', flexShrink: 0, fontSize: 'var(--text-xs)', color: STATUS_COLOR[status] }}>
       {status}
     </span>
-  )
+  );
 }
 
 function FieldChangeRows({ changes, indent }: { changes: FieldChange[]; indent: number }): React.JSX.Element | null {
-  if (changes.length === 0) return null
+  if (changes.length === 0) return null;
   return (
     <>
       {changes.map((c) => (
@@ -73,14 +66,14 @@ function FieldChangeRows({ changes, indent }: { changes: FieldChange[]; indent: 
         </div>
       ))}
     </>
-  )
+  );
 }
 
 function LeafRow({ status, label, fieldChanges, indent }: {
-  status: DiffStatus
-  label: string
-  fieldChanges: FieldChange[]
-  indent: number
+  status: DiffStatus;
+  label: string;
+  fieldChanges: FieldChange[];
+  indent: number;
 }): React.JSX.Element {
   return (
     <>
@@ -90,15 +83,15 @@ function LeafRow({ status, label, fieldChanges, indent }: {
       </div>
       <FieldChangeRows changes={fieldChanges} indent={indent + 22} />
     </>
-  )
+  );
 }
 
 /** Changed tabs of one group, truncated at TAB_TRUNCATE_AT with expand. */
 function TabRows({ tabs, indent }: { tabs: TabDiff[]; indent: number }): React.JSX.Element {
-  const [showAll, setShowAll] = useState(false)
-  const changed = tabs.filter((t) => t.status !== 'unchanged')
-  const visible = showAll ? changed : changed.slice(0, TAB_TRUNCATE_AT)
-  const hidden = changed.length - visible.length
+  const [showAll, setShowAll] = useState(false);
+  const changed = tabs.filter((t) => t.status !== 'unchanged');
+  const visible = showAll ? changed : changed.slice(0, TAB_TRUNCATE_AT);
+  const hidden = changed.length - visible.length;
   return (
     <>
       {visible.map((t) => (
@@ -124,7 +117,7 @@ function TabRows({ tabs, indent }: { tabs: TabDiff[]; indent: number }): React.J
         </button>
       )}
     </>
-  )
+  );
 }
 
 /** Changed notes of a group or category (never truncated — notes are few). */
@@ -141,20 +134,20 @@ function NoteRows({ notes, indent }: { notes: NoteDiff[]; indent: number }): Rea
         />
       ))}
     </>
-  )
+  );
 }
 
 /** Expandable row for workspace/category/group nodes. Unchanged = flat row. */
 function Node({ status, label, detail, fieldChanges, indent, children }: {
-  status: DiffStatus
-  label: string
-  detail?: string
-  fieldChanges: FieldChange[]
-  indent: number
-  children?: React.ReactNode
+  status: DiffStatus;
+  label: string;
+  detail?: string;
+  fieldChanges: FieldChange[];
+  indent: number;
+  children?: React.ReactNode;
 }): React.JSX.Element {
-  const expandable = status !== 'unchanged'
-  const [open, setOpen] = useState(true)
+  const expandable = status !== 'unchanged';
+  const [open, setOpen] = useState(true);
   return (
     <div>
       <div style={{ ...rowStyle, paddingLeft: indent }}>
@@ -193,7 +186,7 @@ function Node({ status, label, detail, fieldChanges, indent, children }: {
         </>
       )}
     </div>
-  )
+  );
 }
 
 function GroupNode({ g, indent }: { g: GroupDiff; indent: number }): React.JSX.Element {
@@ -208,7 +201,7 @@ function GroupNode({ g, indent }: { g: GroupDiff; indent: number }): React.JSX.E
       <TabRows tabs={g.tabs} indent={indent + 36} />
       <NoteRows notes={g.notes} indent={indent + 36} />
     </Node>
-  )
+  );
 }
 
 function CategoryNode({ c, indent }: { c: CategoryDiff; indent: number }): React.JSX.Element {
@@ -219,7 +212,7 @@ function CategoryNode({ c, indent }: { c: CategoryDiff; indent: number }): React
       ))}
       <NoteRows notes={c.notes} indent={indent + INDENT} />
     </Node>
-  )
+  );
 }
 
 export function DiffTree({ diff }: { diff: WorkspaceDiff[] }): React.JSX.Element {
@@ -228,7 +221,7 @@ export function DiffTree({ diff }: { diff: WorkspaceDiff[] }): React.JSX.Element
       <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
         No differences between these snapshots.
       </p>
-    )
+    );
   }
   return (
     <div aria-label="Backup differences" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
@@ -240,5 +233,5 @@ export function DiffTree({ diff }: { diff: WorkspaceDiff[] }): React.JSX.Element
         </Node>
       ))}
     </div>
-  )
+  );
 }

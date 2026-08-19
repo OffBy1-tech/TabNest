@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { SelectField } from './SelectField';
-
 const meta = {
   title: 'Popup/SelectField',
   component: SelectField,
@@ -23,7 +22,6 @@ const meta = {
     ),
   ],
 } satisfies Meta<typeof SelectField>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 

@@ -24,12 +24,10 @@ const meta = {
   },
   render: (args) => <StatefulSegmentedControl {...args} />,
 } satisfies Meta<typeof SegmentedControl<string>>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
-
 export const TwoOptions: Story = {
   args: {
     groupLabel: 'Default view',

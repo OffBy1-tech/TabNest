@@ -11,6 +11,7 @@ Which doc is current is answered here, not by the folder layout. See
 | [`../CLAUDE.md`](../CLAUDE.md) | Architecture and the contracts that break things when violated (storage write path, mutation contract, migrations). |
 | [`Color_Palette.md`](Color_Palette.md) | Design tokens and color usage. Mirrors `src/styles/tokens.css`. |
 | [`tasks_todo.md`](tasks_todo.md) | Open backlog — spec items not yet fully implemented. |
+| [`smoke-test.md`](smoke-test.md) | The two-machine by-hand smoke test that gates a public release. |
 | [`CONVENTIONS.md`](CONVENTIONS.md) | How docs in this folder are written, retired, and indexed. |
 
 ## Historical record

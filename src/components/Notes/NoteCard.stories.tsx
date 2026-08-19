@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { NoteCard } from './NoteCard';
-
 const meta = {
   title: 'Components/Notes/NoteCard',
   component: NoteCard,
@@ -10,7 +9,6 @@ const meta = {
     onDelete: (id: string) => console.log('delete', id),
   },
 } satisfies Meta<typeof NoteCard>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -25,7 +23,6 @@ export const Grid: Story = {
     },
   },
 };
-
 export const List: Story = {
   args: {
     ...Grid.args,

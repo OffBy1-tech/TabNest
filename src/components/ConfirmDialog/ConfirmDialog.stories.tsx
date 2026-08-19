@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import React, { useState } from 'react';
 import { ConfirmDialog } from './ConfirmDialog';
-
 const meta = {
   title: 'Components/ConfirmDialog',
   component: ConfirmDialog,
@@ -16,7 +15,6 @@ const meta = {
     layout: 'fullscreen',
   },
 } satisfies Meta<typeof ConfirmDialog>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -76,7 +74,6 @@ export const Default: Story = {
     />
   ),
 };
-
 export const Destructive: Story = {
   render: () => (
     <ConfirmDemo
@@ -87,7 +84,6 @@ export const Destructive: Story = {
     />
   ),
 };
-
 export const LongMessage: Story = {
   render: () => (
     <ConfirmDemo
@@ -98,7 +94,6 @@ export const LongMessage: Story = {
     />
   ),
 };
-
 export const Closed: Story = {
   render: () => (
     <ConfirmDialog

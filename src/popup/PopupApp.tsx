@@ -11,62 +11,62 @@ import React, {
   useMemo,
   useRef,
   useState,
-} from 'react'
-import { FaviconImage } from '../components/GroupCard/FaviconImage'
-import { tabTitleOrHostname } from '../lib/tabTitle'
+} from 'react';
+import { FaviconImage } from '../components/GroupCard/FaviconImage';
+import { tabTitleOrHostname } from '../lib/tabTitle';
 import type {
   Category,
   TabGroup,
   Workspace,
-} from '../lib/schema'
-import { SyncDot, type SyncState } from './SyncDot'
-import { SelectField } from './SelectField'
-import { type RecentGroup, pushRecentGroup } from './popupStorage'
-import { sendExtensionMessage } from '../lib/messaging'
+} from '../lib/schema';
+import { SyncDot, type SyncState } from './SyncDot';
+import { SelectField } from './SelectField';
+import { type RecentGroup, pushRecentGroup } from './popupStorage';
+import { sendExtensionMessage } from '../lib/messaging';
 import {
   readStorage,
   readPopupState,
   writePopupRecentGroups,
   writePopupLastWorkspaceId,
-} from '../lib/storage'
+} from '../lib/storage';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 interface CurrentTab {
-  id?: number | undefined
-  title: string
-  url: string
-  favIconUrl?: string | undefined
+  id?: number | undefined;
+  title: string;
+  url: string;
+  favIconUrl?: string | undefined;
 }
 
 /** The active tab, and whether it's a privileged page we can't save. */
 async function readActiveTab(): Promise<{ tab: CurrentTab; privileged: boolean }> {
-  let tab: CurrentTab = { title: 'Unknown', url: '' }
-  let privileged = false
+  let tab: CurrentTab = { title: 'Unknown', url: '' };
+  let privileged = false;
   try {
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-    const first = tabs[0]
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    const first = tabs[0];
     if (first) {
-      const url = first.url ?? ''
+      const url = first.url ?? '';
       privileged =
         !url ||
         url.startsWith('chrome://') ||
         url.startsWith('chrome-extension://') ||
         url.startsWith('about:') ||
-        url.startsWith('edge://')
+        url.startsWith('edge://');
       tab = {
         id: first.id,
         title: first.title ?? 'Untitled',
         url,
         favIconUrl: first.favIconUrl,
-      }
+      };
     }
   } catch {
     // Non-extension context
   }
-  return { tab, privileged }
+  return { tab, privileged };
 }
 
 /** The slice of the storage document the popup renders. */
@@ -74,11 +74,11 @@ async function readDocSummary(): Promise<{ workspaces: Workspace[]; syncState: S
   try {
     // readStorage falls back to a defaulted document on fresh profiles, so
     // the popup works before the first migration write.
-    const data = await readStorage()
-    return { workspaces: data.workspaces, syncState: data.sync_meta.sync_state as SyncState }
+    const data = await readStorage();
+    return { workspaces: data.workspaces, syncState: data.sync_meta.sync_state as SyncState };
   } catch {
     // Non-extension context — use empty state
-    return { workspaces: [], syncState: 'idle' }
+    return { workspaces: [], syncState: 'idle' };
   }
 }
 
@@ -88,36 +88,32 @@ async function readDocSummary(): Promise<{ workspaces: Workspace[]; syncState: S
 
 export function PopupApp(): React.JSX.Element {
   // IDs for accessibility
-  const workspaceId = useId()
-  const categoryId = useId()
-  const groupId = useId()
-  const newGroupId = useId()
+  const workspaceId = useId();
+  const categoryId = useId();
+  const groupId = useId();
+  const newGroupId = useId();
 
   // State
-  const [currentTab, setCurrentTab] = useState<CurrentTab | null>(null)
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([])
-  const [syncState, setSyncState] = useState<SyncState>('idle')
-
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>('')
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('')
-  const [selectedGroupId, setSelectedGroupId] = useState<string>('__new__')
-  const [newGroupName, setNewGroupName] = useState<string>('')
-  const [noteText, setNoteText] = useState<string>('')
-
-  const [recentGroups, setRecentGroups] = useState<RecentGroup[]>([])
-  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
-  const [loading, setLoading] = useState(true)
-  const [cannotSave, setCannotSave] = useState(false)
-
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [currentTab, setCurrentTab] = useState<CurrentTab | null>(null);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [syncState, setSyncState] = useState<SyncState>('idle');
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('__new__');
+  const [newGroupName, setNewGroupName] = useState<string>('');
+  const [noteText, setNoteText] = useState<string>('');
+  const [recentGroups, setRecentGroups] = useState<RecentGroup[]>([]);
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [loading, setLoading] = useState(true);
+  const [cannotSave, setCannotSave] = useState(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ---------------------------------------------------------------------------
   // Load data on mount
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
-    let cancelled = false
-
+    let cancelled = false;
     async function init(): Promise<void> {
       // The three reads are independent — run them concurrently, this path
       // gates how fast the popup becomes usable.
@@ -125,70 +121,66 @@ export function PopupApp(): React.JSX.Element {
         readActiveTab(),
         readDocSummary(),
         readPopupState(),
-      ])
-
-      if (cancelled) return
-
-      const { tab, privileged } = tabInfo
-      const loadedWorkspaces = docInfo.workspaces
-      const { recentGroups, lastWorkspaceId: lastWsId } = popupState
-
-      if (privileged) setCannotSave(true)
-      setCurrentTab(tab)
-      setWorkspaces(loadedWorkspaces)
-      setSyncState(docInfo.syncState)
-      setRecentGroups(recentGroups)
+      ]);
+      if (cancelled) return;
+      const { tab, privileged } = tabInfo;
+      const loadedWorkspaces = docInfo.workspaces;
+      const { recentGroups, lastWorkspaceId: lastWsId } = popupState;
+      if (privileged) setCannotSave(true);
+      setCurrentTab(tab);
+      setWorkspaces(loadedWorkspaces);
+      setSyncState(docInfo.syncState);
+      setRecentGroups(recentGroups);
 
       // Restore last-used group if it still exists
-      const lastGroup = recentGroups[0]
+      const lastGroup = recentGroups[0];
       if (lastGroup) {
-        const ws = loadedWorkspaces.find((w) => w.id === lastGroup.workspaceId)
-        const cat = ws?.categories.find((c) => c.id === lastGroup.categoryId)
-        const grp = cat?.groups.find((g) => g.id === lastGroup.groupId)
+        const ws = loadedWorkspaces.find((w) => w.id === lastGroup.workspaceId);
+        const cat = ws?.categories.find((c) => c.id === lastGroup.categoryId);
+        const grp = cat?.groups.find((g) => g.id === lastGroup.groupId);
         if (ws && cat && grp) {
-          setSelectedWorkspaceId(ws.id)
-          setSelectedCategoryId(cat.id)
-          setSelectedGroupId(grp.id)
-          setLoading(false)
-          return
+          setSelectedWorkspaceId(ws.id);
+          setSelectedCategoryId(cat.id);
+          setSelectedGroupId(grp.id);
+          setLoading(false);
+          return;
         }
       }
 
       // Fall back: last-used workspace, first category, new group
       const defaultWs =
         (lastWsId && loadedWorkspaces.find((w) => w.id === lastWsId)) ||
-        loadedWorkspaces[0]
-
+        loadedWorkspaces[0];
       if (defaultWs) {
-        setSelectedWorkspaceId(defaultWs.id)
-        const firstCat = defaultWs.categories[0]
+        setSelectedWorkspaceId(defaultWs.id);
+        const firstCat = defaultWs.categories[0];
         if (firstCat) {
-          setSelectedCategoryId(firstCat.id)
-          setSelectedGroupId('__new__')
+          setSelectedCategoryId(firstCat.id);
+          setSelectedGroupId('__new__');
         }
       }
 
-      setLoading(false)
+      setLoading(false);
     }
 
-    void init()
-    return () => { cancelled = true }
-  }, [])
+    void init();
+    return () => { cancelled = true; };
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Derived data
   // ---------------------------------------------------------------------------
 
-  const selectedWorkspace = workspaces.find((w) => w.id === selectedWorkspaceId)
+  const selectedWorkspace = workspaces.find((w) => w.id === selectedWorkspaceId);
   const categories: Category[] = useMemo(
     () => selectedWorkspace?.categories ?? [],
     [selectedWorkspace?.categories],
-  )
-  const selectedCategory = categories.find((c) => c.id === selectedCategoryId)
+  );
+  const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
   const groups: TabGroup[] = useMemo(
     () => selectedCategory?.groups ?? [],
     [selectedCategory?.groups],
-  )
+  );
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -196,34 +188,30 @@ export function PopupApp(): React.JSX.Element {
 
   const handleWorkspaceChange = useCallback(
     (id: string) => {
-      setSelectedWorkspaceId(id)
-      void writePopupLastWorkspaceId(id)
-      const ws = workspaces.find((w) => w.id === id)
-      const firstCat = ws?.categories[0]
-      setSelectedCategoryId(firstCat?.id ?? '')
-      setSelectedGroupId('__new__')
-      setNewGroupName('')
+      setSelectedWorkspaceId(id);
+      void writePopupLastWorkspaceId(id);
+      const ws = workspaces.find((w) => w.id === id);
+      const firstCat = ws?.categories[0];
+      setSelectedCategoryId(firstCat?.id ?? '');
+      setSelectedGroupId('__new__');
+      setNewGroupName('');
     },
     [workspaces],
-  )
-
+  );
   const handleCategoryChange = useCallback((id: string) => {
-    setSelectedCategoryId(id)
-    setSelectedGroupId('__new__')
-    setNewGroupName('')
-  }, [])
-
+    setSelectedCategoryId(id);
+    setSelectedGroupId('__new__');
+    setNewGroupName('');
+  }, []);
   const handleGroupChange = useCallback((id: string) => {
-    setSelectedGroupId(id)
-    setNewGroupName('')
-  }, [])
-
+    setSelectedGroupId(id);
+    setNewGroupName('');
+  }, []);
   const doSave = useCallback(
     async (
       opts: { groupId: string; groupName: string; categoryId: string; workspaceId: string } | null = null,
     ) => {
-      if (!currentTab?.url || saveState === 'saving') return
-
+      if (!currentTab?.url || saveState === 'saving') return;
       const target = opts ?? {
         groupId: selectedGroupId,
         groupName:
@@ -232,13 +220,10 @@ export function PopupApp(): React.JSX.Element {
             : groups.find((g) => g.id === selectedGroupId)?.name ?? 'Group',
         categoryId: selectedCategoryId,
         workspaceId: selectedWorkspaceId,
-      }
-
-      if (!target.categoryId || !target.workspaceId) return
-
-      setSaveState('saving')
-      setNoteText('')
-
+      };
+      if (!target.categoryId || !target.workspaceId) return;
+      setSaveState('saving');
+      setNoteText('');
       const savedTab = {
         id: crypto.randomUUID(),
         title: tabTitleOrHostname(currentTab.title, currentTab.url),
@@ -247,8 +232,7 @@ export function PopupApp(): React.JSX.Element {
         saved_at: Date.now(),
         // Spec §12: optional note attached to the saved tab
         note: noteText.trim() || undefined,
-      }
-
+      };
       try {
         const response = await sendExtensionMessage<{ saved: number; group_id: string }>({
           type: 'SAVE_TABS',
@@ -261,11 +245,11 @@ export function PopupApp(): React.JSX.Element {
             // background creates one and returns its real id.
             ...(target.groupId === '__new__' ? {} : { group_id: target.groupId }),
           },
-        })
+        });
         if (!response.ok) {
-          throw new Error(response.error || 'Save failed')
+          throw new Error(response.error || 'Save failed');
         }
-        setSaveState('saved')
+        setSaveState('saved');
 
         // Update recent groups with the id the background actually saved into
         const next: RecentGroup = {
@@ -273,15 +257,14 @@ export function PopupApp(): React.JSX.Element {
           groupName: target.groupName,
           categoryId: target.categoryId,
           workspaceId: target.workspaceId,
-        }
-        const updatedRecent = pushRecentGroup(recentGroups, next)
-        setRecentGroups(updatedRecent)
-        await writePopupRecentGroups(updatedRecent)
-
-        saveTimerRef.current = setTimeout(() => setSaveState('idle'), 1500)
+        };
+        const updatedRecent = pushRecentGroup(recentGroups, next);
+        setRecentGroups(updatedRecent);
+        await writePopupRecentGroups(updatedRecent);
+        saveTimerRef.current = setTimeout(() => setSaveState('idle'), 1500);
       } catch {
-        setSaveState('error')
-        saveTimerRef.current = setTimeout(() => setSaveState('idle'), 2500)
+        setSaveState('error');
+        saveTimerRef.current = setTimeout(() => setSaveState('idle'), 2500);
       }
     },
     [
@@ -295,47 +278,44 @@ export function PopupApp(): React.JSX.Element {
       recentGroups,
       noteText,
     ],
-  )
-
+  );
   const handleSaveAndClose = useCallback(async () => {
-    await doSave()
+    await doSave();
     // Close the popup
-    window.close()
-  }, [doSave])
+    window.close();
+  }, [doSave]);
 
   // Spec §11.4/§12: Enter and Cmd/Ctrl+S save from anywhere in the popup
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent): void {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-        e.preventDefault()
-        void handleSaveAndClose()
-        return
+        e.preventDefault();
+        void handleSaveAndClose();
+        return;
       }
       if (e.key === 'Enter') {
-        const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase()
+        const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase();
         // Leave Enter alone on buttons (activates them) and selects (picks an option)
-        if (tag === 'button' || tag === 'select') return
-        e.preventDefault()
-        void handleSaveAndClose()
+        if (tag === 'button' || tag === 'select') return;
+        e.preventDefault();
+        void handleSaveAndClose();
       }
     }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [handleSaveAndClose])
-
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleSaveAndClose]);
   useEffect(() => {
     return () => {
-      if (saveTimerRef.current !== null) clearTimeout(saveTimerRef.current)
-    }
-  }, [])
+      if (saveTimerRef.current !== null) clearTimeout(saveTimerRef.current);
+    };
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
-  const isSaving = saveState === 'saving'
-  const isSaved = saveState === 'saved'
-
+  const isSaving = saveState === 'saving';
+  const isSaved = saveState === 'saved';
   return (
     <div
       style={{
@@ -547,8 +527,8 @@ export function PopupApp(): React.JSX.Element {
                     boxSizing: 'border-box',
                     outline: 'none',
                   }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--border-focus)' }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border-default)' }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--border-focus)'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border-default)'; }}
                 />
               </div>
             )}
@@ -579,8 +559,8 @@ export function PopupApp(): React.JSX.Element {
                   boxSizing: 'border-box',
                   outline: 'none',
                 }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--border-focus)' }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border-default)' }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--border-focus)'; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border-default)'; }}
               />
             </div>
           </div>
@@ -690,7 +670,7 @@ export function PopupApp(): React.JSX.Element {
           <button
             onClick={() => {
               try {
-                void chrome.tabs.create({ url: 'newtab.html' })
+                void chrome.tabs.create({ url: 'newtab.html' });
               } catch {
                 // Non-extension context
               }
@@ -712,5 +692,5 @@ export function PopupApp(): React.JSX.Element {
         </div>
       )}
     </div>
-  )
+  );
 }

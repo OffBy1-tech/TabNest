@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import React from 'react';
 import { ToastProvider, useToast } from './ToastProvider';
-
 const meta = {
   title: 'Components/Toast/ToastProvider',
   component: ToastProvider,
@@ -12,7 +11,6 @@ const meta = {
     layout: 'centered',
   },
 } satisfies Meta<typeof ToastProvider>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -76,7 +74,6 @@ export const Default: Story = {
     </ToastProvider>
   ),
 };
-
 export const WithInitialToast: Story = {
   render: () => {
     function AutoToast(): React.JSX.Element {

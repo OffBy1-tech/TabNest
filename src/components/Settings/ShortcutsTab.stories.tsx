@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { ShortcutsTab } from './ShortcutsTab';
-
 const meta = {
   title: 'Components/Settings/ShortcutsTab',
   component: ShortcutsTab,
@@ -13,7 +12,6 @@ const meta = {
     ),
   ],
 } satisfies Meta<typeof ShortcutsTab>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 

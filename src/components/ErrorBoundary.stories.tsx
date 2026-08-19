@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import React from 'react';
 import { ErrorBoundary } from './ErrorBoundary';
-
 const meta = {
   title: 'Components/ErrorBoundary',
   component: ErrorBoundary,
@@ -9,7 +8,6 @@ const meta = {
     layout: 'fullscreen',
   },
 } satisfies Meta<typeof ErrorBoundary>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 

@@ -3,17 +3,16 @@
  * Reusable confirmation dialog. Focus starts on Cancel for destructive actions.
  */
 
-import React, { useRef } from 'react'
-import { Modal } from '../Modal/Modal'
-
+import React, { useRef } from 'react';
+import { Modal } from '../Modal/Modal';
 export interface ConfirmDialogProps {
-  isOpen: boolean
-  title: string
-  message: string
-  confirmLabel?: string
-  onConfirm: () => void
-  onCancel: () => void
-  destructive?: boolean
+  isOpen: boolean;
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  destructive?: boolean;
 }
 
 export function ConfirmDialog({
@@ -25,8 +24,7 @@ export function ConfirmDialog({
   onCancel,
   destructive = false,
 }: ConfirmDialogProps): React.JSX.Element {
-  const cancelRef = useRef<HTMLButtonElement>(null)
-
+  const cancelRef = useRef<HTMLButtonElement>(null);
   return (
     <Modal
       isOpen={isOpen}
@@ -93,5 +91,5 @@ export function ConfirmDialog({
         </button>
       </div>
     </Modal>
-  )
+  );
 }

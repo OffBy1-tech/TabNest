@@ -10,52 +10,52 @@ import React, {
   useId,
   useRef,
   useState,
-} from 'react'
-import type { TrashItem, UserSettings, LocalSettings, SyncMeta, Workspace } from '../../lib/schema'
-import { GeneralTab } from './GeneralTab'
-import { NewTabPageTab } from './NewTabPageTab'
-import { SyncAndDataTab } from './SyncAndDataTab'
-import { ShortcutsTab } from './ShortcutsTab'
-import { TrashTab } from './TrashTab'
-import { HelpTab } from './HelpTab'
+} from 'react';
+import type { TrashItem, UserSettings, LocalSettings, SyncMeta, Workspace } from '../../lib/schema';
+import { GeneralTab } from './GeneralTab';
+import { NewTabPageTab } from './NewTabPageTab';
+import { SyncAndDataTab } from './SyncAndDataTab';
+import { ShortcutsTab } from './ShortcutsTab';
+import { TrashTab } from './TrashTab';
+import { HelpTab } from './HelpTab';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 export interface SettingsModalProps {
-  isOpen: boolean
-  onClose: () => void
-  settings: UserSettings
-  onSave: (s: UserSettings) => void
+  isOpen: boolean;
+  onClose: () => void;
+  settings: UserSettings;
+  onSave: (s: UserSettings) => void;
   /** Per-device sync preferences — never written to Drive */
-  localSettings: LocalSettings
-  onSaveLocalSettings: (patch: Partial<LocalSettings>) => void
-  syncMeta: SyncMeta
+  localSettings: LocalSettings;
+  onSaveLocalSettings: (patch: Partial<LocalSettings>) => void;
+  syncMeta: SyncMeta;
   /** Workspace list, needed for "Default workspace" dropdown */
-  workspaces?: Workspace[]
+  workspaces?: Workspace[];
   /** Import handlers (Sync & Data tab). Awaited so results/failures surface inline. */
-  onImportBookmarks?: (tree: chrome.bookmarks.BookmarkTreeNode[]) => Promise<number>
-  onImportOneTab?: (text: string) => Promise<{ imported: number; failed: number }>
+  onImportBookmarks?: (tree: chrome.bookmarks.BookmarkTreeNode[]) => Promise<number>;
+  onImportOneTab?: (text: string) => Promise<{ imported: number; failed: number }>;
   /** Trash items for Trash tab */
-  trashItems?: TrashItem[]
-  onRestoreTrashItem?: (id: string) => void
-  onDeleteTrashItem?: (id: string) => void
-  onEmptyTrash?: () => void
-  onShowOnboarding?: () => void
+  trashItems?: TrashItem[];
+  onRestoreTrashItem?: (id: string) => void;
+  onDeleteTrashItem?: (id: string) => void;
+  onEmptyTrash?: () => void;
+  onShowOnboarding?: () => void;
 }
 
 type TabId =
-  | 'general'
-  | 'newtab'
-  | 'sync-data'
-  | 'shortcuts'
-  | 'trash'
-  | 'help'
+  | 'general' |
+  'newtab' |
+  'sync-data' |
+  'shortcuts' |
+  'trash' |
+  'help';
 
 interface TabDefinition {
-  id: TabId
-  label: string
+  id: TabId;
+  label: string;
 }
 
 const TABS: TabDefinition[] = [
@@ -65,8 +65,7 @@ const TABS: TabDefinition[] = [
   { id: 'shortcuts', label: 'Shortcuts' },
   { id: 'trash', label: 'Trash' },
   { id: 'help', label: 'Help' },
-]
-
+];
 const FOCUSABLE_SELECTORS = [
   'a[href]',
   'button:not([disabled])',
@@ -74,10 +73,9 @@ const FOCUSABLE_SELECTORS = [
   'select:not([disabled])',
   'textarea:not([disabled])',
   '[tabindex]:not([tabindex="-1"])',
-].join(', ')
-
+].join(', ');
 function getFocusable(el: HTMLElement): HTMLElement[] {
-  return Array.from(el.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTORS))
+  return Array.from(el.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTORS));
 }
 
 // ---------------------------------------------------------------------------
@@ -101,105 +99,98 @@ export function SettingsModal({
   onEmptyTrash,
   onShowOnboarding,
 }: SettingsModalProps): React.JSX.Element | null {
-  const [activeTab, setActiveTab] = useState<TabId>('general')
-  const [localSettingsState, setLocalSettingsState] = useState<UserSettings>(settings)
-  const dialogRef = useRef<HTMLDivElement>(null)
-  const previousFocusRef = useRef<HTMLElement | null>(null)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const titleId = useId()
+  const [activeTab, setActiveTab] = useState<TabId>('general');
+  const [localSettingsState, setLocalSettingsState] = useState<UserSettings>(settings);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const titleId = useId();
 
   // Sync incoming settings prop into local state
   useEffect(() => {
-    setLocalSettingsState(settings)
-  }, [settings])
+    setLocalSettingsState(settings);
+  }, [settings]);
 
   // Debounced save
   const handleChange = useCallback(
     (patch: Partial<UserSettings>) => {
       setLocalSettingsState((prev) => {
-        const next = { ...prev, ...patch }
-        if (debounceRef.current !== null) clearTimeout(debounceRef.current)
+        const next = { ...prev, ...patch };
+        if (debounceRef.current !== null) clearTimeout(debounceRef.current);
         debounceRef.current = setTimeout(() => {
-          onSave(next)
-        }, 500)
-        return next
-      })
+          onSave(next);
+        }, 500);
+        return next;
+      });
     },
     [onSave],
-  )
+  );
 
   // Focus trap keydown handler
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (!isOpen) return
-
+      if (!isOpen) return;
       if (e.key === 'Escape') {
-        e.preventDefault()
-        onClose()
-        return
+        e.preventDefault();
+        onClose();
+        return;
       }
 
       if (e.key === 'Tab' && dialogRef.current) {
-        const focusable = getFocusable(dialogRef.current)
+        const focusable = getFocusable(dialogRef.current);
         if (focusable.length === 0) {
-          e.preventDefault()
-          return
+          e.preventDefault();
+          return;
         }
         // Non-null: the length === 0 guard above already returned.
-        const first = focusable[0]!
-        const last = focusable[focusable.length - 1]!
+        const first = focusable[0]!;
+        const last = focusable[focusable.length - 1]!;
         if (e.shiftKey) {
           if (document.activeElement === first) {
-            e.preventDefault()
-            last.focus()
+            e.preventDefault();
+            last.focus();
           }
         } else {
           if (document.activeElement === last) {
-            e.preventDefault()
-            first.focus()
+            e.preventDefault();
+            first.focus();
           }
         }
       }
     },
     [isOpen, onClose],
-  )
-
+  );
   useEffect(() => {
     if (isOpen) {
-      previousFocusRef.current = document.activeElement as HTMLElement
-
+      previousFocusRef.current = document.activeElement as HTMLElement;
       const raf = requestAnimationFrame(() => {
         if (dialogRef.current) {
-          getFocusable(dialogRef.current)[0]?.focus()
+          getFocusable(dialogRef.current)[0]?.focus();
         }
-      })
-
-      document.addEventListener('keydown', handleKeyDown)
-
+      });
+      document.addEventListener('keydown', handleKeyDown);
       return () => {
-        cancelAnimationFrame(raf)
-        document.removeEventListener('keydown', handleKeyDown)
-        previousFocusRef.current?.focus()
-      }
+        cancelAnimationFrame(raf);
+        document.removeEventListener('keydown', handleKeyDown);
+        previousFocusRef.current?.focus();
+      };
     }
-    return undefined
-  }, [isOpen, handleKeyDown])
+    return undefined;
+  }, [isOpen, handleKeyDown]);
 
   // Cleanup debounce on unmount
   useEffect(() => {
     return () => {
-      if (debounceRef.current !== null) clearTimeout(debounceRef.current)
-    }
-  }, [])
-
-  if (!isOpen) return null
-
+      if (debounceRef.current !== null) clearTimeout(debounceRef.current);
+    };
+  }, []);
+  if (!isOpen) return null;
   const renderPanel = () => {
     switch (activeTab) {
       case 'general':
-        return <GeneralTab settings={localSettingsState} onChange={handleChange} />
+        return <GeneralTab settings={localSettingsState} onChange={handleChange} />;
       case 'newtab':
-        return <NewTabPageTab settings={localSettingsState} onChange={handleChange} workspaces={workspaces} />
+        return <NewTabPageTab settings={localSettingsState} onChange={handleChange} workspaces={workspaces} />;
       case 'sync-data':
         return (
           <SyncAndDataTab
@@ -210,9 +201,9 @@ export function SettingsModal({
             onImportBookmarks={onImportBookmarks}
             onImportOneTab={onImportOneTab}
           />
-        )
+        );
       case 'shortcuts':
-        return <ShortcutsTab />
+        return <ShortcutsTab />;
       case 'trash':
         return (
           <TrashTab
@@ -222,14 +213,13 @@ export function SettingsModal({
             onEmptyTrash={onEmptyTrash ?? (() => undefined)}
             workspaces={workspaces}
           />
-        )
+        );
       case 'help':
-        return <HelpTab onShowOnboarding={onShowOnboarding} />
+        return <HelpTab onShowOnboarding={onShowOnboarding} />;
       default:
-        return null
+        return null;
     }
-  }
-
+  };
   return (
     <div
       style={{
@@ -243,7 +233,7 @@ export function SettingsModal({
         padding: 'var(--space-4)',
       }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
+        if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
@@ -328,31 +318,31 @@ export function SettingsModal({
               aria-orientation="vertical"
               style={{ listStyle: 'none', padding: 0, margin: 0 }}
               onKeyDown={(e) => {
-                const tabIds = TABS.map((t) => t.id)
-                const idx = tabIds.indexOf(activeTab)
+                const tabIds = TABS.map((t) => t.id);
+                const idx = tabIds.indexOf(activeTab);
                 if (e.key === 'ArrowDown') {
-                  e.preventDefault()
-                  const next = tabIds[(idx + 1) % tabIds.length]!
-                  setActiveTab(next)
-                  document.getElementById(`settings-tab-${next}`)?.focus()
+                  e.preventDefault();
+                  const next = tabIds[(idx + 1) % tabIds.length]!;
+                  setActiveTab(next);
+                  document.getElementById(`settings-tab-${next}`)?.focus();
                 } else if (e.key === 'ArrowUp') {
-                  e.preventDefault()
-                  const prev = tabIds[(idx - 1 + tabIds.length) % tabIds.length]!
-                  setActiveTab(prev)
-                  document.getElementById(`settings-tab-${prev}`)?.focus()
+                  e.preventDefault();
+                  const prev = tabIds[(idx - 1 + tabIds.length) % tabIds.length]!;
+                  setActiveTab(prev);
+                  document.getElementById(`settings-tab-${prev}`)?.focus();
                 } else if (e.key === 'Home') {
-                  e.preventDefault()
-                  setActiveTab(tabIds[0]!)
-                  document.getElementById(`settings-tab-${tabIds[0]!}`)?.focus()
+                  e.preventDefault();
+                  setActiveTab(tabIds[0]!);
+                  document.getElementById(`settings-tab-${tabIds[0]!}`)?.focus();
                 } else if (e.key === 'End') {
-                  e.preventDefault()
-                  setActiveTab(tabIds[tabIds.length - 1]!)
-                  document.getElementById(`settings-tab-${tabIds[tabIds.length - 1]!}`)?.focus()
+                  e.preventDefault();
+                  setActiveTab(tabIds[tabIds.length - 1]!);
+                  document.getElementById(`settings-tab-${tabIds[tabIds.length - 1]!}`)?.focus();
                 }
               }}
             >
               {TABS.map((tab) => {
-                const isActive = activeTab === tab.id
+                const isActive = activeTab === tab.id;
                 return (
                   <li key={tab.id} role="presentation">
                     <button
@@ -382,7 +372,7 @@ export function SettingsModal({
                       {tab.label}
                     </button>
                   </li>
-                )
+                );
               })}
             </ul>
           </nav>
@@ -404,5 +394,5 @@ export function SettingsModal({
         </div>
       </div>
     </div>
-  )
+  );
 }

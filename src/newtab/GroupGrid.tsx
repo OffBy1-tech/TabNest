@@ -1,44 +1,43 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { GroupCard } from '@/components/GroupCard/GroupCard'
-import { NoteCard } from '@/components/Notes/NoteCard'
-import type { ActiveTabDragPayload } from '@/components/GroupCard/dragTypes'
-import type { Note, TabGroup } from '@/lib/schema'
-
+import React, { useEffect, useRef, useState } from 'react';
+import { GroupCard } from '@/components/GroupCard/GroupCard';
+import { NoteCard } from '@/components/Notes/NoteCard';
+import type { ActiveTabDragPayload } from '@/components/GroupCard/dragTypes';
+import type { Note, TabGroup } from '@/lib/schema';
 export interface GroupGridProps {
-  groups: TabGroup[]
-  viewMode: 'grid' | 'list'
-  onRenameGroup: (id: string, name: string) => void
-  onDeleteGroup: (id: string) => void
-  onOpenAll: (group: TabGroup) => void
-  onOpenAllInBackground?: ((group: TabGroup) => void) | undefined
-  onAddTab?: ((groupId: string, url: string) => void) | undefined
+  groups: TabGroup[];
+  viewMode: 'grid' | 'list';
+  onRenameGroup: (id: string, name: string) => void;
+  onDeleteGroup: (id: string) => void;
+  onOpenAll: (group: TabGroup) => void;
+  onOpenAllInBackground?: ((group: TabGroup) => void) | undefined;
+  onAddTab?: ((groupId: string, url: string) => void) | undefined;
   /** Move-to-category targets shown in the kebab menu. */
-  categories?: Array<{ id: string; name: string; emoji: string }> | undefined
+  categories?: Array<{ id: string; name: string; emoji: string }> | undefined;
   /** Resolves which category a group currently lives in (for filtering move targets). */
-  categoryIdOf?: ((groupId: string) => string | undefined) | undefined
-  onMoveToCategory?: ((groupId: string, toCategoryId: string) => void) | undefined
-  onDuplicate?: ((groupId: string) => void) | undefined
-  onArchive?: ((groupId: string) => void) | undefined
-  onExport?: ((group: TabGroup) => void) | undefined
-  onReorderTab?: ((groupId: string, tabId: string, toIndex: number) => void) | undefined
-  onDropActiveTab?: ((groupId: string, payload: ActiveTabDragPayload) => void) | undefined
-  onRemoveTab: (groupId: string, tabId: string) => void
-  onMoveTab: (fromGroupId: string, toGroupId: string, tabId: string) => void
-  onOpenTab: (url: string) => void
-  onSaveGroupNote: (groupId: string, content: string) => void
-  onSaveTabNote: (groupId: string, tabId: string, note: string) => void
-  showFavicons: boolean
+  categoryIdOf?: ((groupId: string) => string | undefined) | undefined;
+  onMoveToCategory?: ((groupId: string, toCategoryId: string) => void) | undefined;
+  onDuplicate?: ((groupId: string) => void) | undefined;
+  onArchive?: ((groupId: string) => void) | undefined;
+  onExport?: ((group: TabGroup) => void) | undefined;
+  onReorderTab?: ((groupId: string, tabId: string, toIndex: number) => void) | undefined;
+  onDropActiveTab?: ((groupId: string, payload: ActiveTabDragPayload) => void) | undefined;
+  onRemoveTab: (groupId: string, tabId: string) => void;
+  onMoveTab: (fromGroupId: string, toGroupId: string, tabId: string) => void;
+  onOpenTab: (url: string) => void;
+  onSaveGroupNote: (groupId: string, content: string) => void;
+  onSaveTabNote: (groupId: string, tabId: string, note: string) => void;
+  showFavicons: boolean;
   /** When defined, shows a New Group button. Pass undefined for the "All" view. */
-  onCreateGroup?: ((name: string) => void) | undefined
+  onCreateGroup?: ((name: string) => void) | undefined;
   /** Controlled by App so the N keyboard shortcut can trigger it. */
-  creatingGroup?: boolean
-  onCreatingGroupChange?: (v: boolean) => void
+  creatingGroup?: boolean;
+  onCreatingGroupChange?: (v: boolean) => void;
   /** Standalone notes to render as cards after the groups (spec §7.1). */
-  notes?: Note[] | undefined
-  onSaveNote?: ((noteId: string, content: string) => void) | undefined
-  onDeleteNote?: ((noteId: string) => void) | undefined
+  notes?: Note[] | undefined;
+  onSaveNote?: ((noteId: string, content: string) => void) | undefined;
+  onDeleteNote?: ((noteId: string) => void) | undefined;
   /** When defined, shows a New Note button next to New Group. */
-  onCreateNote?: (() => void) | undefined
+  onCreateNote?: (() => void) | undefined;
 }
 
 /** The main content area: the grid/list of GroupCards plus inline group creation. */
@@ -72,41 +71,39 @@ export function GroupGrid({
   onDeleteNote,
   onCreateNote,
 }: GroupGridProps): React.JSX.Element {
-  const inputRef = useRef<HTMLInputElement>(null)
-  const cardsRef = useRef<HTMLDivElement>(null)
-  const [newGroupName, setNewGroupName] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null);
+  const cardsRef = useRef<HTMLDivElement>(null);
+  const [newGroupName, setNewGroupName] = useState('');
 
   // Spec §11.4: arrow keys move focus between group cards. Only reacts when a
   // card itself has focus, so inputs and buttons inside cards keep their keys.
   function handleCardsKeyDown(e: React.KeyboardEvent<HTMLDivElement>): void {
-    if (!['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].includes(e.key)) return
-    const target = e.target as HTMLElement
-    if (target.tagName.toLowerCase() !== 'article') return
-    const cards = Array.from(cardsRef.current?.querySelectorAll<HTMLElement>('article') ?? [])
-    const idx = cards.indexOf(target)
-    if (idx === -1) return
-    e.preventDefault()
-    const delta = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : -1
-    const next = cards[Math.max(0, Math.min(cards.length - 1, idx + delta))]
-    next?.focus()
+    if (!['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].includes(e.key)) return;
+    const target = e.target as HTMLElement;
+    if (target.tagName.toLowerCase() !== 'article') return;
+    const cards = Array.from(cardsRef.current?.querySelectorAll<HTMLElement>('article') ?? []);
+    const idx = cards.indexOf(target);
+    if (idx === -1) return;
+    e.preventDefault();
+    const delta = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : -1;
+    const next = cards[Math.max(0, Math.min(cards.length - 1, idx + delta))];
+    next?.focus();
   }
 
   useEffect(() => {
     if (creatingGroup) {
-      inputRef.current?.focus()
+      inputRef.current?.focus();
     } else {
-      setNewGroupName('')
+      setNewGroupName('');
     }
-  }, [creatingGroup])
-
+  }, [creatingGroup]);
   function handleSubmit(): void {
-    if (!onCreateGroup) return
-    onCreateGroup(newGroupName.trim() || 'New Group')
-    onCreatingGroupChange?.(false)
+    if (!onCreateGroup) return;
+    onCreateGroup(newGroupName.trim() || 'New Group');
+    onCreatingGroupChange?.(false);
   }
 
-  const canCreate = onCreateGroup !== undefined
-
+  const canCreate = onCreateGroup !== undefined;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
       <div
@@ -141,12 +138,12 @@ export function GroupGrid({
                   transition: 'border-color var(--duration-fast) var(--ease-default), color var(--duration-fast) var(--ease-default)',
                 }}
                 onMouseEnter={(e) => {
-                  ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-warning, #f59e0b)'
-                  ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--color-warning, #f59e0b)'
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-warning, #f59e0b)';
+                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-warning, #f59e0b)';
                 }}
                 onMouseLeave={(e) => {
-                  ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-default)'
-                  ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)'
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-default)';
+                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)';
                 }}
               >
                 + New Note
@@ -171,12 +168,12 @@ export function GroupGrid({
                 transition: 'border-color var(--duration-fast) var(--ease-default), color var(--duration-fast) var(--ease-default)',
               }}
               onMouseEnter={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-brand-500)'
-                ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--color-brand-500)'
+                (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-brand-500)';
+                (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-brand-500)';
               }}
               onMouseLeave={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-default)'
-                ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)'
+                (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-default)';
+                (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)';
               }}
             >
               + New Group
@@ -206,8 +203,8 @@ export function GroupGrid({
               onChange={(e) => setNewGroupName(e.target.value)}
               placeholder="Group name…"
               onKeyDown={(e) => {
-                if (e.key === 'Enter') { e.preventDefault(); handleSubmit() }
-                if (e.key === 'Escape') { e.preventDefault(); onCreatingGroupChange?.(false) }
+                if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); }
+                if (e.key === 'Escape') { e.preventDefault(); onCreatingGroupChange?.(false); }
               }}
               style={{
                 flex: 1,
@@ -334,5 +331,5 @@ export function GroupGrid({
         )}
       </div>
     </div>
-  )
+  );
 }

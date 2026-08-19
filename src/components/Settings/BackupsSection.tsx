@@ -7,11 +7,11 @@
  * presentational + local UI state.
  */
 
-import React, { useMemo, useState } from 'react'
-import type { BackupGeneration, Workspace } from '../../lib/schema'
-import { diffWorkspaces, snapshotStats } from '../../lib/diff'
-import { DiffTree } from './DiffTree'
-import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog'
+import React, { useMemo, useState } from 'react';
+import type { BackupGeneration, Workspace } from '../../lib/schema';
+import { diffWorkspaces, snapshotStats } from '../../lib/diff';
+import { DiffTree } from './DiffTree';
+import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog';
 import {
   selectStyle,
   listResetStyle,
@@ -20,34 +20,33 @@ import {
   smallGhostBtnStyle,
   alertTextStyle,
   statusTextStyle,
-} from './styles'
-
+} from './styles';
 export interface BackupsSectionProps {
-  backups: BackupGeneration[]
-  currentWorkspaces: Workspace[]
-  onRestore: (index: number) => void
-  restoreNotice: string | null
-  restoreError: string | null
+  backups: BackupGeneration[];
+  currentWorkspaces: Workspace[];
+  onRestore: (index: number) => void;
+  restoreNotice: string | null;
+  restoreError: string | null;
 }
 
 function snapshotDate(saved_at: number): string {
-  return saved_at === 0 ? 'unknown time (migrated)' : new Date(saved_at).toLocaleString()
+  return saved_at === 0 ? 'unknown time (migrated)' : new Date(saved_at).toLocaleString();
 }
 
 function statsText(workspaces: Workspace[]): string {
-  const s = snapshotStats(workspaces)
-  const plural = (n: number, w: string): string => `${n} ${w}${n === 1 ? '' : 's'}`
-  return `${plural(s.workspaces, 'workspace')} · ${plural(s.groups, 'group')} · ${plural(s.tabs, 'tab')}`
+  const s = snapshotStats(workspaces);
+  const plural = (n: number, w: string): string => `${n} ${w}${n === 1 ? '' : 's'}`;
+  return `${plural(s.workspaces, 'workspace')} · ${plural(s.groups, 'group')} · ${plural(s.tabs, 'tab')}`;
 }
 
 /** One selectable side of the comparison. `index` is null for current state. */
 interface Snapshot {
-  key: string
-  label: string
-  workspaces: Workspace[]
-  index: number | null
-  date: string
-  stats: string
+  key: string;
+  label: string;
+  workspaces: Workspace[];
+  index: number | null;
+  date: string;
+  stats: string;
 }
 
 export function BackupsSection({
@@ -77,30 +76,26 @@ export function BackupsSection({
       })),
     ],
     [backups, currentWorkspaces],
-  )
-
-  const [selA, setSelA] = useState(backups.length > 0 ? 'backup-0' : 'current')
-  const [selB, setSelB] = useState('current')
-  const [confirmIndex, setConfirmIndex] = useState<number | null>(null)
-
+  );
+  const [selA, setSelA] = useState(backups.length > 0 ? 'backup-0' : 'current');
+  const [selB, setSelB] = useState('current');
+  const [confirmIndex, setConfirmIndex] = useState<number | null>(null);
   const resolve = (key: string): Workspace[] =>
-    snapshots.find((s) => s.key === key)?.workspaces ?? []
+    snapshots.find((s) => s.key === key)?.workspaces ?? [];
   const diff = useMemo(
     () => diffWorkspaces(resolve(selA), resolve(selB)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [selA, selB, snapshots],
-  )
-
+  );
   if (backups.length === 0) {
     return (
       <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
         No local backups yet. A backup is saved automatically before a sync overwrite or revision restore.
       </p>
-    )
+    );
   }
 
-  const backupRows = snapshots.filter((s): s is Snapshot & { index: number } => s.index !== null)
-
+  const backupRows = snapshots.filter((s): s is Snapshot & { index: number } => s.index !== null);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
       {/* Generation list */}
@@ -161,11 +156,11 @@ export function BackupsSection({
         }
         confirmLabel="Restore"
         onConfirm={() => {
-          if (confirmIndex !== null) onRestore(confirmIndex)
-          setConfirmIndex(null)
+          if (confirmIndex !== null) onRestore(confirmIndex);
+          setConfirmIndex(null);
         }}
         onCancel={() => setConfirmIndex(null)}
       />
     </div>
-  )
+  );
 }

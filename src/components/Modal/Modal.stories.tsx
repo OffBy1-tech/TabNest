@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import React, { useState } from 'react';
 import { Modal } from './Modal';
-
 const meta = {
   title: 'Components/Modal',
   component: Modal,
@@ -15,7 +14,6 @@ const meta = {
     layout: 'fullscreen',
   },
 } satisfies Meta<typeof Modal>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -68,11 +66,9 @@ function ModalDemo({
 export const Small: Story = {
   render: () => <ModalDemo title="Small modal" size="sm" />,
 };
-
 export const Medium: Story = {
   render: () => <ModalDemo title="Medium modal" size="md" />,
 };
-
 export const Large: Story = {
   render: () => (
     <ModalDemo title="Large modal with long content" size="lg">
@@ -90,7 +86,6 @@ export const Large: Story = {
     </ModalDemo>
   ),
 };
-
 export const Closed: Story = {
   render: () => {
     return (

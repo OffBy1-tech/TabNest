@@ -4,8 +4,8 @@ import React, {
   useMemo,
   useRef,
   useState,
-} from 'react'
-import { Link, FolderOpen, Tag, Globe } from 'lucide-react'
+} from 'react';
+import { Link, FolderOpen, Tag, Globe } from 'lucide-react';
 import {
   buildSearchIndex,
   createSearchEngine,
@@ -17,25 +17,25 @@ import {
   type SearchFilters,
   type SearchSort,
   type SearchDateRange,
-} from '../../lib/search'
-import type { Workspace } from '../../lib/schema'
+} from '../../lib/search';
+import type { Workspace } from '../../lib/schema';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 interface SearchOverlayProps {
-  isOpen: boolean
-  onClose: () => void
-  workspaces: Workspace[]
-  onNavigate?: (record: SearchRecord) => void
+  isOpen: boolean;
+  onClose: () => void;
+  workspaces: Workspace[];
+  onNavigate?: (record: SearchRecord) => void;
 }
 
 type ResultSection = {
-  type: SearchRecord['type']
-  label: string
-  items: SearchRecord[]
-}
+  type: SearchRecord['type'];
+  label: string;
+  items: SearchRecord[];
+};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -44,29 +44,28 @@ type ResultSection = {
 function getTypeIcon(type: SearchRecord['type']): React.JSX.Element {
   switch (type) {
     case 'tab':
-      return <Link size={14} aria-hidden="true" />
+      return <Link size={14} aria-hidden="true" />;
     case 'group':
-      return <FolderOpen size={14} aria-hidden="true" />
+      return <FolderOpen size={14} aria-hidden="true" />;
     case 'category':
-      return <Tag size={14} aria-hidden="true" />
+      return <Tag size={14} aria-hidden="true" />;
     default:
-      return <Globe size={14} aria-hidden="true" />
+      return <Globe size={14} aria-hidden="true" />;
   }
 }
 
-const TYPE_ORDER: SearchRecord['type'][] = ['tab', 'group', 'category', 'workspace']
+const TYPE_ORDER: SearchRecord['type'][] = ['tab', 'group', 'category', 'workspace'];
 const TYPE_LABELS: Record<SearchRecord['type'], string> = {
   tab: 'Tabs',
   group: 'Groups',
   category: 'Categories',
   workspace: 'Workspaces',
-}
-
+};
 function groupResults(records: SearchRecord[]): ResultSection[] {
-  const grouped: Partial<Record<SearchRecord['type'], SearchRecord[]>> = {}
+  const grouped: Partial<Record<SearchRecord['type'], SearchRecord[]>> = {};
   for (const record of records) {
-    if (!grouped[record.type]) grouped[record.type] = []
-    grouped[record.type]!.push(record)
+    if (!grouped[record.type]) grouped[record.type] = [];
+    grouped[record.type]!.push(record);
   }
   return TYPE_ORDER.filter((type) => (grouped[type]?.length ?? 0) > 0).map(
     (type) => ({
@@ -74,12 +73,12 @@ function groupResults(records: SearchRecord[]): ResultSection[] {
       label: TYPE_LABELS[type],
       items: grouped[type]!,
     }),
-  )
+  );
 }
 
 // Flat list of all result items in display order (for keyboard navigation)
 function flattenSections(sections: ResultSection[]): SearchRecord[] {
-  return sections.flatMap((s) => s.items)
+  return sections.flatMap((s) => s.items);
 }
 
 const filterSelectStyle: React.CSSProperties = {
@@ -92,7 +91,7 @@ const filterSelectStyle: React.CSSProperties = {
   fontFamily: 'var(--font-sans)',
   cursor: 'pointer',
   maxWidth: 140,
-}
+};
 
 // ---------------------------------------------------------------------------
 // SearchOverlay
@@ -104,29 +103,28 @@ export function SearchOverlay({
   workspaces,
   onNavigate,
 }: SearchOverlayProps): React.JSX.Element | null {
-  const [query, setQuery] = useState('')
-  const [activeIndex, setActiveIndex] = useState(0)
+  const [query, setQuery] = useState('');
+  const [activeIndex, setActiveIndex] = useState(0);
   // Filters and sort deliberately survive close/reopen — spec §8.3 says active
   // filters persist for the session (the overlay stays mounted while closed).
-  const [filters, setFilters] = useState<SearchFilters>(DEFAULT_SEARCH_FILTERS)
-  const [sort, setSort] = useState<SearchSort>('relevance')
-  const inputRef = useRef<HTMLInputElement>(null)
-  const panelRef = useRef<HTMLDivElement>(null)
+  const [filters, setFilters] = useState<SearchFilters>(DEFAULT_SEARCH_FILTERS);
+  const [sort, setSort] = useState<SearchSort>('relevance');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   // Stable ref so the document listener never needs to be re-registered when onClose changes
-  const onCloseRef = useRef(onClose)
-  useEffect(() => { onCloseRef.current = onClose })
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; });
 
   // Build search index + engine whenever workspaces change
   const engine = useMemo(() => {
-    const index = buildSearchIndex(workspaces)
-    return createSearchEngine(index)
-  }, [workspaces])
-
+    const index = buildSearchIndex(workspaces);
+    return createSearchEngine(index);
+  }, [workspaces]);
   const results = useMemo<SearchRecord[]>(() => {
-    if (query.trim().length === 0) return []
-    return sortRecords(filterRecords(search(engine, query), filters), sort)
-  }, [engine, query, filters, sort])
+    if (query.trim().length === 0) return [];
+    return sortRecords(filterRecords(search(engine, query), filters), sort);
+  }, [engine, query, filters, sort]);
 
   // Category options follow the workspace filter (or span all workspaces)
   const categoryOptions = useMemo(
@@ -135,111 +133,107 @@ export function SearchOverlay({
         .filter((ws) => !filters.workspaceId || ws.id === filters.workspaceId)
         .flatMap((ws) => ws.categories.map((c) => ({ id: c.id, name: c.name }))),
     [workspaces, filters.workspaceId],
-  )
-
+  );
   function toggleTypeFilter(type: SearchRecord['type']): void {
     setFilters((prev) => {
-      const types = new Set(prev.types)
-      if (types.has(type)) types.delete(type)
-      else types.add(type)
-      return { ...prev, types }
-    })
-    setActiveIndex(0)
+      const types = new Set(prev.types);
+      if (types.has(type)) types.delete(type);
+      else types.add(type);
+      return { ...prev, types };
+    });
+    setActiveIndex(0);
   }
 
-  const sections = useMemo(() => groupResults(results), [results])
-  const flatResults = useMemo(() => flattenSections(sections), [sections])
+  const sections = useMemo(() => groupResults(results), [results]);
+  const flatResults = useMemo(() => flattenSections(sections), [sections]);
 
   // Reset state and focus when overlay opens
   useEffect(() => {
     if (isOpen) {
-      setQuery('')
-      setActiveIndex(0)
-      requestAnimationFrame(() => inputRef.current?.focus())
+      setQuery('');
+      setActiveIndex(0);
+      requestAnimationFrame(() => inputRef.current?.focus());
     }
-  }, [isOpen])
+  }, [isOpen]);
 
   // Capture-phase document listener: fires before any child element handler,
   // and only re-registers when isOpen changes (not on every render).
   useEffect(() => {
-    if (!isOpen) return undefined
+    if (!isOpen) return undefined;
     function handleEscape(e: KeyboardEvent): void {
       if (e.key === 'Escape') {
-        e.preventDefault()
-        onCloseRef.current()
+        e.preventDefault();
+        onCloseRef.current();
       }
     }
-    document.addEventListener('keydown', handleEscape, { capture: true })
-    return () => document.removeEventListener('keydown', handleEscape, { capture: true })
-  }, [isOpen])
+    document.addEventListener('keydown', handleEscape, { capture: true });
+    return () => document.removeEventListener('keydown', handleEscape, { capture: true });
+  }, [isOpen]);
 
   // Clamp active index when results change
   useEffect(() => {
-    setActiveIndex((prev) => Math.min(prev, Math.max(0, flatResults.length - 1)))
-  }, [flatResults.length])
-
+    setActiveIndex((prev) => Math.min(prev, Math.max(0, flatResults.length - 1)));
+  }, [flatResults.length]);
   const activateResult = useCallback(
     (record: SearchRecord): void => {
       if (record.type === 'tab' && record.url) {
-        window.open(record.url, '_blank', 'noopener,noreferrer')
+        window.open(record.url, '_blank', 'noopener,noreferrer');
       } else {
-        onNavigate?.(record)
+        onNavigate?.(record);
       }
-      onClose()
+      onClose();
     },
     [onClose, onNavigate],
-  )
-
+  );
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Escape') {
-        e.preventDefault()
-        onClose()
+        e.preventDefault();
+        onClose();
       } else if (e.key === 'ArrowDown') {
-        e.preventDefault()
+        e.preventDefault();
         setActiveIndex((prev) =>
           flatResults.length > 0 ? Math.min(prev + 1, flatResults.length - 1) : 0,
-        )
+        );
       } else if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        setActiveIndex((prev) => Math.max(prev - 1, 0))
+        e.preventDefault();
+        setActiveIndex((prev) => Math.max(prev - 1, 0));
       } else if (e.key === 'Enter') {
-        e.preventDefault()
-        const record = flatResults[activeIndex]
-        if (record) activateResult(record)
+        e.preventDefault();
+        const record = flatResults[activeIndex];
+        if (record) activateResult(record);
       }
     },
     [flatResults, activeIndex, onClose, activateResult],
-  )
+  );
 
   // Focus trap: Tab key stays inside panel
   function handlePanelKeyDown(e: React.KeyboardEvent<HTMLDivElement>): void {
     if (e.key === 'Tab') {
       const focusable = panelRef.current?.querySelectorAll<HTMLElement>(
         'input, button, [tabindex="0"]',
-      )
-      if (!focusable || focusable.length === 0) return
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
+      );
+      if (!focusable || focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
       if (e.shiftKey) {
         if (document.activeElement === first) {
-          e.preventDefault()
-          last?.focus()
+          e.preventDefault();
+          last?.focus();
         }
       } else {
         if (document.activeElement === last) {
-          e.preventDefault()
-          first?.focus()
+          e.preventDefault();
+          first?.focus();
         }
       }
     }
   }
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   // Accumulate flat index for result rendering
-  let flatIndex = 0
-
+  let flatIndex = 0;
   return (
     <div
       role="dialog"
@@ -259,7 +253,7 @@ export function SearchOverlay({
         paddingRight: 'var(--space-4)',
       }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
+        if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
@@ -307,8 +301,8 @@ export function SearchOverlay({
             placeholder="Search tabs, groups, categories..."
             value={query}
             onChange={(e) => {
-              setQuery(e.target.value)
-              setActiveIndex(0)
+              setQuery(e.target.value);
+              setActiveIndex(0);
             }}
             onKeyDown={handleKeyDown}
             style={{
@@ -325,8 +319,8 @@ export function SearchOverlay({
               type="button"
               aria-label="Clear search"
               onClick={() => {
-                setQuery('')
-                inputRef.current?.focus()
+                setQuery('');
+                inputRef.current?.focus();
               }}
               style={{
                 border: 'none',
@@ -373,7 +367,7 @@ export function SearchOverlay({
           }}
         >
           {(['tab', 'group', 'category'] as const).map((type) => {
-            const active = filters.types.has(type)
+            const active = filters.types.has(type);
             return (
               <button
                 key={type}
@@ -393,15 +387,15 @@ export function SearchOverlay({
               >
                 {TYPE_LABELS[type]}
               </button>
-            )
+            );
           })}
 
           <select
             aria-label="Filter by workspace"
             value={filters.workspaceId}
             onChange={(e) => {
-              setFilters((prev) => ({ ...prev, workspaceId: e.target.value, categoryId: '' }))
-              setActiveIndex(0)
+              setFilters((prev) => ({ ...prev, workspaceId: e.target.value, categoryId: '' }));
+              setActiveIndex(0);
             }}
             style={filterSelectStyle}
           >
@@ -415,8 +409,8 @@ export function SearchOverlay({
             aria-label="Filter by category"
             value={filters.categoryId}
             onChange={(e) => {
-              setFilters((prev) => ({ ...prev, categoryId: e.target.value }))
-              setActiveIndex(0)
+              setFilters((prev) => ({ ...prev, categoryId: e.target.value }));
+              setActiveIndex(0);
             }}
             style={filterSelectStyle}
           >
@@ -430,8 +424,8 @@ export function SearchOverlay({
             aria-label="Filter by date"
             value={filters.dateRange}
             onChange={(e) => {
-              setFilters((prev) => ({ ...prev, dateRange: e.target.value as SearchDateRange }))
-              setActiveIndex(0)
+              setFilters((prev) => ({ ...prev, dateRange: e.target.value as SearchDateRange }));
+              setActiveIndex(0);
             }}
             style={filterSelectStyle}
           >
@@ -447,8 +441,8 @@ export function SearchOverlay({
             aria-label="Sort results"
             value={sort}
             onChange={(e) => {
-              setSort(e.target.value as SearchSort)
-              setActiveIndex(0)
+              setSort(e.target.value as SearchSort);
+              setActiveIndex(0);
             }}
             style={filterSelectStyle}
           >
@@ -489,10 +483,9 @@ export function SearchOverlay({
                 </div>
 
                 {section.items.map((record) => {
-                  const currentIndex = flatIndex
-                  flatIndex += 1
-                  const isActive = currentIndex === activeIndex
-
+                  const currentIndex = flatIndex;
+                  flatIndex += 1;
+                  const isActive = currentIndex === activeIndex;
                   return (
                     <button
                       key={record.id}
@@ -578,15 +571,15 @@ export function SearchOverlay({
                         >
                           {(() => {
                             try {
-                              return new URL(record.url).hostname
+                              return new URL(record.url).hostname;
                             } catch {
-                              return ''
+                              return '';
                             }
                           })()}
                         </span>
                       )}
                     </button>
-                  )
+                  );
                 })}
               </div>
             ))}
@@ -622,5 +615,5 @@ export function SearchOverlay({
         )}
       </div>
     </div>
-  )
+  );
 }

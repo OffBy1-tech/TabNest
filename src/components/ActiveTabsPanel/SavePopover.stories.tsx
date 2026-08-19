@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { SavePopover } from './SavePopover';
 import { makeTab, makeWorkspaces } from './testFixtures';
-
 const meta = {
   title: 'Components/ActiveTabsPanel/SavePopover',
   component: SavePopover,
@@ -20,7 +19,6 @@ const meta = {
     ),
   ],
 } satisfies Meta<typeof SavePopover>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 

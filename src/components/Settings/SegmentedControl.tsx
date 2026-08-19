@@ -1,10 +1,9 @@
-import React from 'react'
-
+import React from 'react';
 export interface SegmentedControlProps<T extends string> {
-  value: T
-  options: Array<{ value: T; label: string }>
-  onChange: (v: T) => void
-  groupLabel: string
+  value: T;
+  options: Array<{ value: T; label: string }>;
+  onChange: (v: T) => void;
+  groupLabel: string;
 }
 
 /** A horizontal group of mutually-exclusive buttons (e.g. Light / Dark / System). */
@@ -48,5 +47,5 @@ export function SegmentedControl<T extends string>({
         </button>
       ))}
     </div>
-  )
+  );
 }

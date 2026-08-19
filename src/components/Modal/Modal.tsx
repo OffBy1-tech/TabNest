@@ -8,16 +8,15 @@ import React, {
   useEffect,
   useId,
   useRef,
-} from 'react'
-
+} from 'react';
 export interface ModalProps {
-  isOpen: boolean
-  onClose: () => void
-  title: string
-  children: React.ReactNode
-  size?: 'sm' | 'md' | 'lg'
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+  size?: 'sm' | 'md' | 'lg';
   /** If provided, this element receives focus when the modal opens instead of the first focusable element. */
-  initialFocusRef?: React.RefObject<HTMLElement | null>
+  initialFocusRef?: React.RefObject<HTMLElement | null>;
 }
 
 const FOCUSABLE_SELECTORS = [
@@ -27,18 +26,16 @@ const FOCUSABLE_SELECTORS = [
   'select:not([disabled])',
   'textarea:not([disabled])',
   '[tabindex]:not([tabindex="-1"])',
-].join(', ')
-
+].join(', ');
 function getFocusableElements(container: HTMLElement): HTMLElement[] {
-  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTORS))
+  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTORS));
 }
 
 const SIZE_WIDTHS: Record<NonNullable<ModalProps['size']>, string> = {
   sm: '400px',
   md: '560px',
   lg: '768px',
-}
-
+};
 export function Modal({
   isOpen,
   onClose,
@@ -47,74 +44,67 @@ export function Modal({
   size = 'md',
   initialFocusRef,
 }: ModalProps): React.JSX.Element | null {
-  const titleId = useId()
-  const dialogRef = useRef<HTMLDivElement>(null)
-  const previousFocusRef = useRef<HTMLElement | null>(null)
+  const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   // Trap focus within the dialog
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (!isOpen) return
-
+      if (!isOpen) return;
       if (e.key === 'Escape') {
-        e.preventDefault()
-        onClose()
-        return
+        e.preventDefault();
+        onClose();
+        return;
       }
 
       if (e.key === 'Tab' && dialogRef.current) {
-        const focusable = getFocusableElements(dialogRef.current)
+        const focusable = getFocusableElements(dialogRef.current);
         if (focusable.length === 0) {
-          e.preventDefault()
-          return
+          e.preventDefault();
+          return;
         }
-        const first = focusable[0]
-        const last = focusable[focusable.length - 1]
-
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
         if (e.shiftKey) {
           if (document.activeElement === first) {
-            e.preventDefault()
-            last?.focus()
+            e.preventDefault();
+            last?.focus();
           }
         } else {
           if (document.activeElement === last) {
-            e.preventDefault()
-            first?.focus()
+            e.preventDefault();
+            first?.focus();
           }
         }
       }
     },
     [isOpen, onClose],
-  )
-
+  );
   useEffect(() => {
     if (isOpen) {
-      previousFocusRef.current = document.activeElement as HTMLElement
+      previousFocusRef.current = document.activeElement as HTMLElement;
 
       // Focus: prefer initialFocusRef, then first focusable element
       const raf = requestAnimationFrame(() => {
         if (initialFocusRef?.current) {
-          initialFocusRef.current.focus()
+          initialFocusRef.current.focus();
         } else if (dialogRef.current) {
-          const focusable = getFocusableElements(dialogRef.current)
-          focusable[0]?.focus()
+          const focusable = getFocusableElements(dialogRef.current);
+          focusable[0]?.focus();
         }
-      })
-
-      document.addEventListener('keydown', handleKeyDown)
-
+      });
+      document.addEventListener('keydown', handleKeyDown);
       return () => {
-        cancelAnimationFrame(raf)
-        document.removeEventListener('keydown', handleKeyDown)
-        previousFocusRef.current?.focus()
-      }
+        cancelAnimationFrame(raf);
+        document.removeEventListener('keydown', handleKeyDown);
+        previousFocusRef.current?.focus();
+      };
     }
 
-    return undefined
-  }, [isOpen, handleKeyDown, initialFocusRef])
-
-  if (!isOpen) return null
-
+    return undefined;
+  }, [isOpen, handleKeyDown, initialFocusRef]);
+  if (!isOpen) return null;
   return (
     <div
       style={{
@@ -128,7 +118,7 @@ export function Modal({
         padding: 'var(--space-4)',
       }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
+        if (e.target === e.currentTarget) onClose();
       }}
       aria-hidden="false"
     >
@@ -206,5 +196,5 @@ export function Modal({
         </div>
       </div>
     </div>
-  )
+  );
 }

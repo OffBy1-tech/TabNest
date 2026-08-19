@@ -1,12 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { SyncStatusDot } from './SyncStatusDot';
-
 const meta = {
   title: 'Components/TopBar/SyncStatusDot',
   component: SyncStatusDot,
   parameters: { layout: 'centered' },
 } satisfies Meta<typeof SyncStatusDot>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 

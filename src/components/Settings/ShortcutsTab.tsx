@@ -1,14 +1,12 @@
-import React from 'react'
-import { sectionHeadingStyle } from './styles'
-
+import React from 'react';
+import { sectionHeadingStyle } from './styles';
 const KEYBOARD_SHORTCUTS: Array<{ shortcut: string; action: string }> = [
   { shortcut: '/ or ⌘K', action: 'Open global search' },
   { shortcut: 'N', action: 'New group in active category' },
   { shortcut: 'E', action: 'Edit selected group name' },
   { shortcut: 'Delete', action: 'Move group to Trash' },
   { shortcut: 'Esc', action: 'Close modals / dropdowns' },
-]
-
+];
 export function ShortcutsTab(): React.JSX.Element {
   return (
     <div>
@@ -81,5 +79,5 @@ export function ShortcutsTab(): React.JSX.Element {
         </tbody>
       </table>
     </div>
-  )
+  );
 }

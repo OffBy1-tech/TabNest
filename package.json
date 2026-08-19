@@ -1,6 +1,6 @@
 {
   "name": "tabnest",
-  "version": "1.1.2",
+  "version": "1.1.4",
   "description": "Free tab manager with Google Drive sync. Save, organize, and search your tabs — privacy-first.",
   "private": true,
   "type": "module",
@@ -18,6 +18,7 @@
     "coverage:badge": "npm run coverage && node scripts/coverage-badge.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
+    "lint-fix": "eslint --fix src",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },
@@ -39,6 +40,7 @@
     "@storybook/addon-onboarding": "^10.4.6",
     "@storybook/addon-vitest": "^10.4.6",
     "@storybook/react-vite": "^10.4.6",
+    "@stylistic/eslint-plugin": "^5.10.0",
     "@tailwindcss/postcss": "^4.3.1",
     "@testing-library/react": "^16.3.2",
     "@types/chrome": "^0.2.0",

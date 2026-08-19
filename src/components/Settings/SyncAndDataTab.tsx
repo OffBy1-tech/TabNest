@@ -1,14 +1,14 @@
-import React, { useCallback, useEffect, useId, useState } from 'react'
-import type { LocalSettings, SyncMeta, Workspace, StorageSchema, DriveRevision } from '../../lib/schema'
-import { useLocalBackups } from '../../hooks/useLocalBackups'
-import { StorageSchemaZod } from '../../lib/schema'
-import { readStorage, writeStorage, restoreLocalBackup, stripDeviceOnlyFields } from '../../lib/storage'
-import { sendExtensionMessage } from '../../lib/messaging'
-import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog'
-import { BackupsSection } from './BackupsSection'
-import { ToggleSwitch } from './ToggleSwitch'
-import { SettingRow } from './SettingRow'
-import { mergeImportedData } from './mergeImportedData'
+import React, { useCallback, useEffect, useId, useState } from 'react';
+import type { LocalSettings, SyncMeta, Workspace, StorageSchema, DriveRevision } from '../../lib/schema';
+import { useLocalBackups } from '../../hooks/useLocalBackups';
+import { StorageSchemaZod } from '../../lib/schema';
+import { readStorage, writeStorage, restoreLocalBackup, stripDeviceOnlyFields } from '../../lib/storage';
+import { sendExtensionMessage } from '../../lib/messaging';
+import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog';
+import { BackupsSection } from './BackupsSection';
+import { ToggleSwitch } from './ToggleSwitch';
+import { SettingRow } from './SettingRow';
+import { mergeImportedData } from './mergeImportedData';
 import {
   sectionHeadingStyle,
   selectStyle,
@@ -21,15 +21,14 @@ import {
   smallGhostBtnStyle,
   alertTextStyle,
   statusTextStyle,
-} from './styles'
+} from './styles';
 
 /** Outcome line under an import button; error and success share one slot. */
-type ImportResult = { text: string; isError: boolean } | null
+type ImportResult = { text: string; isError: boolean } | null;
 
-const groupsWord = (n: number): string => `group${n === 1 ? '' : 's'}`
-
+const groupsWord = (n: number): string => `group${n === 1 ? '' : 's'}`;
 function ImportResultLine({ result }: { result: ImportResult }): React.JSX.Element | null {
-  if (result === null) return null
+  if (result === null) return null;
   return (
     <div
       role={result.isError ? 'alert' : 'status'}
@@ -37,18 +36,18 @@ function ImportResultLine({ result }: { result: ImportResult }): React.JSX.Eleme
     >
       {result.text}
     </div>
-  )
+  );
 }
 
 export interface SyncAndDataTabProps {
-  localSettings: LocalSettings
-  onLocalSettingsChange: (patch: Partial<LocalSettings>) => void
-  syncMeta: SyncMeta
-  workspaces: Workspace[]
+  localSettings: LocalSettings;
+  onLocalSettingsChange: (patch: Partial<LocalSettings>) => void;
+  syncMeta: SyncMeta;
+  workspaces: Workspace[];
   /** Imports one group per top-level bookmark folder; resolves to the group count. */
-  onImportBookmarks?: ((tree: chrome.bookmarks.BookmarkTreeNode[]) => Promise<number>) | undefined
+  onImportBookmarks?: ((tree: chrome.bookmarks.BookmarkTreeNode[]) => Promise<number>) | undefined;
   /** Imports OneTab-format text; resolves to how many groups landed (and failed). */
-  onImportOneTab?: ((text: string) => Promise<{ imported: number; failed: number }>) | undefined
+  onImportOneTab?: ((text: string) => Promise<{ imported: number; failed: number }>) | undefined;
 }
 
 export function SyncAndDataTab({
@@ -59,128 +58,118 @@ export function SyncAndDataTab({
   onImportBookmarks,
   onImportOneTab,
 }: SyncAndDataTabProps): React.JSX.Element {
-  const backups = useLocalBackups()
-  const isConnected = syncMeta.drive_file_id !== null
-  const intervalId = useId()
-  const onetabId = useId()
-  const [connecting, setConnecting] = useState(false)
-  const [connectError, setConnectError] = useState<string | null>(null)
-  const [syncing, setSyncing] = useState(syncMeta.sync_state === 'syncing')
-  const [pendingImport, setPendingImport] = useState<StorageSchema | null>(null)
-  const [importError, setImportError] = useState<string | null>(null)
-  const [onetabText, setOnetabText] = useState('')
-  const [onetabResult, setOnetabResult] = useState<ImportResult>(null)
-  const [bookmarksResult, setBookmarksResult] = useState<ImportResult>(null)
-
-  const hasExistingData = workspaces.some(ws => ws.categories.some(cat => cat.groups.length > 0))
-
+  const backups = useLocalBackups();
+  const isConnected = syncMeta.drive_file_id !== null;
+  const intervalId = useId();
+  const onetabId = useId();
+  const [connecting, setConnecting] = useState(false);
+  const [connectError, setConnectError] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(syncMeta.sync_state === 'syncing');
+  const [pendingImport, setPendingImport] = useState<StorageSchema | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [onetabText, setOnetabText] = useState('');
+  const [onetabResult, setOnetabResult] = useState<ImportResult>(null);
+  const [bookmarksResult, setBookmarksResult] = useState<ImportResult>(null);
+  const hasExistingData = workspaces.some((ws) => ws.categories.some((cat) => cat.groups.length > 0));
   useEffect(() => {
-    setSyncing(syncMeta.sync_state === 'syncing')
-  }, [syncMeta.sync_state])
-
+    setSyncing(syncMeta.sync_state === 'syncing');
+  }, [syncMeta.sync_state]);
   const handleConnectDrive = useCallback(async () => {
-    setConnecting(true)
-    setConnectError(null)
-    const res = await sendExtensionMessage<{ connected?: boolean }>({ type: 'CONNECT_DRIVE' })
-    setConnecting(false)
+    setConnecting(true);
+    setConnectError(null);
+    const res = await sendExtensionMessage<{ connected?: boolean }>({ type: 'CONNECT_DRIVE' });
+    setConnecting(false);
     if (!res.ok) {
-      setConnectError(res.error || 'Failed to connect. Please try again.')
+      setConnectError(res.error || 'Failed to connect. Please try again.');
     } else if (!res.data?.connected) {
-      setConnectError('Authorization was cancelled or failed. Please try again.')
+      setConnectError('Authorization was cancelled or failed. Please try again.');
     }
-  }, [])
-
+  }, []);
   const handleDisconnect = useCallback(async () => {
-    await sendExtensionMessage({ type: 'DISCONNECT_DRIVE' })
-  }, [])
-
+    await sendExtensionMessage({ type: 'DISCONNECT_DRIVE' });
+  }, []);
   const handleSyncNow = useCallback(async () => {
-    setSyncing(true)
-    await sendExtensionMessage({ type: 'TRIGGER_SYNC' })
-  }, [])
+    setSyncing(true);
+    await sendExtensionMessage({ type: 'TRIGGER_SYNC' });
+  }, []);
 
   // Restore from Drive revision history (spec §9.2/§11.3)
-  const [revisions, setRevisions] = useState<DriveRevision[] | null>(null)
-  const [revisionsLoading, setRevisionsLoading] = useState(false)
-  const [revisionsError, setRevisionsError] = useState<string | null>(null)
-  const [confirmRevisionId, setConfirmRevisionId] = useState<string | null>(null)
-  const [restoredRevision, setRestoredRevision] = useState(false)
+  const [revisions, setRevisions] = useState<DriveRevision[] | null>(null);
+  const [revisionsLoading, setRevisionsLoading] = useState(false);
+  const [revisionsError, setRevisionsError] = useState<string | null>(null);
+  const [confirmRevisionId, setConfirmRevisionId] = useState<string | null>(null);
+  const [restoredRevision, setRestoredRevision] = useState(false);
 
   // Local backup restore state — the backups themselves come from the
   // useLocalBackups hook, live via the tabnest_backups key's onChanged.
-  const [backupNotice, setBackupNotice] = useState<string | null>(null)
-  const [backupError, setBackupError] = useState<string | null>(null)
-
+  const [backupNotice, setBackupNotice] = useState<string | null>(null);
+  const [backupError, setBackupError] = useState<string | null>(null);
   const handleRestoreLocalBackup = useCallback(async (index: number) => {
-    setBackupNotice(null)
-    setBackupError(null)
+    setBackupNotice(null);
+    setBackupError(null);
     try {
-      await restoreLocalBackup(index)
-      setBackupNotice('Backup restored. Your previous workspaces were saved as a new backup.')
+      await restoreLocalBackup(index);
+      setBackupNotice('Backup restored. Your previous workspaces were saved as a new backup.');
     } catch (err) {
-      setBackupError(err instanceof Error ? err.message : String(err))
+      setBackupError(err instanceof Error ? err.message : String(err));
     }
-  }, [])
-
+  }, []);
   const handleLoadRevisions = useCallback(async () => {
-    setRevisionsLoading(true)
-    setRevisionsError(null)
-    setRestoredRevision(false)
-    const res = await sendExtensionMessage<DriveRevision[]>({ type: 'GET_DRIVE_REVISIONS' })
-    setRevisionsLoading(false)
+    setRevisionsLoading(true);
+    setRevisionsError(null);
+    setRestoredRevision(false);
+    const res = await sendExtensionMessage<DriveRevision[]>({ type: 'GET_DRIVE_REVISIONS' });
+    setRevisionsLoading(false);
     if (!res.ok) {
-      setRevisionsError(res.error || 'Failed to load backups.')
-      return
+      setRevisionsError(res.error || 'Failed to load backups.');
+      return;
     }
-    setRevisions(res.data ?? [])
-  }, [])
-
+    setRevisions(res.data ?? []);
+  }, []);
   const handleRestoreRevision = useCallback(async (revisionId: string) => {
-    setRevisionsLoading(true)
-    setRevisionsError(null)
+    setRevisionsLoading(true);
+    setRevisionsError(null);
     const res = await sendExtensionMessage({
       type: 'RESTORE_DRIVE_REVISION',
       payload: { revision_id: revisionId },
-    })
-    setRevisionsLoading(false)
+    });
+    setRevisionsLoading(false);
     if (!res.ok) {
-      setRevisionsError(res.error || 'Restore failed.')
-      return
+      setRevisionsError(res.error || 'Restore failed.');
+      return;
     }
-    setRestoredRevision(true)
-    setRevisions(null)
-  }, [])
-
+    setRestoredRevision(true);
+    setRevisions(null);
+  }, []);
   const handleExportJSON = async () => {
     try {
       // readStorage defaults on fresh profiles, so Export always produces a file.
-      const data = await readStorage()
+      const data = await readStorage();
       // Device-only fields (backup snapshots, per-device settings) stay out
       // of user exports — same contract as Drive writes.
-      const json = JSON.stringify(stripDeviceOnlyFields(data), null, 2)
-      const blob = new Blob([json], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'tabnest_data.json'
-      a.click()
-      URL.revokeObjectURL(url)
+      const json = JSON.stringify(stripDeviceOnlyFields(data), null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'tabnest_data.json';
+      a.click();
+      URL.revokeObjectURL(url);
     } catch {
       // Non-extension context
     }
-  }
-
+  };
   const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setImportError(null)
-    const reader = new FileReader()
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportError(null);
+    const reader = new FileReader();
     reader.onload = (ev) => {
       try {
-        const raw = JSON.parse(ev.target?.result as string)
-        const parsed = StorageSchemaZod.parse(raw)
+        const raw = JSON.parse(ev.target?.result as string);
+        const parsed = StorageSchemaZod.parse(raw);
         if (hasExistingData) {
-          setPendingImport(parsed)
+          setPendingImport(parsed);
         } else {
           // Import only user content — never the file's sync_meta / local_settings.
           // Accepting a crafted last_modified_at would let an imported "backup"
@@ -191,98 +180,90 @@ export function SyncAndDataTab({
             workspaces: parsed.workspaces,
             settings: parsed.settings,
             trash: parsed.trash,
-          })
+          });
         }
       } catch {
-        setImportError('Import failed — the file is not a valid Tab Nest export.')
+        setImportError('Import failed — the file is not a valid Tab Nest export.');
       }
-    }
-    reader.readAsText(file)
-    e.target.value = ''
-  }
-
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
   const handleImportOverwrite = () => {
-    if (!pendingImport) return
+    if (!pendingImport) return;
     // Overwrite user content only; keep this device's sync_meta / local_settings.
     void writeStorage({
       workspaces: pendingImport.workspaces,
       settings: pendingImport.settings,
       trash: pendingImport.trash,
-    })
-    setPendingImport(null)
-  }
-
+    });
+    setPendingImport(null);
+  };
   const handleImportAppend = () => {
-    if (!pendingImport) return
+    if (!pendingImport) return;
     // Read-merge-write through the storage layer so a concurrent background
     // write (context-menu save, sync apply) can't be lost between get and set.
     // mergeImportedData only touches workspaces, so that's all we write back.
     void (async () => {
-      const current = await readStorage()
-      const merged = mergeImportedData(current, pendingImport)
-      await writeStorage({ workspaces: merged.workspaces })
-    })()
-    setPendingImport(null)
-  }
-
-  const handleImportCancel = () => setPendingImport(null)
-
+      const current = await readStorage();
+      const merged = mergeImportedData(current, pendingImport);
+      await writeStorage({ workspaces: merged.workspaces });
+    })();
+    setPendingImport(null);
+  };
+  const handleImportCancel = () => setPendingImport(null);
   const handleBookmarksImport = async () => {
-    setBookmarksResult(null)
+    setBookmarksResult(null);
     if (!onImportBookmarks) {
-      setBookmarksResult({ text: 'Bookmark import is unavailable here.', isError: true })
-      return
+      setBookmarksResult({ text: 'Bookmark import is unavailable here.', isError: true });
+      return;
     }
-    let tree: chrome.bookmarks.BookmarkTreeNode[]
+    let tree: chrome.bookmarks.BookmarkTreeNode[];
     try {
-      const granted = await chrome.permissions.request({ permissions: ['bookmarks'] })
-      if (!granted) return
-      tree = await chrome.bookmarks.getTree()
+      const granted = await chrome.permissions.request({ permissions: ['bookmarks'] });
+      if (!granted) return;
+      tree = await chrome.bookmarks.getTree();
     } catch {
-      setBookmarksResult({ text: 'Could not read bookmarks — permission denied or unavailable.', isError: true })
-      return
+      setBookmarksResult({ text: 'Could not read bookmarks — permission denied or unavailable.', isError: true });
+      return;
     }
     try {
-      const imported = await onImportBookmarks(tree)
-      setBookmarksResult({ text: `Imported ${imported} ${groupsWord(imported)} from bookmarks.`, isError: false })
+      const imported = await onImportBookmarks(tree);
+      setBookmarksResult({ text: `Imported ${imported} ${groupsWord(imported)} from bookmarks.`, isError: false });
     } catch (err) {
-      setBookmarksResult({ text: err instanceof Error ? err.message : 'Bookmark import failed.', isError: true })
+      setBookmarksResult({ text: err instanceof Error ? err.message : 'Bookmark import failed.', isError: true });
     }
-  }
-
+  };
   const handleOneTabImport = async () => {
-    if (!onetabText.trim()) return
-    setOnetabResult(null)
+    if (!onetabText.trim()) return;
+    setOnetabResult(null);
     if (!onImportOneTab) {
-      setOnetabResult({ text: 'OneTab import is unavailable here.', isError: true })
-      return
+      setOnetabResult({ text: 'OneTab import is unavailable here.', isError: true });
+      return;
     }
     try {
-      const { imported, failed } = await onImportOneTab(onetabText)
+      const { imported, failed } = await onImportOneTab(onetabText);
       // Clear the pasted text only once everything has actually been saved
-      if (failed === 0) setOnetabText('')
+      if (failed === 0) setOnetabText('');
       setOnetabResult(
         failed === 0
           ? { text: `Imported ${imported} ${groupsWord(imported)} from OneTab.`, isError: false }
           : imported === 0
             ? { text: 'OneTab import failed — nothing was imported. Your pasted text was kept.', isError: true }
             : { text: `Imported ${imported} ${groupsWord(imported)}; ${failed} failed. Your pasted text was kept.`, isError: false },
-      )
+      );
     } catch (err) {
-      setOnetabResult({ text: err instanceof Error ? err.message : 'OneTab import failed.', isError: true })
+      setOnetabResult({ text: err instanceof Error ? err.message : 'OneTab import failed.', isError: true });
     }
-  }
-
+  };
   const importedGroupCount = pendingImport?.workspaces.reduce(
     (sum, ws) => sum + ws.categories.reduce((s, cat) => s + cat.groups.length, 0),
     0,
-  ) ?? 0
-
+  ) ?? 0;
   const lastSyncText =
     syncMeta.last_sync_at === 0
       ? 'Never'
-      : new Date(syncMeta.last_sync_at).toLocaleString()
-
+      : new Date(syncMeta.last_sync_at).toLocaleString();
   const subHeadingStyle: React.CSSProperties = {
     margin: '0 0 var(--space-4)',
     fontSize: 'var(--text-sm)',
@@ -290,8 +271,7 @@ export function SyncAndDataTab({
     color: 'var(--text-primary)',
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
-  }
-
+  };
   return (
     <div>
       <h3 style={sectionHeadingStyle}>Sync & Data</h3>
@@ -315,7 +295,7 @@ export function SyncAndDataTab({
               </div>
               <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>Google Drive</div>
             </div>
-            <button onClick={() => { void handleDisconnect() }} style={ghostBtnStyle} aria-label="Disconnect Google Drive">
+            <button onClick={() => { void handleDisconnect(); }} style={ghostBtnStyle} aria-label="Disconnect Google Drive">
               Disconnect
             </button>
           </div>
@@ -326,7 +306,7 @@ export function SyncAndDataTab({
                 {connecting ? 'Connecting…' : 'Not connected'}
               </span>
               <button
-                onClick={() => { void handleConnectDrive() }}
+                onClick={() => { void handleConnectDrive(); }}
                 disabled={connecting}
                 style={{ ...primaryBtnStyle, opacity: connecting ? 0.7 : 1, cursor: connecting ? 'wait' : 'pointer', minWidth: 140 }}
                 aria-label="Connect Google Drive"
@@ -369,10 +349,10 @@ export function SyncAndDataTab({
           id={intervalId}
           value={localSettings.sync_interval_minutes ?? 'manual'}
           onChange={(e) => {
-            const v = e.target.value
+            const v = e.target.value;
             onLocalSettingsChange({
               sync_interval_minutes: v === 'manual' ? null : (parseInt(v, 10) as 5 | 15 | 30),
-            })
+            });
           }}
           aria-label="Sync interval"
           style={selectStyle}
@@ -391,7 +371,7 @@ export function SyncAndDataTab({
 
       <SettingRow label="Sync now">
         <button
-          onClick={() => { void handleSyncNow() }}
+          onClick={() => { void handleSyncNow(); }}
           disabled={!isConnected || !localSettings.sync_enabled || syncing}
           style={{
             ...primaryBtnStyle,
@@ -464,8 +444,8 @@ export function SyncAndDataTab({
         message="Replace your current data with this backup? Your current workspaces are kept as a local backup."
         confirmLabel="Restore"
         onConfirm={() => {
-          if (confirmRevisionId) void handleRestoreRevision(confirmRevisionId)
-          setConfirmRevisionId(null)
+          if (confirmRevisionId) void handleRestoreRevision(confirmRevisionId);
+          setConfirmRevisionId(null);
         }}
         onCancel={() => setConfirmRevisionId(null)}
       />
@@ -634,5 +614,5 @@ export function SyncAndDataTab({
         <ImportResultLine result={onetabResult} />
       </section>
     </div>
-  )
+  );
 }

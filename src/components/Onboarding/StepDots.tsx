@@ -1,8 +1,7 @@
-import React from 'react'
-import { type Step, TOTAL_STEPS } from './steps'
-
+import React from 'react';
+import { type Step, TOTAL_STEPS } from './steps';
 export interface StepDotsProps {
-  step: Step
+  step: Step;
 }
 
 /** Progress dots for the onboarding flow, announcing "Step N of 3". */
@@ -34,5 +33,5 @@ export function StepDots({ step }: StepDotsProps): React.JSX.Element {
         />
       ))}
     </div>
-  )
+  );
 }

@@ -7,8 +7,7 @@
  * { ok: false } instead of throwing, so callers handle a single shape.
  */
 
-import type { ExtensionMessage, MessageResponse } from './schema'
-
+import type { ExtensionMessage, MessageResponse } from './schema';
 export function sendExtensionMessage<T = unknown>(
   message: ExtensionMessage,
 ): Promise<MessageResponse<T>> {
@@ -16,13 +15,13 @@ export function sendExtensionMessage<T = unknown>(
     try {
       chrome.runtime.sendMessage(message, (response: MessageResponse<T> | undefined) => {
         if (chrome.runtime.lastError) {
-          resolve({ ok: false, error: chrome.runtime.lastError.message ?? 'Extension error' })
+          resolve({ ok: false, error: chrome.runtime.lastError.message ?? 'Extension error' });
         } else {
-          resolve(response ?? { ok: false, error: 'No response from background' })
+          resolve(response ?? { ok: false, error: 'No response from background' });
         }
-      })
+      });
     } catch {
-      resolve({ ok: false, error: 'Not running as an extension' })
+      resolve({ ok: false, error: 'Not running as an extension' });
     }
-  })
+  });
 }

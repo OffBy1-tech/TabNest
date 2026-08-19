@@ -1,4 +1,4 @@
-import type React from 'react'
+import type React from 'react';
 
 // ---------------------------------------------------------------------------
 // Shared primitive styles for the settings panels (no hardcoded colors —
@@ -10,8 +10,7 @@ export const sectionHeadingStyle: React.CSSProperties = {
   fontSize: 'var(--text-lg)',
   fontWeight: 600,
   color: 'var(--text-primary)',
-}
-
+};
 export const rowStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
@@ -20,21 +19,18 @@ export const rowStyle: React.CSSProperties = {
   paddingBottom: 'var(--space-4)',
   marginBottom: 'var(--space-4)',
   borderBottom: '1px solid var(--border-default)',
-}
-
+};
 export const lastRowStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
   gap: 'var(--space-4)',
-}
-
+};
 export const rowLabelStyle: React.CSSProperties = {
   fontSize: 'var(--text-sm)',
   fontWeight: 500,
   color: 'var(--text-primary)',
-}
-
+};
 export const selectStyle: React.CSSProperties = {
   padding: 'var(--space-2) var(--space-3)',
   borderRadius: 'var(--radius-md)',
@@ -44,8 +40,7 @@ export const selectStyle: React.CSSProperties = {
   fontSize: 'var(--text-sm)',
   fontFamily: 'var(--font-sans)',
   cursor: 'pointer',
-}
-
+};
 export const primaryBtnStyle: React.CSSProperties = {
   padding: 'var(--space-2) var(--space-4)',
   borderRadius: 'var(--radius-md)',
@@ -56,8 +51,7 @@ export const primaryBtnStyle: React.CSSProperties = {
   fontWeight: 600,
   cursor: 'pointer',
   fontFamily: 'var(--font-sans)',
-}
-
+};
 export const dangerBtnStyle: React.CSSProperties = {
   padding: 'var(--space-2) var(--space-4)',
   borderRadius: 'var(--radius-md)',
@@ -68,8 +62,7 @@ export const dangerBtnStyle: React.CSSProperties = {
   fontWeight: 600,
   cursor: 'pointer',
   fontFamily: 'var(--font-sans)',
-}
-
+};
 export const ghostBtnStyle: React.CSSProperties = {
   padding: 'var(--space-2) var(--space-4)',
   borderRadius: 'var(--radius-md)',
@@ -80,7 +73,7 @@ export const ghostBtnStyle: React.CSSProperties = {
   fontWeight: 500,
   cursor: 'pointer',
   fontFamily: 'var(--font-sans)',
-}
+};
 
 /** Plain vertical list (backup / revision rows). */
 export const listResetStyle: React.CSSProperties = {
@@ -90,35 +83,33 @@ export const listResetStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 'var(--space-1)',
-}
-
+};
 export const listRowStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: 'var(--space-2)',
-}
-
+};
 export const listRowTextStyle: React.CSSProperties = {
   flex: 1,
   fontSize: 'var(--text-xs)',
   color: 'var(--text-secondary)',
-}
+};
 
 /** Compact ghost button for inline row actions (e.g. Restore). */
 export const smallGhostBtnStyle: React.CSSProperties = {
   ...ghostBtnStyle,
   padding: '2px var(--space-2)',
   fontSize: 'var(--text-xs)',
-}
+};
 
 /** Inline error text — pair with role="alert". */
 export const alertTextStyle: React.CSSProperties = {
   fontSize: 'var(--text-xs)',
   color: 'var(--color-danger)',
-}
+};
 
 /** Inline success text — pair with role="status". */
 export const statusTextStyle: React.CSSProperties = {
   fontSize: 'var(--text-xs)',
   color: 'var(--color-success)',
-}
+};

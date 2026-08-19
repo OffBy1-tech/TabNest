@@ -20,17 +20,17 @@
 
 export function isHttpUrl(url: string): boolean {
   try {
-    return ['http:', 'https:'].includes(new URL(url).protocol)
+    return ['http:', 'https:'].includes(new URL(url).protocol);
   } catch {
-    return false
+    return false;
   }
 }
 
 export function isSafeImageUrl(url: string): boolean {
   try {
-    return ['http:', 'https:', 'data:'].includes(new URL(url).protocol)
+    return ['http:', 'https:', 'data:'].includes(new URL(url).protocol);
   } catch {
-    return false
+    return false;
   }
 }
 
@@ -56,11 +56,11 @@ export function resolveFaviconUrl(
     typeof chrome !== 'undefined' &&
     typeof chrome.runtime?.getURL === 'function'
   ) {
-    const faviconUrl = new URL(chrome.runtime.getURL('/_favicon/'))
-    faviconUrl.searchParams.set('pageUrl', pageUrl)
-    faviconUrl.searchParams.set('size', String(size))
-    return faviconUrl.toString()
+    const faviconUrl = new URL(chrome.runtime.getURL('/_favicon/'));
+    faviconUrl.searchParams.set('pageUrl', pageUrl);
+    faviconUrl.searchParams.set('size', String(size));
+    return faviconUrl.toString();
   }
-  if (storedFavicon && isSafeImageUrl(storedFavicon)) return storedFavicon
-  return ''
+  if (storedFavicon && isSafeImageUrl(storedFavicon)) return storedFavicon;
+  return '';
 }
